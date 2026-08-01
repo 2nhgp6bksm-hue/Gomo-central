@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="assets/styles.css">
+  <link rel="stylesheet" href="assets/styles-v1.5.css?v=1.5">
 </head>
 
 <body>
@@ -69,12 +69,8 @@
       <!-- ACCUEIL -->
       <section id="home" class="page active">
         <article class="home-emblem" aria-label="GoMo Central">
-          <img src="assets/IMG_3002.jpeg" alt="GoMo Central">
-          </article>
-        
-
-        
-          
+          <img src="assets/IMG_3002.jpeg" onerror="this.onerror=null;this.src='assets/gomo-central-home.webp'" alt="GoMo Central">
+        </article>
 
         <div class="section-heading">
           <span class="eyebrow" data-i18n="home.quick">ACCÈS RAPIDE</span>
@@ -83,65 +79,65 @@
 
         <div class="action-grid">
 
-  <button class="action-card action-card--featured" type="button"
-    onclick="window.location.href='https://chic-sopapillas-82fbc8.netlify.app'">
-    <span class="action-card__icon">🤖</span>
-    <span>
-      <strong>GoMo Assistant</strong>
-      <small data-i18n="tools.assistant">Classements, train, VIP et organisation de l’alliance.</small>
-    </span>
-  </button>
+          <button class="action-card action-card--featured" type="button"
+            onclick="window.location.href='https://chic-sopapillas-82fbc8.netlify.app'">
+            <img class="action-card__image" src="icons/gomo-assistant.png" alt="">
+            <span>
+              <strong>GoMo Assistant</strong>
+              <small data-i18n="tools.assistant">Classements, train, VIP et organisation de l’alliance.</small>
+            </span>
+          </button>
 
-  <button class="action-card" type="button"
-    onclick="window.location.href='https://timely-meringue-812f51.netlify.app'">
-    <span class="action-card__icon">📡</span>
-    <span>
-      <strong>Shiny Radar</strong>
-      <small data-i18n="tools.radar">Serveurs confirmés, prévisions et historique des missions.</small>
-    </span>
-  </button>
+          <button class="action-card" type="button"
+            onclick="window.location.href='https://timely-meringue-812f51.netlify.app'">
+            <img class="action-card__image" src="icons/shiny-radar.png" alt="">
+            <span>
+              <strong>Shiny Radar</strong>
+              <small data-i18n="tools.radar">Serveurs confirmés, prévisions et historique des missions.</small>
+            </span>
+          </button>
 
-  <button class="action-card" type="button" data-go="tools">
-    <span class="action-card__icon">📅</span>
-    <span>
-      <strong>VS Planner</strong>
-      <small data-i18n="tools.planner">Préparer les ressources et atteindre l’objectif de 7,2 M.</small>
-    </span>
-  </button>
+          <button class="action-card" type="button" data-go="tools">
+            <img class="action-card__image" src="icons/vs-planner.png" alt="">
+            <span>
+              <strong>VS Planner</strong>
+              <small data-i18n="tools.planner">Préparer les ressources et atteindre l’objectif de 7,2 M.</small>
+            </span>
+          </button>
 
-  <button class="action-card" type="button" data-go="guides">
-    <span class="action-card__icon">🎓</span>
-    <span>
-      <strong>GoMo Coach</strong>
-      <small data-i18n="tools.coach">Héros, armes, équipes, événements et priorités.</small>
-    </span>
-  </button>
+          <button class="action-card" type="button" data-go="guides">
+            <img class="action-card__image" src="icons/gomo-coach.png" alt="">
+            <span>
+              <strong>GoMo Coach</strong>
+              <small data-i18n="tools.coach">Héros, armes, équipes, événements et priorités.</small>
+            </span>
+          </button>
 
-  <button class="action-card" type="button" data-go="capture">
-    <span class="action-card__icon">📸</span>
-    <span>
-      <strong>Analyse IA</strong>
-      <small data-i18n="cards.captureText">Envoie une image de Last War et vérifie le résultat.</small>
-    </span>
-  </button>
+          <button class="action-card" type="button" data-go="capture">
+            <img class="action-card__image" src="icons/analyse-ia.png" alt="">
+            <span>
+              <strong>Analyse IA</strong>
+              <small data-i18n="cards.captureText">Envoie une image de Last War et vérifie le résultat.</small>
+            </span>
+          </button>
 
-  <button class="action-card" type="button" data-go="communication">
-    <span class="action-card__icon">🌐</span>
-    <span>
-      <strong>Traducteur GoMo</strong>
-      <small>Traduire simplement les messages entre les membres.</small>
-    </span>
-  </button>
+          <button class="action-card" type="button" data-go="communication">
+            <img class="action-card__image" src="icons/traducteur-gomo.png" alt="">
+            <span>
+              <strong>Traducteur GoMo</strong>
+              <small>Traduire simplement les messages entre les membres.</small>
+            </span>
+          </button>
 
-  <button class="action-card" type="button" data-go="news">
-    <span class="action-card__icon">📢</span>
-    <span>
-      <strong data-i18n="cards.newsTitle">Actualités GoMo</strong>
-      <small data-i18n="cards.newsText">Informations et événements importants.</small>
-    </span>
-  </button>
+          <button class="action-card" type="button" data-go="news">
+            <img class="action-card__image" src="icons/actualites-gomo.png" alt="">
+            <span>
+              <strong data-i18n="cards.newsTitle">Actualités GoMo</strong>
+              <small data-i18n="cards.newsText">Informations et événements importants.</small>
+            </span>
+          </button>
 
-</div>
+        </div>
       </section>
 
       <!-- ASSISTANT -->
@@ -349,16 +345,25 @@
 
         <div class="tool-grid">
           <article class="tool-card">
-            <span class="tool-card__icon">🤖</span>
+            <img class="tool-card__image" src="icons/gomo-assistant.png" alt="">
             <div>
               <h2>GoMo Assistant</h2>
               <p data-i18n="tools.assistant">Classements, train, VIP et organisation de l’alliance.</p>
             </div>
-            <button type="button" disabled data-i18n="tools.link">Lien à connecter</button>
+            <button type="button" onclick="window.location.href='https://chic-sopapillas-82fbc8.netlify.app'">Ouvrir</button>
           </article>
 
           <article class="tool-card">
-            <span class="tool-card__icon">📊</span>
+            <img class="tool-card__image" src="icons/shiny-radar.png" alt="">
+            <div>
+              <h2>Shiny Radar</h2>
+              <p data-i18n="tools.radar">Serveurs confirmés, prévisions et historique des missions.</p>
+            </div>
+            <button type="button" onclick="window.location.href='https://timely-meringue-812f51.netlify.app'">Ouvrir</button>
+          </article>
+
+          <article class="tool-card">
+            <img class="tool-card__image" src="icons/vs-planner.png" alt="">
             <div>
               <h2>VS Planner</h2>
               <p data-i18n="tools.planner">Préparer les ressources et atteindre l’objectif de 7,2 M.</p>
@@ -367,21 +372,39 @@
           </article>
 
           <article class="tool-card">
-            <span class="tool-card__icon">✨</span>
-            <div>
-              <h2>Shiny Radar</h2>
-              <p data-i18n="tools.radar">Serveurs confirmés, prévisions et historique des missions.</p>
-            </div>
-            <button type="button" disabled data-i18n="tools.link">Lien à connecter</button>
-          </article>
-
-          <article class="tool-card">
-            <span class="tool-card__icon">🎓</span>
+            <img class="tool-card__image" src="icons/gomo-coach.png" alt="">
             <div>
               <h2>GoMo Coach</h2>
               <p data-i18n="tools.coach">Héros, armes, équipes, événements et priorités.</p>
             </div>
             <button type="button" disabled data-i18n="tools.link">Lien à connecter</button>
+          </article>
+
+          <article class="tool-card tool-card--internal" data-go-card="capture">
+            <img class="tool-card__image" src="icons/analyse-ia.png" alt="">
+            <div>
+              <h2>Analyse IA</h2>
+              <p data-i18n="tools.analysis">Analyse des captures Last War et recommandations.</p>
+            </div>
+            <button type="button" data-go="capture" data-i18n="tools.open">Ouvrir</button>
+          </article>
+
+          <article class="tool-card tool-card--internal" data-go-card="ask">
+            <img class="tool-card__image" src="icons/traducteur-gomo.png" alt="">
+            <div>
+              <h2>Traducteur GoMo</h2>
+              <p data-i18n="tools.translate">Traduction simple pour les langues de l’alliance.</p>
+            </div>
+            <button type="button" data-go="ask" data-i18n="tools.open">Ouvrir</button>
+          </article>
+
+          <article class="tool-card tool-card--internal" data-go-card="news">
+            <img class="tool-card__image" src="icons/actualites-gomo.png" alt="">
+            <div>
+              <h2>Actualités GoMo</h2>
+              <p data-i18n="tools.news">Annonces, événements et informations importantes.</p>
+            </div>
+            <button type="button" data-go="news" data-i18n="tools.open">Ouvrir</button>
           </article>
         </div>
       </section>
@@ -498,6 +521,6 @@
     </form>
   </dialog>
 
-  <script src="assets/app.js"></script>
+  <script src="assets/app-v1.5.js?v=1.5"></script>
 </body>
 </html>

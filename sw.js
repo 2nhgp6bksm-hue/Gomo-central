@@ -1,4 +1,4 @@
-const CACHE_NAME = "gomo-central-v1-4";
+const CACHE_NAME = "gomo-central-v1-5";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -14,6 +14,5 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-
   event.respondWith(fetch(event.request));
 });
