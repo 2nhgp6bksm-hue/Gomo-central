@@ -1,10 +1,10 @@
-const CACHE_NAME = "gomo-central-v1-2";
+const CACHE_NAME = "gomo-central-v1-3";
 const FILES = [
   "./",
   "./index.html",
   "./assets/styles.css",
   "./assets/app.js",
-  "./assets/gomo-central-home.webp",
+  "./assets/F42C9EC0-F773-47B9-8D77-E058E9AEF08B.png",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
