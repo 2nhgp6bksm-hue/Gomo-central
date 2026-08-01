@@ -1,4 +1,4 @@
-const CACHE_NAME = "gomo-central-v1-1";
+const CACHE_NAME = "gomo-central-v1-2";
 const FILES = [
   "./",
   "./index.html",
@@ -37,7 +37,12 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
           return response;
         })
-        .catch(() => caches.match("./index.html"));
+        .catch(() => {
+  if (event.request.mode === "navigate") {
+    return caches.match("./index.html");
+  }
+  return Response.error();
+});
     })
   );
 });
