@@ -8,7 +8,7 @@ function json(data, status = 200) {
   });
 }
 
-const SUPPORTED_LOCALES = new Set(["fr", "de", "en", "ro", "uk", "ko", "hr"]);
+const SUPPORTED_LOCALES = new Set(["fr", "de", "en", "ro", "uk", "ko", "hr", "pt"]);
 
 const LOCALE_NAMES = {
   fr: "français",
@@ -17,7 +17,8 @@ const LOCALE_NAMES = {
   ro: "roumain",
   uk: "ukrainien",
   ko: "coréen",
-  hr: "croate"
+  hr: "croate",
+  pt: "portugais"
 };
 
 function cleanMarkdown(value) {
@@ -33,9 +34,11 @@ function cleanMarkdown(value) {
 
 function extractModelText(result) {
   return (
+    result?.answer ??
     result?.response ??
     result?.choices?.[0]?.message?.content ??
     result?.result ??
+    result?.caption ??
     ""
   );
 }
@@ -92,6 +95,115 @@ function buildAnalysisText(data) {
 
 const APP_PATCH = String.raw`
 ;(() => {
+  // Ajout du portugais à l'interface GoMo Central.
+  if (typeof languages !== "undefined") {
+    languages.pt = { flag: "🇵🇹", label: "Português", short: "PT" };
+  }
+
+  if (typeof translations !== "undefined" && typeof fr !== "undefined") {
+    translations.pt = {
+      ...fr,
+      "equal.title":"Todos juntos",
+      "equal.text":"O mesmo acesso e o mesmo lugar para cada membro.",
+      "nav.home":"Início",
+      "nav.ask":"Perguntar à GoMo",
+      "nav.capture":"Analisar uma captura",
+      "nav.communication":"Comunicação",
+      "nav.news":"Notícias",
+      "nav.tools":"Ferramentas GoMo",
+      "nav.guides":"Conselhos Last War",
+      "free.title":"Modo gratuito",
+      "free.text":"Sem faturação automática",
+      "actions.install":"Instalar no dispositivo",
+      "actions.send":"Enviar",
+      "actions.cancel":"Cancelar",
+      "actions.publish":"Publicar",
+      "actions.original":"Ver texto original",
+      "actions.delete":"Eliminar",
+      "home.title":"Tudo GoMo. Simples.",
+      "home.subtitle":"Um único espaço para compreender, comunicar, analisar capturas e aceder a todas as ferramentas GoMo.",
+      "home.ask":"Perguntar à GoMo",
+      "home.capture":"Enviar uma captura",
+      "home.quick":"ACESSO RÁPIDO",
+      "home.choose":"O que queres fazer?",
+      "status.base":"Base central ativa",
+      "status.detail":"8 idiomas • iPhone • Android • computador",
+      "cards.askTitle":"Não percebi",
+      "cards.askText":"Pede uma explicação simples no teu idioma.",
+      "cards.captureTitle":"Analisar uma captura",
+      "cards.captureText":"Envia uma imagem do Last War e verifica o resultado.",
+      "cards.communicationTitle":"Falar com a GoMo",
+      "cards.communicationText":"Faz uma pergunta ou ajuda outro membro.",
+      "cards.toolsTitle":"Todas as ferramentas",
+      "cards.toolsText":"Assistant, VS Planner, Shiny Radar e Coach.",
+      "cards.newsTitle":"Notícias GoMo",
+      "cards.newsText":"Informações e eventos importantes.",
+      "cards.guidesTitle":"Conselhos Last War",
+      "cards.guidesText":"Heróis, armas, VS, eventos e recursos.",
+      "ask.eyebrow":"ASSISTENTE GOMO",
+      "ask.title":"Perguntar à GoMo",
+      "ask.welcome":"Explica o que não percebes. Posso simplificar, traduzir ou procurar a informação GoMo correta.",
+      "ask.placeholder":"Escreve a tua pergunta…",
+      "ask.examples":"Exemplos",
+      "ask.example1":"Explica-me o VS de hoje",
+      "ask.example2":"O que devo melhorar?",
+      "ask.example3":"Traduzir uma instrução",
+      "ask.demoTitle":"Base de demonstração",
+      "ask.demoText":"A interface está pronta. A IA gratuita real será ligada na próxima etapa.",
+      "ask.demoReply":"Recebi a tua pergunta. A ligação à IA gratuita será adicionada na próxima etapa.",
+      "capture.eyebrow":"CAPTURAS LAST WAR",
+      "capture.title":"Analisar uma captura",
+      "capture.dropTitle":"Escolhe uma captura",
+      "capture.dropText":"Classificação, recursos, Shiny, VS, heróis ou evento.",
+      "capture.select":"Selecionar uma imagem",
+      "capture.result":"Resultado proposto",
+      "capture.waiting":"Em espera",
+      "capture.ready":"Imagem pronta",
+      "capture.empty":"O resultado aparecerá aqui depois de enviares uma captura.",
+      "capture.type":"Tipo detetado",
+      "capture.unknown":"A confirmar",
+      "capture.language":"Idioma detetado",
+      "capture.auto":"Automático",
+      "capture.confidence":"Confiança",
+      "capture.validation":"Nenhum dado será guardado sem validação humana.",
+      "capture.analyze":"Analisar com IA",
+      "communication.eyebrow":"ENTREAJUDA",
+      "communication.title":"Comunicação GoMo",
+      "communication.new":"Nova mensagem",
+      "communication.emptyTitle":"Inicia a conversa",
+      "communication.emptyText":"Nesta base, as mensagens são guardadas no dispositivo para testes.",
+      "communication.nextTitle":"Próxima etapa",
+      "communication.nextText":"As contas e mensagens partilhadas entre todos os membros serão depois ligadas a uma base gratuita.",
+      "communication.nameLabel":"Nome apresentado",
+      "communication.namePlaceholder":"O teu nome no Last War",
+      "communication.messageLabel":"Mensagem",
+      "communication.placeholder":"Escreve a tua mensagem…",
+      "communication.demoNotice":"Nesta primeira base, as mensagens ficam apenas neste dispositivo.",
+      "communication.translate":"Traduzir",
+      "communication.explain":"Explicar com a GoMo",
+      "communication.local":"Guardado neste dispositivo",
+      "news.eyebrow":"GOMO FOREVER",
+      "news.title":"Notícias GoMo",
+      "news.pinned":"Informação fixada",
+      "news.demoTitle":"Bem-vindo à nova base GoMo Central",
+      "news.demoText":"O site está organizado em torno de funções simples: compreender, comunicar, analisar e aceder às ferramentas.",
+      "news.emptyTitle":"As próximas informações aparecerão aqui",
+      "news.emptyText":"Poderão ser traduzidas automaticamente para o idioma de cada leitor.",
+      "tools.eyebrow":"GOMO CENTRAL",
+      "tools.title":"Todas as ferramentas GoMo",
+      "tools.assistant":"Classificações, comboio, VIP e organização da aliança.",
+      "tools.planner":"Preparar recursos e atingir o objetivo de 7,2 M.",
+      "tools.radar":"Servidores confirmados, previsões e histórico das missões.",
+      "tools.coach":"Heróis, armas, equipas, eventos e prioridades.",
+      "tools.open":"Abrir",
+      "guides.title":"Conselhos e métodos",
+      "guides.placeholder":"Pesquisar um herói, arma ou evento…",
+      "guides.noneTitle":"Nenhum conselho encontrado",
+      "guides.noneText":"Tenta outra palavra ou pergunta diretamente à GoMo.",
+      "language.title":"Escolher idioma"
+    };
+  }
+
   const nativeFetch = window.fetch.bind(window);
   let lastAnalysis = null;
 
@@ -213,24 +325,20 @@ async function analyzeImage(request, env) {
     const outputLanguage = LOCALE_NAMES[locale] || "français";
 
     const result = await env.AI.run(
-      "@cf/google/gemma-4-26b-a4b-it",
+      "@cf/moondream/moondream3.1-9B-A2B",
       {
-        messages: [
-          {
-            role: "system",
-            content:
-              "Tu es GoMo Coach pour Last War: Survival. Analyse uniquement les éléments réellement visibles sur la capture. N’invente jamais un nombre, un niveau, une ressource, un héros ou un événement. Sépare strictement ce qui est confirmé, ce qui est probable et ce qui manque. Ne conseille jamais de gaspiller une ressource rare."
-          },
-          {
-            role: "user",
-            content:
-              `Analyse cette capture Last War et réponds en ${outputLanguage}. Retourne UNIQUEMENT un objet JSON valide, sans Markdown ni bloc de code, avec exactement ces clés : ` +
-              `{"type":"type de capture ou À confirmer","language":"langue visible sur la capture ou Automatique","confidence":0,"confirmed":["faits certains"],"probable":["éléments plausibles mais non certains"],"missing":["informations nécessaires non visibles"],"priorities":["maximum 3 actions utiles"],"keep":["ressources ou éléments à conserver"]}. ` +
-              "confidence doit être un entier de 0 à 100. Si la capture ne permet pas une conclusion fiable, baisse la confiance et indique clairement ce qui manque."
-          }
-        ],
+        task: "query",
         image,
-        max_tokens: 900,
+        question:
+          `Analyse cette capture de Last War: Survival et réponds en ${outputLanguage}. ` +
+          `Retourne UNIQUEMENT un objet JSON valide, sans Markdown ni bloc de code, avec exactement ces clés : ` +
+          `{"type":"type de capture ou À confirmer","language":"langue visible sur la capture ou Automatique","confidence":0,"confirmed":["faits certains"],"probable":["éléments plausibles mais non certains"],"missing":["informations nécessaires non visibles"],"priorities":["maximum 3 actions utiles"],"keep":["ressources ou éléments à conserver"]}. ` +
+          `Règles : confidence est un entier de 0 à 100 ; n'invente jamais un nombre, niveau, héros, ressource ou événement ; ` +
+          `sépare strictement confirmé, probable et manquant ; ne conseille jamais de gaspiller une ressource rare ; ` +
+          `si la capture n'est pas suffisamment lisible, baisse la confiance et indique ce qui manque.`,
+        reasoning: false,
+        stream: false,
+        max_tokens: 1200,
         temperature: 0.1
       }
     );
