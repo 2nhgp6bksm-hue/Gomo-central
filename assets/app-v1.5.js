@@ -997,7 +997,58 @@ $$(".example-question").forEach((button) => {
 $("#captureInput").addEventListener("change", (event) => {
   previewCapture(event.target.files?.[0]);
 });
+$("#analyzeButton").addEventListener("click", async () => {
+  const button = $("#analyzeButton");
+  const image = $("#capturePreview").src;
 
+  if (!image || !image.startsWith("data:image/")) {
+    alert("Choisis d’abord une capture.");
+    return;
+  }
+
+  const oldText = button.textContent;
+
+  button.disabled = true;
+  button.textContent = "Analyse en cours…";
+  $("#analysisStatus").textContent = "Analyse en cours…";
+
+  try {
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ image })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || "Erreur IA");
+    }
+
+    let box = $("#analysisText");
+
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "analysisText";
+      box.className = "validation-note";
+      box.style.whiteSpace = "pre-wrap";
+      box.style.marginTop = "14px";
+
+      $("#analysisDemo").insertBefore(box, button);
+    }
+
+    box.textContent = data.analysis;
+    $("#analysisStatus").textContent = "Analyse terminée";
+  } catch (error) {
+    $("#analysisStatus").textContent = "Erreur";
+    alert(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = oldText;
+  }
+});
 ["dragenter", "dragover"].forEach((eventName) => {
   $("#dropZone").addEventListener(eventName, (event) => {
     event.preventDefault();
