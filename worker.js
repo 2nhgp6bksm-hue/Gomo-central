@@ -696,6 +696,87 @@ function enrichFromVisualDescription(parsed, visualText, locale) {
   return result;
 }
 
+
+const SCREEN_TYPES = {
+  fr: {
+    formation: "Formation d’équipe", ranking: "Classement", inventory: "Inventaire / ressources",
+    heroes: "Héros", vs: "VS", shiny: "Shiny", event: "Événement",
+    train: "Train / VIP", alliance: "Alliance", combat: "Combat", other: "À confirmer"
+  },
+  de: {
+    formation: "Team-Formation", ranking: "Rangliste", inventory: "Inventar / Ressourcen",
+    heroes: "Helden", vs: "VS", shiny: "Shiny", event: "Ereignis",
+    train: "Zug / VIP", alliance: "Allianz", combat: "Kampf", other: "Zu bestätigen"
+  },
+  en: {
+    formation: "Team formation", ranking: "Ranking", inventory: "Inventory / resources",
+    heroes: "Heroes", vs: "VS", shiny: "Shiny", event: "Event",
+    train: "Train / VIP", alliance: "Alliance", combat: "Combat", other: "To confirm"
+  },
+  ro: {
+    formation: "Formație de echipă", ranking: "Clasament", inventory: "Inventar / resurse",
+    heroes: "Eroi", vs: "VS", shiny: "Shiny", event: "Eveniment",
+    train: "Tren / VIP", alliance: "Alianță", combat: "Luptă", other: "De confirmat"
+  },
+  uk: {
+    formation: "Формація команди", ranking: "Рейтинг", inventory: "Інвентар / ресурси",
+    heroes: "Герої", vs: "VS", shiny: "Shiny", event: "Подія",
+    train: "Потяг / VIP", alliance: "Альянс", combat: "Бій", other: "Потрібне підтвердження"
+  },
+  ko: {
+    formation: "팀 편성", ranking: "순위", inventory: "인벤토리 / 자원",
+    heroes: "영웅", vs: "VS", shiny: "Shiny", event: "이벤트",
+    train: "열차 / VIP", alliance: "동맹", combat: "전투", other: "확인 필요"
+  },
+  hr: {
+    formation: "Postava tima", ranking: "Poredak", inventory: "Inventar / resursi",
+    heroes: "Heroji", vs: "VS", shiny: "Shiny", event: "Događaj",
+    train: "Vlak / VIP", alliance: "Savez", combat: "Borba", other: "Treba potvrditi"
+  },
+  pt: {
+    formation: "Formação da equipa", ranking: "Classificação", inventory: "Inventário / recursos",
+    heroes: "Heróis", vs: "VS", shiny: "Shiny", event: "Evento",
+    train: "Comboio / VIP", alliance: "Aliança", combat: "Combate", other: "A confirmar"
+  }
+};
+
+function detectScreenTypeFromText(value, locale = "fr") {
+  const text = String(value || "").toLowerCase();
+  const tx = SCREEN_TYPES[locale] || SCREEN_TYPES.fr;
+
+  if (/(préréglage|prereglage|formation|équipe|equipe|team|preset|postava|forma[cç][aã]o)/i.test(text)) return tx.formation;
+  if (/(classement|ranking|rangliste|poredak|classifica[cç][aã]o|рейтинг|순위)/i.test(text)) return tx.ranking;
+  if (/(inventaire|inventory|inventar|ressource|resource|resurs|recurso|інвентар|인벤토리)/i.test(text)) return tx.inventory;
+  if (/(héros|heros|heroes|helden|eroi|heroji|heróis|герої|영웅)/i.test(text)) return tx.heroes;
+  if (/\bvs\b/i.test(text)) return tx.vs;
+  if (/shiny/i.test(text)) return tx.shiny;
+  if (/(événement|evenement|event|ereignis|eveniment|događaj|evento|подія|이벤트)/i.test(text)) return tx.event;
+  if (/(train|vip|zug|tren|vlak|comboio|потяг|열차)/i.test(text)) return tx.train;
+  if (/(alliance|allianz|alianță|alianta|savez|alian[cç]a|альянс|동맹)/i.test(text)) return tx.alliance;
+  if (/(combat|kampf|luptă|lupta|borba|combate|бій|전투)/i.test(text)) return tx.combat;
+  return tx.other;
+}
+
+function estimateVisualConfidence(value, detectedType) {
+  const text = String(value || "");
+  let score = 25;
+
+  if (detectedType && !/(confirmer|confirm|bestätigen|potvrditi|confirmat|확인|підтвердж)/i.test(detectedType)) score += 20;
+  if (/\b(?:Niv\.?|Lv\.?|Level)\s*\d+\b/i.test(text)) score += 15;
+  if (/\b\d{1,3}(?:[.,]\d{1,2})?\s*M\b/i.test(text)) score += 15;
+  if (/(préréglage|prereglage|formation|équipe|equipe|team|preset)/i.test(text)) score += 10;
+  if (text.length > 350) score += 10;
+
+  return Math.max(20, Math.min(90, score));
+}
+
+function languageLabelForLocale(locale) {
+  return {
+    fr: "Français", de: "Deutsch", en: "English", ro: "Română",
+    uk: "Українська", ko: "한국어", hr: "Hrvatski", pt: "Português"
+  }[locale] || "Automatique";
+}
+
 async function analyzeImage(request, env) {
   if (request.method !== "POST") {
     return json({ ok: false, error: "Méthode non autorisée" }, 405);
@@ -719,10 +800,9 @@ async function analyzeImage(request, env) {
     const blob = dataUriToBlob(image);
     const extension = fileExtensionForMime(blob.type);
 
-    // Étape 1 : pipeline vision Cloudflare prévu pour les captures/images.
-    // Cloudflare applique détection d'objets + modèle vision/OCR avant de produire du texte.
     let visualText = "";
 
+    // Lecture visuelle générale (OCR + description)
     try {
       const converted = await env.AI.toMarkdown(
         {
@@ -741,89 +821,99 @@ async function analyzeImage(request, env) {
       if (conversion?.format !== "error") {
         visualText = String(conversion?.data || "").trim();
       }
-    } catch {
-      visualText = "";
-    }
+    } catch {}
 
-    // Secours : si le pipeline de conversion ne renvoie rien, on conserve Moondream.
-    if (!visualText) {
-      const fallback = await env.AI.run(
+    // Lecture ciblée : textes, niveaux, puissance, équipe, éléments UI.
+    let targetedText = "";
+    try {
+      const targeted = await env.AI.run(
         "@cf/moondream/moondream3.1-9B-A2B",
         {
           task: "query",
           image,
           question:
-            "Décris précisément cette capture Last War. Lis les textes, niveaux, puissance, équipe sélectionnée, héros/unités et éléments d’interface réellement visibles. N’invente rien.",
+            "Lis précisément cette capture Last War. Donne uniquement les éléments réellement visibles : type d'écran, textes de l'interface, numéro d'équipe sélectionnée, niveaux, puissance, nombre de héros/unités principaux visibles et tout nombre clairement lisible. N'invente rien. N'essaie pas de donner de stratégie.",
           reasoning: true,
           stream: false,
-          max_tokens: 650,
+          max_tokens: 700,
           temperature: 0.1
         }
       );
-      visualText = extractModelText(fallback);
-    }
+      targetedText = cleanMarkdown(extractModelText(targeted));
+    } catch {}
 
-    if (!visualText) {
+    const combined = [visualText, targetedText].filter(Boolean).join("\n\n");
+    if (!combined) {
       return json({
         ok: true,
-        type: "À confirmer",
-        language: "Automatique",
+        type: (SCREEN_TYPES[locale] || SCREEN_TYPES.fr).other,
+        language: languageLabelForLocale(locale),
         confidence: 15,
-        analysis: "La capture a été reçue, mais aucun détail visuel fiable n’a pu être extrait."
+        analysis: locale === "fr"
+          ? "La capture a été reçue, mais aucun détail visuel fiable n’a pu être extrait."
+          : "No reliable visual detail could be extracted from the screenshot."
       });
     }
 
-    // Étape 2 : Gemma 4 transforme la lecture visuelle en résultat GoMo structuré.
-    const result = await env.AI.run(
+    const detectedType = detectScreenTypeFromText(combined, locale);
+    const confidence = estimateVisualConfidence(combined, detectedType);
+
+    // Le deuxième modèle ne renvoie plus du JSON : il produit directement le texte final affiché.
+    const synthesis = await env.AI.run(
       "@cf/google/gemma-4-26b-a4b-it",
       {
         messages: [
           {
             role: "system",
             content:
-              "Tu es GoMo Coach spécialisé dans Last War: Survival. Tu dois rester strictement fidèle aux informations visibles/extraites. N’invente jamais un nom de héros, une statistique, un niveau ou une ressource."
+              "Tu es GoMo Coach spécialisé dans Last War: Survival. Tu travailles uniquement à partir d'une lecture visuelle déjà extraite. Tu ne dois jamais inventer un nom de héros, une statistique, une ressource, un niveau ou un conseil."
           },
           {
             role: "user",
             content:
-              `Voici la lecture visuelle d'une capture Last War :\n\n${visualText}\n\n` +
-              `Réponds en ${outputLanguage}. Identifie précisément le type d'écran parmi : formation d'équipe, classement, inventaire/ressources, héros, VS, Shiny, événement, train/VIP, alliance, combat, autre. ` +
-              `Retourne UNIQUEMENT un objet JSON valide avec exactement ces clés : ` +
-              `{"type":"type d'écran précis ou À confirmer","language":"langue visible sur la capture ou Automatique","confidence":0,"confirmed":["faits certains et uniques"],"probable":["éléments plausibles mais non certains"],"missing":["informations utiles non visibles"],"priorities":["maximum 3 actions utiles uniquement si justifiées"],"keep":["éléments ou ressources à conserver uniquement si pertinent"]}. ` +
-              `Règles : confidence entre 0 et 100 ; aucune répétition ; maximum 6 confirmed, 3 probable, 3 missing, 3 priorities, 3 keep ; ne transforme pas une simple observation en conseil si la capture ne permet pas de le justifier.`
+              `Réponds en ${outputLanguage}. Voici la lecture visuelle d'une capture Last War :\n\n${combined}\n\n` +
+              `Présente un résultat COURT et LISIBLE, sans JSON, avec uniquement les rubriques pertinentes parmi : ` +
+              `CONFIRMÉ, PROBABLE, MANQUANT / NON VISIBLE, PRIORITÉS, À GARDER. ` +
+              `Maximum 6 éléments confirmés et 3 éléments dans les autres rubriques. ` +
+              `Ne répète jamais la même information. ` +
+              `N'ajoute PRIORITÉS ou À GARDER que si la capture permet vraiment de donner un conseil sûr. ` +
+              `Pour une simple capture de formation, contente-toi surtout d'identifier l'équipe, les niveaux, la puissance et ce qui est clairement visible.`
           }
         ],
-        max_completion_tokens: 900,
+        max_completion_tokens: 700,
         temperature: 0.1
       }
     );
 
-    const raw = extractModelText(result);
-    let parsed = parseLooseModelObject(raw);
+    let analysis = cleanMarkdown(extractModelText(synthesis));
+    if (!analysis) analysis = cleanMarkdown(combined).slice(0, 1600);
 
-    if (!parsed) {
-      return json({
-        ok: true,
-        type: "À confirmer",
-        language: "Automatique",
-        confidence: 25,
-        analysis:
-          locale === "fr"
-            ? `Lecture visuelle obtenue, mais résultat non structuré :\n${cleanMarkdown(visualText).slice(0, 1200)}`
-            : cleanMarkdown(visualText).slice(0, 1200)
-      });
+    // Petite correction certaine si les éléments sont bien présents dans la lecture.
+    const supplements = [];
+    const power = combined.match(/\b(\d{1,3}(?:[.,]\d{1,2})?\s*M)\b/i);
+    if (power && !analysis.includes(power[1])) {
+      supplements.push(
+        locale === "fr"
+          ? `Puissance affichée : ${power[1].replace(",", ".")}`
+          : `Displayed power: ${power[1]}`
+      );
     }
 
-    parsed = enrichFromVisualDescription(parsed, visualText, locale);
+    if ((/Équipe\s*1/i.test(combined) || /Team\s*1/i.test(combined)) &&
+        !/(Équipe\s*1|Team\s*1)/i.test(analysis)) {
+      supplements.push(locale === "fr" ? "Équipe 1 sélectionnée." : "Team 1 selected.");
+    }
 
-    const normalizedConfidence = evidenceConfidence(parsed);
+    if (supplements.length) {
+      analysis = `${analysis}\n\n${supplements.join("\n")}`;
+    }
 
     return json({
       ok: true,
-      type: normalizeType(parsed.type),
-      language: normalizeDetectedLanguage(parsed.language),
-      confidence: normalizedConfidence,
-      analysis: cleanMarkdown(buildAnalysisText(parsed, locale))
+      type: detectedType,
+      language: languageLabelForLocale(locale),
+      confidence,
+      analysis
     });
   } catch (error) {
     return json(
@@ -851,6 +941,7 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
+
 
 
 
