@@ -614,6 +614,88 @@ async function servePatchedApp(request, env) {
   });
 }
 
+
+function dataUriToBlob(dataUri) {
+  const match = String(dataUri || "").match(/^data:([^;]+);base64,(.+)$/s);
+  if (!match) throw new Error("Format d’image invalide");
+
+  const mime = match[1] || "image/png";
+  const binary = atob(match[2]);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return new Blob([bytes], { type: mime });
+}
+
+function fileExtensionForMime(mime) {
+  if (mime === "image/jpeg") return "jpg";
+  if (mime === "image/webp") return "webp";
+  if (mime === "image/gif") return "gif";
+  if (mime === "image/bmp") return "bmp";
+  return "png";
+}
+
+function descriptionLanguageFor(locale) {
+  return ["fr", "de", "en", "pt"].includes(locale) ? locale : "en";
+}
+
+function addUnique(list, value, max = 6) {
+  const clean = cleanMarkdown(value);
+  if (!clean || list.includes(clean) || list.length >= max) return;
+  list.push(clean);
+}
+
+function enrichFromVisualDescription(parsed, visualText, locale) {
+  const result = parsed && typeof parsed === "object" ? parsed : {};
+  result.confirmed = asList(result.confirmed);
+  result.probable = asList(result.probable);
+  result.missing = asList(result.missing);
+  result.priorities = asList(result.priorities).slice(0, 3);
+  result.keep = asList(result.keep);
+
+  const text = String(visualText || "");
+
+  // Reconnaissance prudente des écrans de formation Last War.
+  const formationWords = /(équipe|equipe|team|formation|préréglage|prereglage|preset)/i;
+  if (formationWords.test(text)) {
+    const currentType = String(result.type || "").toLowerCase();
+    if (!result.type || ["capture", "image", "photo", "autre", "à confirmer"].includes(currentType)) {
+      result.type = locale === "fr" ? "Formation d’équipe" : "Team formation";
+    }
+  }
+
+  // Quelques éléments très sûrs lorsqu'ils sont textuellement extraits.
+  const power = text.match(/\b(\d{1,3}(?:[.,]\d{1,2})?\s*M)\b/i);
+  if (power) {
+    addUnique(
+      result.confirmed,
+      locale === "fr" ? `Puissance affichée : ${power[1].replace(",", ".")}` : `Displayed power: ${power[1]}`
+    );
+  }
+
+  const levelMatches = [...text.matchAll(/\b(?:Niv\.?|Lv\.?|Level)\s*165\b/gi)];
+  if (levelMatches.length >= 3) {
+    addUnique(
+      result.confirmed,
+      locale === "fr"
+        ? "Plusieurs héros/unités principaux sont affichés au niveau 165."
+        : "Several main heroes/units are shown at level 165."
+    );
+  }
+
+  if (/\bÉquipe\s*1\b/i.test(text) || /\bTeam\s*1\b/i.test(text)) {
+    addUnique(
+      result.confirmed,
+      locale === "fr" ? "L’équipe 1 est sélectionnée." : "Team 1 is selected."
+    );
+  }
+
+  return result;
+}
+
 async function analyzeImage(request, env) {
   if (request.method !== "POST") {
     return json({ ok: false, error: "Méthode non autorisée" }, 405);
@@ -634,41 +716,105 @@ async function analyzeImage(request, env) {
     }
 
     const outputLanguage = LOCALE_NAMES[locale] || "français";
+    const blob = dataUriToBlob(image);
+    const extension = fileExtensionForMime(blob.type);
 
+    // Étape 1 : pipeline vision Cloudflare prévu pour les captures/images.
+    // Cloudflare applique détection d'objets + modèle vision/OCR avant de produire du texte.
+    let visualText = "";
+
+    try {
+      const converted = await env.AI.toMarkdown(
+        {
+          name: `last-war-capture.${extension}`,
+          blob
+        },
+        {
+          conversionOptions: {
+            output: { format: "text" },
+            image: { descriptionLanguage: descriptionLanguageFor(locale) }
+          }
+        }
+      );
+
+      const conversion = Array.isArray(converted) ? converted[0] : converted;
+      if (conversion?.format !== "error") {
+        visualText = String(conversion?.data || "").trim();
+      }
+    } catch {
+      visualText = "";
+    }
+
+    // Secours : si le pipeline de conversion ne renvoie rien, on conserve Moondream.
+    if (!visualText) {
+      const fallback = await env.AI.run(
+        "@cf/moondream/moondream3.1-9B-A2B",
+        {
+          task: "query",
+          image,
+          question:
+            "Décris précisément cette capture Last War. Lis les textes, niveaux, puissance, équipe sélectionnée, héros/unités et éléments d’interface réellement visibles. N’invente rien.",
+          reasoning: true,
+          stream: false,
+          max_tokens: 650,
+          temperature: 0.1
+        }
+      );
+      visualText = extractModelText(fallback);
+    }
+
+    if (!visualText) {
+      return json({
+        ok: true,
+        type: "À confirmer",
+        language: "Automatique",
+        confidence: 15,
+        analysis: "La capture a été reçue, mais aucun détail visuel fiable n’a pu être extrait."
+      });
+    }
+
+    // Étape 2 : Gemma 4 transforme la lecture visuelle en résultat GoMo structuré.
     const result = await env.AI.run(
-      "@cf/moondream/moondream3.1-9B-A2B",
+      "@cf/google/gemma-4-26b-a4b-it",
       {
-        task: "query",
-        image,
-        question:
-          `Analyse précisément cette capture de Last War: Survival et réponds en ${outputLanguage}. ` +
-          `Commence par identifier le type d'écran parmi : classement, inventaire/ressources, héros, VS, Shiny, événement, train/VIP, alliance, combat, autre. ` +
-          `Lis les textes, niveaux et nombres réellement visibles. Retourne UNIQUEMENT un objet JSON valide, sans Markdown ni bloc de code, avec exactement ces clés : ` +
-          `{"type":"type d'écran précis ou À confirmer","language":"langue visible sur la capture ou Automatique","confidence":0,"confirmed":["faits certains et uniques"],"probable":["éléments plausibles mais non certains"],"missing":["informations nécessaires non visibles"],"priorities":["maximum 3 actions utiles"],"keep":["ressources ou éléments à conserver"]}. ` +
-          `Règles : confidence est un entier de 0 à 100 et ne doit jamais être 0 si au moins un élément est réellement confirmé ; ` +
-          `n'invente jamais un nombre, niveau, héros, ressource ou événement ; sépare strictement confirmé, probable et manquant ; ` +
-          `ne répète jamais deux fois la même information ; maximum 5 éléments dans confirmed, 3 dans probable, 3 dans missing, 3 dans priorities et 3 dans keep ; ` +
-          `si tu ne peux pas identifier précisément le type d'écran, utilise "À confirmer" plutôt que "capture" ; ` +
-          `ne conseille jamais de gaspiller une ressource rare ; si la capture n'est pas suffisamment lisible, baisse la confiance et indique ce qui manque.`,
-        reasoning: true,
-        stream: false,
-        max_tokens: 700,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Tu es GoMo Coach spécialisé dans Last War: Survival. Tu dois rester strictement fidèle aux informations visibles/extraites. N’invente jamais un nom de héros, une statistique, un niveau ou une ressource."
+          },
+          {
+            role: "user",
+            content:
+              `Voici la lecture visuelle d'une capture Last War :\n\n${visualText}\n\n` +
+              `Réponds en ${outputLanguage}. Identifie précisément le type d'écran parmi : formation d'équipe, classement, inventaire/ressources, héros, VS, Shiny, événement, train/VIP, alliance, combat, autre. ` +
+              `Retourne UNIQUEMENT un objet JSON valide avec exactement ces clés : ` +
+              `{"type":"type d'écran précis ou À confirmer","language":"langue visible sur la capture ou Automatique","confidence":0,"confirmed":["faits certains et uniques"],"probable":["éléments plausibles mais non certains"],"missing":["informations utiles non visibles"],"priorities":["maximum 3 actions utiles uniquement si justifiées"],"keep":["éléments ou ressources à conserver uniquement si pertinent"]}. ` +
+              `Règles : confidence entre 0 et 100 ; aucune répétition ; maximum 6 confirmed, 3 probable, 3 missing, 3 priorities, 3 keep ; ne transforme pas une simple observation en conseil si la capture ne permet pas de le justifier.`
+          }
+        ],
+        max_completion_tokens: 900,
         temperature: 0.1
       }
     );
 
     const raw = extractModelText(result);
-    const parsed = parseLooseModelObject(raw);
+    let parsed = parseLooseModelObject(raw);
 
     if (!parsed) {
       return json({
         ok: true,
         type: "À confirmer",
         language: "Automatique",
-        confidence: 20,
-        analysis: "La capture a bien été lue, mais l’IA n’a pas fourni une réponse suffisamment structurée. Essaie une capture plus nette ou mieux recadrée."
+        confidence: 25,
+        analysis:
+          locale === "fr"
+            ? `Lecture visuelle obtenue, mais résultat non structuré :\n${cleanMarkdown(visualText).slice(0, 1200)}`
+            : cleanMarkdown(visualText).slice(0, 1200)
       });
     }
+
+    parsed = enrichFromVisualDescription(parsed, visualText, locale);
 
     const normalizedConfidence = evidenceConfidence(parsed);
 
