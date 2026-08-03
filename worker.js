@@ -88,12 +88,86 @@ function parseJsonFromModel(value) {
   }
 }
 
+function parseLooseModelObject(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+
+  const normal = parseJsonFromModel(raw);
+  if (normal && typeof normal === "object") return normal;
+
+  const readString = (key) => {
+    const match = raw.match(new RegExp(`["']${key}["']\\s*:\\s*["']([^"']*)["']`, "i"));
+    return match ? cleanMarkdown(match[1]) : "";
+  };
+
+  const readNumber = (key) => {
+    const match = raw.match(new RegExp(`["']${key}["']\\s*:\\s*(-?\\d+(?:\\.\\d+)?)`, "i"));
+    return match ? Number(match[1]) : NaN;
+  };
+
+  const readArray = (key, nextKeys = []) => {
+    const keyMatch = raw.match(new RegExp(`["']${key}["']\\s*:\\s*\\[`, "i"));
+    if (!keyMatch || keyMatch.index == null) return [];
+
+    const start = keyMatch.index + keyMatch[0].length;
+    let end = raw.length;
+
+    for (const nextKey of nextKeys) {
+      const next = raw.slice(start).match(new RegExp(`["']${nextKey}["']\\s*:`, "i"));
+      if (next && next.index != null) end = Math.min(end, start + next.index);
+    }
+
+    const closing = raw.indexOf("]", start);
+    if (closing !== -1) end = Math.min(end, closing);
+
+    const segment = raw.slice(start, end);
+    const values = [];
+    const quoted = /["']([^"']+)["']/g;
+    let match;
+
+    while ((match = quoted.exec(segment))) {
+      const value = cleanMarkdown(match[1]);
+      if (value && !values.includes(value)) values.push(value);
+      if (values.length >= 6) break;
+    }
+
+    return values;
+  };
+
+  const result = {
+    type: readString("type") || "À confirmer",
+    language: readString("language") || "Automatique",
+    confidence: readNumber("confidence"),
+    confirmed: readArray("confirmed", ["probable", "missing", "priorities", "keep"]),
+    probable: readArray("probable", ["missing", "priorities", "keep"]),
+    missing: readArray("missing", ["priorities", "keep"]),
+    priorities: readArray("priorities", ["keep"]),
+    keep: readArray("keep", [])
+  };
+
+  const hasUseful =
+    result.type !== "À confirmer" ||
+    result.language !== "Automatique" ||
+    Number.isFinite(result.confidence) ||
+    result.confirmed.length ||
+    result.probable.length ||
+    result.missing.length ||
+    result.priorities.length ||
+    result.keep.length;
+
+  return hasUseful ? result : null;
+}
+
 function asList(value) {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => cleanMarkdown(item))
-    .filter(Boolean)
-    .slice(0, 8);
+  const unique = [];
+  for (const item of value) {
+    const cleaned = cleanMarkdown(item);
+    if (!cleaned || unique.includes(cleaned)) continue;
+    unique.push(cleaned);
+    if (unique.length >= 6) break;
+  }
+  return unique;
 }
 
 function buildAnalysisText(data) {
@@ -241,78 +315,78 @@ const APP_PATCH = String.raw`
     };
   }
 
-  // Complète les cartes "Outils" dans toutes les langues.
+  // Complète les 3 cartes internes sur l'accueil ET dans la page Outils.
   const toolCardText = {
     fr: {
       analysisTitle: "Analyse IA",
       analysisText: "Analyse des captures Last War et recommandations.",
       translateTitle: "Traducteur GoMo",
-      translateText: "Traduction simple pour les langues de l’alliance.",
+      translateText: "Traduire simplement les messages entre les membres.",
       newsTitle: "Actualités GoMo",
-      newsText: "Annonces, événements et informations importantes.",
+      newsText: "Informations et événements importants.",
       open: "Ouvrir"
     },
     de: {
       analysisTitle: "KI-Analyse",
-      analysisText: "Analyse von Last-War-Screenshots und Empfehlungen.",
+      analysisText: "Last-War-Screenshots analysieren und Empfehlungen erhalten.",
       translateTitle: "GoMo-Übersetzer",
-      translateText: "Einfache Übersetzung für die Sprachen der Allianz.",
+      translateText: "Nachrichten zwischen Mitgliedern einfach übersetzen.",
       newsTitle: "GoMo-Neuigkeiten",
-      newsText: "Ankündigungen, Ereignisse und wichtige Informationen.",
+      newsText: "Wichtige Informationen und Ereignisse.",
       open: "Öffnen"
     },
     en: {
       analysisTitle: "AI Analysis",
-      analysisText: "Last War screenshot analysis and recommendations.",
+      analysisText: "Analyze Last War screenshots and get recommendations.",
       translateTitle: "GoMo Translator",
-      translateText: "Simple translation for alliance languages.",
+      translateText: "Translate messages between members easily.",
       newsTitle: "GoMo News",
-      newsText: "Announcements, events and important information.",
+      newsText: "Important information and events.",
       open: "Open"
     },
     ro: {
       analysisTitle: "Analiză IA",
-      analysisText: "Analiza capturilor Last War și recomandări.",
+      analysisText: "Analizează capturile Last War și primește recomandări.",
       translateTitle: "Traducător GoMo",
-      translateText: "Traducere simplă pentru limbile alianței.",
+      translateText: "Tradu simplu mesajele dintre membri.",
       newsTitle: "Noutăți GoMo",
-      newsText: "Anunțuri, evenimente și informații importante.",
+      newsText: "Informații și evenimente importante.",
       open: "Deschide"
     },
     uk: {
       analysisTitle: "Аналіз ШІ",
-      analysisText: "Аналіз знімків Last War і рекомендації.",
+      analysisText: "Аналізуйте знімки Last War і отримуйте рекомендації.",
       translateTitle: "Перекладач GoMo",
-      translateText: "Простий переклад мовами альянсу.",
+      translateText: "Просто перекладайте повідомлення між учасниками.",
       newsTitle: "Новини GoMo",
-      newsText: "Оголошення, події та важлива інформація.",
+      newsText: "Важлива інформація та події.",
       open: "Відкрити"
     },
     ko: {
       analysisTitle: "AI 분석",
-      analysisText: "Last War 스크린샷 분석 및 추천.",
+      analysisText: "Last War 스크린샷을 분석하고 추천을 확인하세요.",
       translateTitle: "GoMo 번역기",
-      translateText: "동맹 언어를 위한 간단한 번역.",
+      translateText: "멤버 간 메시지를 간단히 번역합니다.",
       newsTitle: "GoMo 소식",
-      newsText: "공지, 이벤트 및 중요 정보.",
+      newsText: "중요한 정보와 이벤트.",
       open: "열기"
     },
     hr: {
       analysisTitle: "AI analiza",
-      analysisText: "Analiza Last War snimki i preporuke.",
+      analysisText: "Analiziraj Last War snimke i primi preporuke.",
       translateTitle: "GoMo prevoditelj",
-      translateText: "Jednostavan prijevod za jezike saveza.",
+      translateText: "Jednostavno prevedi poruke među članovima.",
       newsTitle: "GoMo novosti",
-      newsText: "Objave, događaji i važne informacije.",
+      newsText: "Važne informacije i događaji.",
       open: "Otvori"
     },
     pt: {
       analysisTitle: "Análise IA",
-      analysisText: "Análise de capturas do Last War e recomendações.",
+      analysisText: "Analisa capturas do Last War e recebe recomendações.",
       translateTitle: "Tradutor GoMo",
-      translateText: "Tradução simples para os idiomas da aliança.",
+      translateText: "Traduz facilmente as mensagens entre os membros.",
       newsTitle: "Notícias GoMo",
-      newsText: "Anúncios, eventos e informações importantes.",
+      newsText: "Informações e eventos importantes.",
       open: "Abrir"
     }
   };
@@ -329,16 +403,34 @@ const APP_PATCH = String.raw`
     });
   }
 
-  function syncToolCardsLanguage() {
+  function syncInternalCardsLanguage() {
     const lang =
       (typeof currentLanguage !== "undefined" && currentLanguage) ||
       localStorage.getItem("gomo-central-language") ||
       "fr";
     const tx = toolCardText[lang] || toolCardText.fr;
-    const cards = [...document.querySelectorAll("#tools .tool-card")];
 
-    const applyCard = (target, title, description) => {
-      const card = cards.find((item) => item.getAttribute("data-go-card") === target);
+    // ACCUEIL
+    const homeCapture = document.querySelector('#home .action-card[data-go="capture"]');
+    const homeTranslate = document.querySelector('#home .action-card[data-go="communication"]');
+    const homeNews = document.querySelector('#home .action-card[data-go="news"]');
+
+    const applyHome = (card, title, description) => {
+      if (!card) return;
+      const heading = card.querySelector("strong");
+      const small = card.querySelector("small");
+      if (heading) heading.textContent = title;
+      if (small) small.textContent = description;
+    };
+
+    applyHome(homeCapture, tx.analysisTitle, tx.analysisText);
+    applyHome(homeTranslate, tx.translateTitle, tx.translateText);
+    applyHome(homeNews, tx.newsTitle, tx.newsText);
+
+    // PAGE OUTILS
+    const toolCards = [...document.querySelectorAll("#tools .tool-card")];
+    const applyTool = (target, title, description) => {
+      const card = toolCards.find((item) => item.getAttribute("data-go-card") === target);
       if (!card) return;
       const heading = card.querySelector("h2");
       const paragraph = card.querySelector("p");
@@ -348,28 +440,26 @@ const APP_PATCH = String.raw`
       if (button) button.textContent = tx.open;
     };
 
-    applyCard("capture", tx.analysisTitle, tx.analysisText);
-    applyCard("ask", tx.translateTitle, tx.translateText);
-    applyCard("news", tx.newsTitle, tx.newsText);
+    applyTool("capture", tx.analysisTitle, tx.analysisText);
+    applyTool("ask", tx.translateTitle, tx.translateText);
+    applyTool("news", tx.newsTitle, tx.newsText);
 
-    // Traduit aussi les boutons Ouvrir des quatre premières cartes.
-    cards.forEach((card) => {
+    toolCards.forEach((card) => {
       const button = card.querySelector(":scope > button");
       if (button) button.textContent = tx.open;
     });
   }
 
-  // Se branche directement sur la fonction officielle de changement de langue.
   if (typeof translatePage === "function") {
     const originalTranslatePage = translatePage;
     translatePage = function(...args) {
       const result = originalTranslatePage.apply(this, args);
-      syncToolCardsLanguage();
+      syncInternalCardsLanguage();
       return result;
     };
   }
 
-  syncToolCardsLanguage();
+  syncInternalCardsLanguage();
 
   const nativeFetch = window.fetch.bind(window);
   let lastAnalysis = null;
@@ -501,25 +591,26 @@ async function analyzeImage(request, env) {
           `Retourne UNIQUEMENT un objet JSON valide, sans Markdown ni bloc de code, avec exactement ces clés : ` +
           `{"type":"type de capture ou À confirmer","language":"langue visible sur la capture ou Automatique","confidence":0,"confirmed":["faits certains"],"probable":["éléments plausibles mais non certains"],"missing":["informations nécessaires non visibles"],"priorities":["maximum 3 actions utiles"],"keep":["ressources ou éléments à conserver"]}. ` +
           `Règles : confidence est un entier de 0 à 100 ; n'invente jamais un nombre, niveau, héros, ressource ou événement ; ` +
-          `sépare strictement confirmé, probable et manquant ; ne conseille jamais de gaspiller une ressource rare ; ` +
-          `si la capture n'est pas suffisamment lisible, baisse la confiance et indique ce qui manque.`,
+          `sépare strictement confirmé, probable et manquant ; ne répète jamais deux fois la même information ; ` +
+          `maximum 5 éléments dans confirmed, 3 dans probable, 3 dans missing, 3 dans priorities et 3 dans keep ; ` +
+          `ne conseille jamais de gaspiller une ressource rare ; si la capture n'est pas suffisamment lisible, baisse la confiance et indique ce qui manque.`,
         reasoning: false,
         stream: false,
-        max_tokens: 1200,
+        max_tokens: 700,
         temperature: 0.1
       }
     );
 
     const raw = extractModelText(result);
-    const parsed = parseJsonFromModel(raw);
+    const parsed = parseLooseModelObject(raw);
 
     if (!parsed) {
       return json({
         ok: true,
         type: "À confirmer",
         language: "Automatique",
-        confidence: 35,
-        analysis: cleanMarkdown(raw) || "Analyse terminée, mais la réponse n’a pas pu être structurée correctement."
+        confidence: 20,
+        analysis: "La capture a bien été lue, mais l’IA n’a pas fourni une réponse suffisamment structurée. Essaie une capture plus nette ou mieux recadrée."
       });
     }
 
@@ -561,4 +652,5 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
+
 
