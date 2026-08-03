@@ -33,14 +33,35 @@ function cleanMarkdown(value) {
 }
 
 function extractModelText(result) {
-  return (
+  const candidate =
     result?.answer ??
     result?.response ??
     result?.choices?.[0]?.message?.content ??
     result?.result ??
     result?.caption ??
-    ""
-  );
+    "";
+
+  if (typeof candidate === "string") return candidate;
+
+  if (candidate && typeof candidate === "object") {
+    const nested =
+      candidate.text ??
+      candidate.content ??
+      candidate.answer ??
+      candidate.response ??
+      candidate.output_text ??
+      candidate.value;
+
+    if (typeof nested === "string") return nested;
+
+    try {
+      return JSON.stringify(candidate);
+    } catch {
+      return "";
+    }
+  }
+
+  return String(candidate ?? "");
 }
 
 function parseJsonFromModel(value) {
@@ -195,14 +216,160 @@ const APP_PATCH = String.raw`
       "tools.planner":"Preparar recursos e atingir o objetivo de 7,2 M.",
       "tools.radar":"Servidores confirmados, previsões e histórico das missões.",
       "tools.coach":"Heróis, armas, equipas, eventos e prioridades.",
+      "tools.link":"Ligação a configurar",
       "tools.open":"Abrir",
+      "tools.analysis":"Análise de capturas do Last War e recomendações.",
+      "tools.translate":"Tradução simples para os idiomas da aliança.",
+      "tools.news":"Anúncios, eventos e informações importantes.",
       "guides.title":"Conselhos e métodos",
       "guides.placeholder":"Pesquisar um herói, arma ou evento…",
+      "guides.vsTitle":"Atingir 7,2 M no VS",
+      "guides.vsText":"Planear os recursos sem desperdiçar os dos dias seguintes.",
+      "guides.heroesTitle":"Heróis e armas",
+      "guides.heroesText":"Escolher as melhorias prioritárias de acordo com a equipa utilizada.",
+      "guides.shinyTitle":"Missões Shiny",
+      "guides.shinyText":"Reconhecer uma missão Shiny e consultar os servidores confirmados.",
+      "guides.trainTitle":"Comboio e VIP",
+      "guides.trainText":"Compreender a rotação e as recompensas da semana.",
+      "guides.desertTitle":"Tempestade do Deserto",
+      "guides.desertText":"Preparar as equipas, horários e inscrições.",
+      "guides.eventsTitle":"Eventos",
+      "guides.eventsText":"Instruções simples para os eventos importantes.",
       "guides.noneTitle":"Nenhum conselho encontrado",
       "guides.noneText":"Tenta outra palavra ou pergunta diretamente à GoMo.",
       "language.title":"Escolher idioma"
     };
   }
+
+  // Complète les cartes "Outils" dans toutes les langues.
+  const toolCardText = {
+    fr: {
+      analysisTitle: "Analyse IA",
+      analysisText: "Analyse des captures Last War et recommandations.",
+      translateTitle: "Traducteur GoMo",
+      translateText: "Traduction simple pour les langues de l’alliance.",
+      newsTitle: "Actualités GoMo",
+      newsText: "Annonces, événements et informations importantes.",
+      open: "Ouvrir"
+    },
+    de: {
+      analysisTitle: "KI-Analyse",
+      analysisText: "Analyse von Last-War-Screenshots und Empfehlungen.",
+      translateTitle: "GoMo-Übersetzer",
+      translateText: "Einfache Übersetzung für die Sprachen der Allianz.",
+      newsTitle: "GoMo-Neuigkeiten",
+      newsText: "Ankündigungen, Ereignisse und wichtige Informationen.",
+      open: "Öffnen"
+    },
+    en: {
+      analysisTitle: "AI Analysis",
+      analysisText: "Last War screenshot analysis and recommendations.",
+      translateTitle: "GoMo Translator",
+      translateText: "Simple translation for alliance languages.",
+      newsTitle: "GoMo News",
+      newsText: "Announcements, events and important information.",
+      open: "Open"
+    },
+    ro: {
+      analysisTitle: "Analiză IA",
+      analysisText: "Analiza capturilor Last War și recomandări.",
+      translateTitle: "Traducător GoMo",
+      translateText: "Traducere simplă pentru limbile alianței.",
+      newsTitle: "Noutăți GoMo",
+      newsText: "Anunțuri, evenimente și informații importante.",
+      open: "Deschide"
+    },
+    uk: {
+      analysisTitle: "Аналіз ШІ",
+      analysisText: "Аналіз знімків Last War і рекомендації.",
+      translateTitle: "Перекладач GoMo",
+      translateText: "Простий переклад мовами альянсу.",
+      newsTitle: "Новини GoMo",
+      newsText: "Оголошення, події та важлива інформація.",
+      open: "Відкрити"
+    },
+    ko: {
+      analysisTitle: "AI 분석",
+      analysisText: "Last War 스크린샷 분석 및 추천.",
+      translateTitle: "GoMo 번역기",
+      translateText: "동맹 언어를 위한 간단한 번역.",
+      newsTitle: "GoMo 소식",
+      newsText: "공지, 이벤트 및 중요 정보.",
+      open: "열기"
+    },
+    hr: {
+      analysisTitle: "AI analiza",
+      analysisText: "Analiza Last War snimki i preporuke.",
+      translateTitle: "GoMo prevoditelj",
+      translateText: "Jednostavan prijevod za jezike saveza.",
+      newsTitle: "GoMo novosti",
+      newsText: "Objave, događaji i važne informacije.",
+      open: "Otvori"
+    },
+    pt: {
+      analysisTitle: "Análise IA",
+      analysisText: "Análise de capturas do Last War e recomendações.",
+      translateTitle: "Tradutor GoMo",
+      translateText: "Tradução simples para os idiomas da aliança.",
+      newsTitle: "Notícias GoMo",
+      newsText: "Anúncios, eventos e informações importantes.",
+      open: "Abrir"
+    }
+  };
+
+  if (typeof translations !== "undefined") {
+    Object.entries(toolCardText).forEach(([code, tx]) => {
+      if (!translations[code]) return;
+      Object.assign(translations[code], {
+        "tools.analysis": tx.analysisText,
+        "tools.translate": tx.translateText,
+        "tools.news": tx.newsText,
+        "tools.open": tx.open
+      });
+    });
+  }
+
+  function syncToolCardsLanguage() {
+    const lang =
+      (typeof currentLanguage !== "undefined" && currentLanguage) ||
+      localStorage.getItem("gomo-central-language") ||
+      "fr";
+    const tx = toolCardText[lang] || toolCardText.fr;
+    const cards = [...document.querySelectorAll("#tools .tool-card")];
+
+    const applyCard = (target, title, description) => {
+      const card = cards.find((item) => item.getAttribute("data-go-card") === target);
+      if (!card) return;
+      const heading = card.querySelector("h2");
+      const paragraph = card.querySelector("p");
+      const button = card.querySelector(":scope > button");
+      if (heading) heading.textContent = title;
+      if (paragraph) paragraph.textContent = description;
+      if (button) button.textContent = tx.open;
+    };
+
+    applyCard("capture", tx.analysisTitle, tx.analysisText);
+    applyCard("ask", tx.translateTitle, tx.translateText);
+    applyCard("news", tx.newsTitle, tx.newsText);
+
+    // Traduit aussi les boutons Ouvrir des quatre premières cartes.
+    cards.forEach((card) => {
+      const button = card.querySelector(":scope > button");
+      if (button) button.textContent = tx.open;
+    });
+  }
+
+  // Se branche directement sur la fonction officielle de changement de langue.
+  if (typeof translatePage === "function") {
+    const originalTranslatePage = translatePage;
+    translatePage = function(...args) {
+      const result = originalTranslatePage.apply(this, args);
+      syncToolCardsLanguage();
+      return result;
+    };
+  }
+
+  syncToolCardsLanguage();
 
   const nativeFetch = window.fetch.bind(window);
   let lastAnalysis = null;
@@ -394,3 +561,4 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
+
