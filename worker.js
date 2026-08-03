@@ -21,6 +21,59 @@ const LOCALE_NAMES = {
   pt: "portugais"
 };
 
+const RESULT_TEXT = {
+  fr: { confirmed:"CONFIRMÉ", probable:"PROBABLE", missing:"MANQUANT / NON VISIBLE", priorities:"3 PRIORITÉS MAXIMUM", keep:"À GARDER" },
+  de: { confirmed:"BESTÄTIGT", probable:"WAHRSCHEINLICH", missing:"FEHLT / NICHT SICHTBAR", priorities:"MAXIMAL 3 PRIORITÄTEN", keep:"AUFBEWAHREN" },
+  en: { confirmed:"CONFIRMED", probable:"PROBABLE", missing:"MISSING / NOT VISIBLE", priorities:"MAXIMUM 3 PRIORITIES", keep:"KEEP" },
+  ro: { confirmed:"CONFIRMAT", probable:"PROBABIL", missing:"LIPSĂ / NU ESTE VIZIBIL", priorities:"MAXIMUM 3 PRIORITĂȚI", keep:"DE PĂSTRAT" },
+  uk: { confirmed:"ПІДТВЕРДЖЕНО", probable:"ЙМОВІРНО", missing:"ВІДСУТНЄ / НЕ ВИДНО", priorities:"МАКСИМУМ 3 ПРІОРИТЕТИ", keep:"ЗБЕРЕГТИ" },
+  ko: { confirmed:"확인됨", probable:"가능성 있음", missing:"누락 / 보이지 않음", priorities:"최대 3개 우선순위", keep:"보관" },
+  hr: { confirmed:"POTVRĐENO", probable:"VJEROJATNO", missing:"NEDOSTAJE / NIJE VIDLJIVO", priorities:"NAJVIŠE 3 PRIORITETA", keep:"SAČUVATI" },
+  pt: { confirmed:"CONFIRMADO", probable:"PROVÁVEL", missing:"EM FALTA / NÃO VISÍVEL", priorities:"MÁXIMO 3 PRIORIDADES", keep:"A GUARDAR" }
+};
+
+const DETECTED_LANGUAGE_LABELS = {
+  fr: "Français", french: "Français", français: "Français",
+  de: "Deutsch", german: "Deutsch", allemand: "Deutsch",
+  en: "English", english: "English", anglais: "English",
+  ro: "Română", romanian: "Română", roumain: "Română",
+  uk: "Українська", ua: "Українська", ukrainian: "Українська", ukrainien: "Українська",
+  ko: "한국어", korean: "한국어", coréen: "한국어",
+  hr: "Hrvatski", croatian: "Hrvatski", croate: "Hrvatski",
+  pt: "Português", portuguese: "Português", portugais: "Português"
+};
+
+function normalizeDetectedLanguage(value) {
+  const raw = cleanMarkdown(value).trim();
+  if (!raw) return "Automatique";
+  const key = raw.toLowerCase();
+  return DETECTED_LANGUAGE_LABELS[key] || raw;
+}
+
+function normalizeType(value) {
+  const raw = cleanMarkdown(value).trim();
+  if (!raw) return "À confirmer";
+  const low = raw.toLowerCase();
+  if (["capture", "screenshot", "image", "photo"].includes(low)) {
+    return "Capture Last War";
+  }
+  return raw;
+}
+
+function evidenceConfidence(parsed) {
+  const confirmed = asList(parsed?.confirmed).length;
+  const probable = asList(parsed?.probable).length;
+  const given = Number(parsed?.confidence);
+  let floor = 0;
+  if (confirmed >= 3) floor = 65;
+  else if (confirmed === 2) floor = 50;
+  else if (confirmed === 1) floor = 35;
+  else if (probable > 0) floor = 25;
+
+  if (!Number.isFinite(given)) return floor || 20;
+  return Math.max(floor, Math.max(0, Math.min(100, Math.round(given))));
+}
+
 function cleanMarkdown(value) {
   return String(value || "")
     .replace(/```(?:json)?/gi, "")
@@ -170,8 +223,9 @@ function asList(value) {
   return unique;
 }
 
-function buildAnalysisText(data) {
+function buildAnalysisText(data, locale = "fr") {
   const sections = [];
+  const tx = RESULT_TEXT[locale] || RESULT_TEXT.fr;
 
   const confirmed = asList(data?.confirmed);
   const probable = asList(data?.probable);
@@ -179,11 +233,11 @@ function buildAnalysisText(data) {
   const priorities = asList(data?.priorities).slice(0, 3);
   const keep = asList(data?.keep);
 
-  if (confirmed.length) sections.push(`CONFIRMÉ\n${confirmed.map((x) => `• ${x}`).join("\n")}`);
-  if (probable.length) sections.push(`PROBABLE\n${probable.map((x) => `• ${x}`).join("\n")}`);
-  if (missing.length) sections.push(`MANQUANT / NON VISIBLE\n${missing.map((x) => `• ${x}`).join("\n")}`);
-  if (priorities.length) sections.push(`3 PRIORITÉS MAXIMUM\n${priorities.map((x, i) => `${i + 1}. ${x}`).join("\n")}`);
-  if (keep.length) sections.push(`À GARDER\n${keep.map((x) => `• ${x}`).join("\n")}`);
+  if (confirmed.length) sections.push(`${tx.confirmed}\n${confirmed.map((x) => `• ${x}`).join("\n")}`);
+  if (probable.length) sections.push(`${tx.probable}\n${probable.map((x) => `• ${x}`).join("\n")}`);
+  if (missing.length) sections.push(`${tx.missing}\n${missing.map((x) => `• ${x}`).join("\n")}`);
+  if (priorities.length) sections.push(`${tx.priorities}\n${priorities.map((x, i) => `${i + 1}. ${x}`).join("\n")}`);
+  if (keep.length) sections.push(`${tx.keep}\n${keep.map((x) => `• ${x}`).join("\n")}`);
 
   return sections.join("\n\n") || "Analyse terminée, mais aucune information fiable n’a pu être extraite de cette capture.";
 }
@@ -587,14 +641,16 @@ async function analyzeImage(request, env) {
         task: "query",
         image,
         question:
-          `Analyse cette capture de Last War: Survival et réponds en ${outputLanguage}. ` +
-          `Retourne UNIQUEMENT un objet JSON valide, sans Markdown ni bloc de code, avec exactement ces clés : ` +
-          `{"type":"type de capture ou À confirmer","language":"langue visible sur la capture ou Automatique","confidence":0,"confirmed":["faits certains"],"probable":["éléments plausibles mais non certains"],"missing":["informations nécessaires non visibles"],"priorities":["maximum 3 actions utiles"],"keep":["ressources ou éléments à conserver"]}. ` +
-          `Règles : confidence est un entier de 0 à 100 ; n'invente jamais un nombre, niveau, héros, ressource ou événement ; ` +
-          `sépare strictement confirmé, probable et manquant ; ne répète jamais deux fois la même information ; ` +
-          `maximum 5 éléments dans confirmed, 3 dans probable, 3 dans missing, 3 dans priorities et 3 dans keep ; ` +
+          `Analyse précisément cette capture de Last War: Survival et réponds en ${outputLanguage}. ` +
+          `Commence par identifier le type d'écran parmi : classement, inventaire/ressources, héros, VS, Shiny, événement, train/VIP, alliance, combat, autre. ` +
+          `Lis les textes, niveaux et nombres réellement visibles. Retourne UNIQUEMENT un objet JSON valide, sans Markdown ni bloc de code, avec exactement ces clés : ` +
+          `{"type":"type d'écran précis ou À confirmer","language":"langue visible sur la capture ou Automatique","confidence":0,"confirmed":["faits certains et uniques"],"probable":["éléments plausibles mais non certains"],"missing":["informations nécessaires non visibles"],"priorities":["maximum 3 actions utiles"],"keep":["ressources ou éléments à conserver"]}. ` +
+          `Règles : confidence est un entier de 0 à 100 et ne doit jamais être 0 si au moins un élément est réellement confirmé ; ` +
+          `n'invente jamais un nombre, niveau, héros, ressource ou événement ; sépare strictement confirmé, probable et manquant ; ` +
+          `ne répète jamais deux fois la même information ; maximum 5 éléments dans confirmed, 3 dans probable, 3 dans missing, 3 dans priorities et 3 dans keep ; ` +
+          `si tu ne peux pas identifier précisément le type d'écran, utilise "À confirmer" plutôt que "capture" ; ` +
           `ne conseille jamais de gaspiller une ressource rare ; si la capture n'est pas suffisamment lisible, baisse la confiance et indique ce qui manque.`,
-        reasoning: false,
+        reasoning: true,
         stream: false,
         max_tokens: 700,
         temperature: 0.1
@@ -614,17 +670,14 @@ async function analyzeImage(request, env) {
       });
     }
 
-    const confidence = Number(parsed.confidence);
-    const normalizedConfidence = Number.isFinite(confidence)
-      ? Math.max(0, Math.min(100, Math.round(confidence)))
-      : 50;
+    const normalizedConfidence = evidenceConfidence(parsed);
 
     return json({
       ok: true,
-      type: cleanMarkdown(parsed.type) || "À confirmer",
-      language: cleanMarkdown(parsed.language) || "Automatique",
+      type: normalizeType(parsed.type),
+      language: normalizeDetectedLanguage(parsed.language),
       confidence: normalizedConfidence,
-      analysis: cleanMarkdown(buildAnalysisText(parsed))
+      analysis: cleanMarkdown(buildAnalysisText(parsed, locale))
     });
   } catch (error) {
     return json(
@@ -652,5 +705,6 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
+
 
 
