@@ -786,7 +786,7 @@ h1{font-size:clamp(34px,5vw,58px);line-height:1.04;margin-bottom:15px}
 }
 .gomo-command:hover,.gomo-command:focus-visible{border-color:#ffd86d;transform:translateY(-1px)}
 .gomo-command img{width:64px;height:58px;object-fit:cover;border-radius:12px;display:block}
-.gomo-command span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.gomo-command span{white-space:normal;overflow:visible;text-overflow:clip;max-width:100%;text-align:center;line-height:1.05;min-height:2.1em;display:flex;align-items:center;justify-content:center}
 
 .gomo-train-back{margin-bottom:14px}
 .gomo-back-button{border-color:rgba(242,193,78,.58);color:#f8d986}
@@ -878,6 +878,63 @@ body:not(.menu-open){
 #home .home-emblem,#home .gomo-command-grid,#home .section-heading,#home .action-grid{
   touch-action:pan-y!important;
 }
+
+/* === GoMo Central v1.7.3 — Classements + menu iPhone défilable === */
+.gomo-ranking-hero{
+  display:flex;align-items:center;gap:16px;padding:18px 20px;
+  border:1px solid rgba(242,193,78,.58);border-radius:24px;
+  background:linear-gradient(135deg,#071320,#0d1a2a);
+  box-shadow:0 20px 55px rgba(0,0,0,.3);margin-bottom:14px;
+}
+.gomo-ranking-trophy{
+  width:86px;height:86px;flex:0 0 86px;display:grid;place-items:center;
+  border-radius:22px;border:1px solid rgba(242,193,78,.58);
+  background:radial-gradient(circle at 45% 35%,#4d3510,#091422 72%);
+  font-size:50px;box-shadow:inset 0 0 24px rgba(242,193,78,.12);
+}
+.gomo-ranking-hero h1{margin:3px 0 6px;color:#f6d574;font-family:Georgia,"Times New Roman",serif;font-size:clamp(34px,5vw,58px)}
+.gomo-ranking-hero p{margin:0;color:#cbd3df;line-height:1.35}
+.gomo-ranking-week{display:block;margin-top:7px;color:#ffd66e;font-weight:900}
+.gomo-ranking-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.gomo-ranking-card{border:1px solid rgba(242,193,78,.42);border-radius:20px;overflow:hidden;background:linear-gradient(180deg,#0d1a2a,#07121f)}
+.gomo-ranking-card h2{margin:0;padding:13px 15px;border-bottom:1px solid rgba(242,193,78,.28);color:#f4c75d;font-size:18px}
+.gomo-ranking-list{display:grid}
+.gomo-ranking-row{display:grid;grid-template-columns:38px 40px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:58px;padding:8px 11px;border-bottom:1px solid rgba(242,193,78,.16)}
+.gomo-ranking-row:last-child{border-bottom:0}
+.gomo-ranking-place{font-size:20px;text-align:center;font-weight:900;color:#f1c34f}
+.gomo-ranking-avatar{width:38px;height:38px;border-radius:50%;overflow:hidden;display:grid;place-items:center;border:1.5px solid #d9a93e;background:#12243a;color:#f5cc6c;font-weight:900;font-size:12px}
+.gomo-ranking-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.gomo-ranking-name{min-width:0}
+.gomo-ranking-name strong,.gomo-ranking-name small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gomo-ranking-name strong{color:#fff;font-size:14px}
+.gomo-ranking-name small{color:#9facbf;font-size:11px;margin-top:2px}
+.gomo-ranking-points{color:#f9da84;font-weight:900;font-size:13px;white-space:nowrap}
+.gomo-ranking-empty{padding:20px;text-align:center;color:#aeb8c7}
+
+@media(max-width:940px){
+  .sidebar{
+    overflow-y:auto!important;overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;
+    padding-bottom:calc(22px + env(safe-area-inset-bottom))!important;
+  }
+  .sidebar-footer{margin-top:18px!important;flex:0 0 auto}
+  .main-nav{flex:0 0 auto}
+}
+@media(max-width:700px){
+  .gomo-ranking-hero{padding:13px;border-radius:20px;gap:11px}
+  .gomo-ranking-trophy{width:64px;height:64px;flex-basis:64px;font-size:38px;border-radius:17px}
+  .gomo-ranking-hero h1{font-size:31px}
+  .gomo-ranking-hero p{font-size:12px}
+  .gomo-ranking-week{font-size:13px}
+  .gomo-ranking-grid{grid-template-columns:1fr;gap:10px}
+  .gomo-ranking-card{border-radius:17px}
+  .gomo-ranking-card h2{font-size:16px;padding:11px 12px}
+  .gomo-ranking-row{grid-template-columns:32px 36px minmax(0,1fr) auto;gap:6px;min-height:54px;padding:7px 8px}
+  .gomo-ranking-avatar{width:34px;height:34px}
+  .gomo-ranking-name strong{font-size:13px}
+  .gomo-ranking-points{font-size:11.5px}
+}
+
 </style>
 </head>
 
@@ -908,6 +965,7 @@ body:not(.menu-open){
 
       <nav class="main-nav" aria-label="Navigation">
         <button class="nav-item active" type="button" data-page="home">🏠 <span data-i18n="nav.home">Accueil</span></button>
+        <button class="nav-item" type="button" data-page="rankings">🏆 <span data-gomo-ranking-nav>Classements</span></button>
         <button class="nav-item" type="button" data-page="ask">✨ <span data-i18n="nav.ask">Demander à GoMo</span></button>
         <button class="nav-item" type="button" data-page="capture">📸 <span data-i18n="nav.capture">Analyser une capture</span></button>
         <button class="nav-item" type="button" data-page="communication">💬 <span data-i18n="nav.communication">Communication</span></button>
@@ -1230,6 +1288,29 @@ body:not(.menu-open){
         </div>
       </section>
 
+
+      <!-- CLASSEMENTS GOMO ASSISTANT — LECTURE SEULE -->
+      <section id="rankings" class="page">
+        <div class="gomo-train-back">
+          <button class="secondary-button gomo-back-button" type="button" data-go="home">‹ <span data-gomo-ranking="back">Retour</span></button>
+        </div>
+
+        <article class="gomo-ranking-hero">
+          <div class="gomo-ranking-trophy" aria-hidden="true">🏆</div>
+          <div>
+            <span class="eyebrow">GOMO CENTRAL</span>
+            <h1 data-gomo-ranking="title">Classements</h1>
+            <p data-gomo-ranking="subtitle">VS • Donations • Tempête du désert</p>
+            <strong id="gomoRankingWeek" class="gomo-ranking-week">—</strong>
+          </div>
+        </article>
+
+        <div id="gomoRankingStatus" class="gomo-train-status">Chargement des classements…</div>
+        <div id="gomoRankingGrid" class="gomo-ranking-grid" aria-live="polite"></div>
+
+        <button class="gomo-home-return" type="button" data-go="home">⌂ <span data-gomo-ranking="home">Retour à l’accueil</span></button>
+      </section>
+
       <!-- TRAIN DE LA SEMAINE -->
       <section id="train" class="page">
         <div class="gomo-train-back">
@@ -1447,7 +1528,7 @@ body:not(.menu-open){
     </form>
   </dialog>
 
-  <script src="assets/app-v1.5.js?v=1.7.1"></script>
+  <script src="assets/app-v1.5.js?v=1.7.3"></script>
   <script>
 ;(() => {
   if (typeof languages !== "undefined" && !languages.pt) {
@@ -1747,6 +1828,91 @@ body:not(.menu-open){
   if(location.hash==="#train") setTimeout(()=>loadTrain(true),0);
 })();
   </script>
+
+  <script>
+  /* GoMo Central v1.7.3 — classements GoMo Assistant en lecture seule */
+  (()=>{
+    const K={url:"gomo-central-rankings-url",key:"gomo-central-rankings-key",alliance:"gomo-central-rankings-alliance"};
+    const L={fr:"fr-FR",de:"de-DE",en:"en-GB",ro:"ro-RO",uk:"uk-UA",ko:"ko-KR",hr:"hr-HR",pt:"pt-PT"};
+    const T={
+      fr:{nav:"Classements",title:"Classements",subtitle:"VS • Donations • Tempête du désert",back:"Retour",home:"Retour à l’accueil",loading:"Chargement des classements…",missing:"La connexion avec GoMo Assistant n’est pas encore enregistrée sur cet appareil. Ouvre une fois le lien membre depuis GoMo Assistant.",empty:"Aucun classement final n’est encore enregistré dans GoMo Assistant.",error:"Impossible de charger les classements pour le moment.",updated:"Mis à jour",donations:"Donations",desert:"Tempête du désert",team:"Équipe"},
+      de:{nav:"Ranglisten",title:"Ranglisten",subtitle:"VS • Spenden • Wüstensturm",back:"Zurück",home:"Zur Startseite",loading:"Ranglisten werden geladen…",missing:"Die Verbindung mit GoMo Assistant ist auf diesem Gerät noch nicht gespeichert. Öffne einmal den Mitgliederlink aus GoMo Assistant.",empty:"In GoMo Assistant ist noch keine Endrangliste gespeichert.",error:"Die Ranglisten können derzeit nicht geladen werden.",updated:"Aktualisiert",donations:"Spenden",desert:"Wüstensturm",team:"Team"},
+      en:{nav:"Rankings",title:"Rankings",subtitle:"VS • Donations • Desert Storm",back:"Back",home:"Back to home",loading:"Loading rankings…",missing:"The GoMo Assistant connection is not saved on this device yet. Open the member link from GoMo Assistant once.",empty:"No final ranking has been saved in GoMo Assistant yet.",error:"Unable to load the rankings right now.",updated:"Updated",donations:"Donations",desert:"Desert Storm",team:"Team"},
+      ro:{nav:"Clasamente",title:"Clasamente",subtitle:"VS • Donații • Furtuna deșertului",back:"Înapoi",home:"Înapoi la început",loading:"Se încarcă clasamentele…",missing:"Conexiunea cu GoMo Assistant nu este încă salvată pe acest dispozitiv. Deschide o dată linkul pentru membri din GoMo Assistant.",empty:"Nu există încă un clasament final salvat în GoMo Assistant.",error:"Clasamentele nu pot fi încărcate acum.",updated:"Actualizat",donations:"Donații",desert:"Furtuna deșertului",team:"Echipa"},
+      uk:{nav:"Рейтинги",title:"Рейтинги",subtitle:"VS • Пожертви • Пустельна буря",back:"Назад",home:"На головну",loading:"Завантаження рейтингів…",missing:"З’єднання з GoMo Assistant ще не збережено на цьому пристрої. Один раз відкрийте посилання для учасників із GoMo Assistant.",empty:"У GoMo Assistant ще немає збереженого фінального рейтингу.",error:"Зараз не вдається завантажити рейтинги.",updated:"Оновлено",donations:"Пожертви",desert:"Пустельна буря",team:"Команда"},
+      ko:{nav:"순위",title:"순위",subtitle:"VS • 기부 • 사막 폭풍",back:"뒤로",home:"홈으로 돌아가기",loading:"순위를 불러오는 중…",missing:"이 기기에 GoMo Assistant 연결이 저장되지 않았습니다. GoMo Assistant의 멤버 링크를 한 번 열어 주세요.",empty:"GoMo Assistant에 저장된 최종 순위가 아직 없습니다.",error:"현재 순위를 불러올 수 없습니다.",updated:"업데이트",donations:"기부",desert:"사막 폭풍",team:"팀"},
+      hr:{nav:"Poredak",title:"Poredak",subtitle:"VS • Donacije • Pustinjska oluja",back:"Natrag",home:"Povratak na početnu",loading:"Učitavanje poretka…",missing:"Veza s GoMo Assistantom još nije spremljena na ovom uređaju. Jednom otvori poveznicu za članove iz GoMo Assistanta.",empty:"U GoMo Assistantu još nije spremljen konačni poredak.",error:"Poredak trenutačno nije moguće učitati.",updated:"Ažurirano",donations:"Donacije",desert:"Pustinjska oluja",team:"Tim"},
+      pt:{nav:"Classificações",title:"Classificações",subtitle:"VS • Doações • Tempestade do Deserto",back:"Voltar",home:"Voltar ao início",loading:"A carregar as classificações…",missing:"A ligação ao GoMo Assistant ainda não está guardada neste dispositivo. Abre uma vez a ligação de membro do GoMo Assistant.",empty:"Ainda não existe uma classificação final guardada no GoMo Assistant.",error:"Não foi possível carregar as classificações agora.",updated:"Atualizado",donations:"Doações",desert:"Tempestade do Deserto",team:"Equipa"}
+    };
+    const code=()=> (typeof currentLanguage!=="undefined"&&currentLanguage)||localStorage.getItem("gomo-central-language")||"fr";
+    const tx=()=>T[code()]||T.fr;
+    const locale=()=>L[code()]||"fr-FR";
+    const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const initials=n=>String(n||"?").trim().split(/\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase()||"?";
+    let loading=false,lastStamp="";
+
+    function cfg(){
+      const p=new URLSearchParams(location.search);
+      let url=String(localStorage.getItem(K.url)||"").replace(/\/+$/,""), key=String(localStorage.getItem(K.key)||""), alliance=String(localStorage.getItem(K.alliance)||"gomo-1591");
+      if(p.get("gomo")==="rankings"){
+        const u=String(p.get("url")||"").replace(/\/+$/,""), k=String(p.get("key")||""), a=String(p.get("alliance")||"gomo-1591");
+        if(/^https:\/\/.+\.supabase\.co$/i.test(u)&&k.length>20){url=u;key=k;alliance=a;try{localStorage.setItem(K.url,url);localStorage.setItem(K.key,key);localStorage.setItem(K.alliance,alliance)}catch{}}
+      }
+      return {url,key,alliance};
+    }
+    const valid=c=>/^https:\/\/.+\.supabase\.co$/i.test(c.url)&&c.key.length>20&&c.alliance.length>2;
+    const fmtDate=(v,opt)=>{const d=new Date(String(v||"").includes("T")?String(v):`${v}T12:00:00`);return Number.isNaN(d.getTime())?"—":new Intl.DateTimeFormat(locale(),opt).format(d)};
+    const weekText=(s,e)=>`${fmtDate(s,{day:"2-digit",month:"short"})} - ${fmtDate(e,{day:"2-digit",month:"short",year:"numeric"})}`;
+    const memberFor=(members,row)=>members.find(m=>String(m.id)===String(row?.memberId))||members.find(m=>String(m.name||"").trim().toLowerCase()===String(row?.name||"").trim().toLowerCase())||null;
+    function avatar(member,name){
+      const src=String(member?.photo||member?.avatar||member?.image||"");
+      if(/^(data:image\/|https:\/\/)/i.test(src)) return `<span class="gomo-ranking-avatar"><img src="${esc(src)}" alt=""></span>`;
+      return `<span class="gomo-ranking-avatar">${esc(initials(name))}</span>`;
+    }
+    function place(i){return i===0?"🥇":i===1?"🥈":i===2?"🥉":String(i+1)};
+    function titleFor(entry){if(entry.category==="vs")return "VS";if(entry.category==="donations")return tx().donations;return `${tx().desert}${entry.team?` — ${tx().team} ${esc(entry.team)}`:""}`}
+    function renderCard(entry,members){
+      const rows=[...(Array.isArray(entry?.rows)?entry.rows:[])].sort((a,b)=>(Number(b.value)||0)-(Number(a.value)||0)).slice(0,10);
+      const body=rows.length?rows.map((r,i)=>{const m=memberFor(members,r),name=m?.name||r.name||"—",role=m?.role||r.role||"";return `<div class="gomo-ranking-row"><span class="gomo-ranking-place">${place(i)}</span>${avatar(m,name)}<span class="gomo-ranking-name"><strong title="${esc(name)}">${esc(name)}</strong><small>${esc(role)}</small></span><strong class="gomo-ranking-points">${(Number(r.value)||0).toLocaleString(locale())}</strong></div>`}).join(""):`<div class="gomo-ranking-empty">${esc(tx().empty)}</div>`;
+      return `<article class="gomo-ranking-card"><h2>${titleFor(entry)}</h2><div class="gomo-ranking-list">${body}</div></article>`;
+    }
+    function render(payload){
+      const entries=Array.isArray(payload?.dailyEntries)?payload.dailyEntries.filter(Boolean):[], members=Array.isArray(payload?.members)?payload.members:[];
+      const latest=[...entries].filter(e=>e.weekEnd).sort((a,b)=>String(b.weekEnd).localeCompare(String(a.weekEnd)))[0];
+      const grid=document.getElementById("gomoRankingGrid"),week=document.getElementById("gomoRankingWeek");
+      if(!grid||!week)return false;
+      if(!latest){week.textContent="—";grid.innerHTML=`<div class="gomo-ranking-empty">${esc(tx().empty)}</div>`;return false}
+      const same=entries.filter(e=>e.weekStart===latest.weekStart&&e.weekEnd===latest.weekEnd);
+      const ordered=[];
+      ["vs","donations"].forEach(cat=>{const e=same.find(x=>x.category===cat);if(e)ordered.push(e)});
+      same.filter(e=>e.category==="desert").sort((a,b)=>String(a.team||"").localeCompare(String(b.team||""))).forEach(e=>ordered.push(e));
+      week.textContent=weekText(latest.weekStart,latest.weekEnd);
+      grid.innerHTML=ordered.length?ordered.map(e=>renderCard(e,members)).join(""):`<div class="gomo-ranking-empty">${esc(tx().empty)}</div>`;
+      return ordered.length>0;
+    }
+    async function load(force=false){
+      if(loading)return;const status=document.getElementById("gomoRankingStatus");if(!status)return;const c=cfg();
+      if(!valid(c)){status.className="gomo-train-status is-error";status.textContent=tx().missing;document.getElementById("gomoRankingGrid").innerHTML="";return}
+      if(force||!lastStamp){status.className="gomo-train-status";status.textContent=tx().loading}
+      loading=true;
+      try{
+        const r=await fetch(`${c.url}/rest/v1/gomo_state?id=eq.${encodeURIComponent(c.alliance)}&select=payload,updated_at`,{headers:{apikey:c.key,Authorization:`Bearer ${c.key}`},cache:"no-store"});
+        if(!r.ok)throw new Error(`HTTP ${r.status}`);const rows=await r.json();const state=Array.isArray(rows)?rows[0]:null;
+        if(!state?.payload){document.getElementById("gomoRankingGrid").innerHTML=`<div class="gomo-ranking-empty">${esc(tx().empty)}</div>`;status.className="gomo-train-status";status.textContent=tx().empty;return}
+        const stamp=String(state.updated_at||"");if(force||stamp!==lastStamp||!document.getElementById("gomoRankingGrid").children.length){render(state.payload);lastStamp=stamp}
+        status.className="gomo-train-status is-ok";status.textContent=`✓ ${tx().updated} : ${stamp?new Date(stamp).toLocaleString(locale()):"—"}`;
+      }catch(e){console.error("GoMo Central rankings",e);status.className="gomo-train-status is-error";status.textContent=tx().error}finally{loading=false}
+    }
+    function translate(){const x=tx();document.querySelectorAll("[data-gomo-ranking-nav]").forEach(e=>e.textContent=x.nav);document.querySelectorAll("[data-gomo-ranking]").forEach(e=>{const k=e.getAttribute("data-gomo-ranking");if(x[k])e.textContent=x[k]});if(document.getElementById("rankings")?.classList.contains("active"))load(true)}
+    document.addEventListener("click",e=>{if(e.target.closest('[data-page="rankings"],[data-go="rankings"]'))setTimeout(()=>load(true),0)});
+    window.addEventListener("focus",()=>{if(document.getElementById("rankings")?.classList.contains("active"))load(true)});
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden&&document.getElementById("rankings")?.classList.contains("active"))load(true)});
+    setInterval(()=>{if(!document.hidden&&document.getElementById("rankings")?.classList.contains("active"))load(false)},5000);
+    if(typeof translatePage==="function"){const base=translatePage;translatePage=function(...a){const r=base.apply(this,a);translate();return r}}
+    translate();if(location.hash==="#rankings")setTimeout(()=>load(true),0);
+  })();
+  </script>
+
   <script>
   (()=>{
     const equalTitles={
@@ -1787,6 +1953,14 @@ body:not(.menu-open){
       if(e.target.closest("[data-page],[data-go],.overlay")) setTimeout(applyEqualCard,40);
     });
     window.addEventListener("pageshow",applyEqualCard);
+    const equalTarget=document.querySelector('[data-i18n="equal.title"]');
+    if(equalTarget){
+      new MutationObserver(()=>{
+        const code=localStorage.getItem("gomo-central-language")||"fr";
+        const wanted=equalTitles[code]||equalTitles.fr;
+        if(equalTarget.textContent!==wanted) equalTarget.textContent=wanted;
+      }).observe(equalTarget,{childList:true,characterData:true,subtree:true});
+    }
     applyEqualCard();
   })();
   </script>
