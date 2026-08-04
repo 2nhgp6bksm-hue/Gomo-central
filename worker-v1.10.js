@@ -2,7 +2,7 @@ import baseWorker from "./worker-v1.9.js";
 
 const HERO_PATCH = String.raw`
 ;(() => {
-  const HERO_URL = "/gomo-central-royal-main.webp?v=1.10";
+  const HERO_URL = "/gomo-central-royal-main.webp?v=1.10.1";
 
   function installRoyalHeroStyle() {
     if (document.getElementById("gomo-royal-hero-style")) return;
