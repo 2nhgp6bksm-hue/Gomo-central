@@ -44,8 +44,9 @@ export default {
       headers.set("cache-control", "no-store, no-cache, must-revalidate");
 
       const rewritten = new HTMLRewriter()
-        .on("#home .home-emblem img", .on('#home [data-gomo-quick="ranking"]', rankingLabelHandler)
-        .transform(response);
+  .on("#home .home-emblem img", heroImageHandler)
+  .on('#home [data-gomo-quick="ranking"]', rankingLabelHandler)
+  .transform(response);
 
       return new Response(rewritten.body, {
         status: rewritten.status,
