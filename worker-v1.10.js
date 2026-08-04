@@ -1,6 +1,6 @@
 import baseWorker from "./worker-v1.9.js";
 
-const HERO_URL = "/gomo-central-royal-main.webp?v=1.10.2";
+const HERO_URL = "/gomo-central-mascotte-hero.webp?v=1.10.3";
 
 const heroImageHandler = {
   element(element) {
