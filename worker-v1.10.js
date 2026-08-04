@@ -14,7 +14,15 @@ const heroImageHandler = {
     );
   }
 };
-
+const rankingLabelHandler = {
+  element(element) {
+    const currentStyle = element.getAttribute("style") || "";
+    element.setAttribute(
+      "style",
+      currentStyle + "; font-size:8.5px!important;white-space:nowrap!important;"
+    );
+  }
+};
 export default {
   async fetch(request, env, ctx) {
     const response = await baseWorker.fetch(request, env, ctx);
@@ -36,7 +44,7 @@ export default {
       headers.set("cache-control", "no-store, no-cache, must-revalidate");
 
       const rewritten = new HTMLRewriter()
-        .on("#home .home-emblem img", heroImageHandler)
+        .on("#home .home-emblem img", .on('#home [data-gomo-quick="ranking"]', rankingLabelHandler)
         .transform(response);
 
       return new Response(rewritten.body, {
