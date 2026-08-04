@@ -9,32 +9,32 @@ const HERO_PATCH = String.raw`
 
     const style = document.createElement("style");
     style.id = "gomo-royal-hero-style";
-    style.textContent = `
-      #home .home-emblem {
-        overflow: hidden !important;
-        border-radius: 28px !important;
-      }
-
-      #home .home-emblem img {
-        width: 100% !important;
-        height: auto !important;
-        max-height: none !important;
-        aspect-ratio: 870 / 832 !important;
-        object-fit: cover !important;
-        object-position: center !important;
-        display: block !important;
-      }
-
-      @media (max-width: 700px) {
-        #home .home-emblem {
-          border-radius: 22px !important;
-        }
-
-        #home .home-emblem img {
-          aspect-ratio: 870 / 832 !important;
-        }
-      }
-    `;
+    style.textContent = [
+      "#home .home-emblem {",
+      "  overflow: hidden !important;",
+      "  border-radius: 28px !important;",
+      "}",
+      "",
+      "#home .home-emblem img {",
+      "  width: 100% !important;",
+      "  height: auto !important;",
+      "  max-height: none !important;",
+      "  aspect-ratio: 870 / 832 !important;",
+      "  object-fit: cover !important;",
+      "  object-position: center !important;",
+      "  display: block !important;",
+      "}",
+      "",
+      "@media (max-width: 700px) {",
+      "  #home .home-emblem {",
+      "    border-radius: 22px !important;",
+      "  }",
+      "",
+      "  #home .home-emblem img {",
+      "    aspect-ratio: 870 / 832 !important;",
+      "  }",
+      "}"
+    ].join("\\n");
     document.head.appendChild(style);
   }
 
