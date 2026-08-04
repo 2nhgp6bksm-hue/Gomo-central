@@ -1963,6 +1963,43 @@ body:not(.menu-open){
     }
     applyEqualCard();
   })();
-  </script>
+  </<style>
+#home [data-gomo-quick="ranking"] {
+  font-size: 8.5px !important;
+  white-space: nowrap !important;
+}
+</style>
+
+<script>
+(() => {
+  const HERO = "/gomo-central-mascotte-hero.webp?v=1.10.3";
+
+  function applyHomeFix() {
+    const img = document.querySelector("#home .home-emblem img");
+
+    if (img) {
+      img.src = HERO;
+      img.alt = "Mascotte royale GoMo";
+      img.removeAttribute("srcset");
+      img.removeAttribute("loading");
+
+      img.style.width = "100%";
+      img.style.height = "auto";
+      img.style.maxHeight = "none";
+      img.style.objectFit = "cover";
+      img.style.objectPosition = "center";
+      img.style.display = "block";
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", applyHomeFix);
+  } else {
+    applyHomeFix();
+  }
+
+  window.addEventListener("pageshow", applyHomeFix);
+})();
+</script>
 </body>
 </html>
