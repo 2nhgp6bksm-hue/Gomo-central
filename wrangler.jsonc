@@ -1,11 +1,14 @@
 {
   "name": "gomo-central-site",
-  "main": "worker-v1.9.js",
+  "main": "worker-v1.10.js",
   "compatibility_date": "2026-08-02",
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/assets/app-v1.5.js"]
+    "run_worker_first": [
+      "/api/*",
+      "/assets/app-v1.5.js"
+    ]
   },
   "ai": {
     "binding": "AI"
