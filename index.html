@@ -983,7 +983,7 @@ body:not(.menu-open){
             <small data-i18n="free.text">Aucune facturation automatique</small>
           </div>
         </div>
-
+<button id="copySiteLinkButton" class="secondary-button" type="button" style="font-size:12px;opacity:.82;padding:9px 11px" onclick="navigator.clipboard.writeText(window.location.origin + '/').then(()=>{this.textContent='✓ Lien copié';setTimeout(()=>this.textContent='🔗 Copier le lien du site',1500)})">🔗 Copier le lien du site</button>
         <button id="installButton" class="secondary-button hidden" type="button" data-i18n="actions.install">
           Installer sur l’appareil
         </button>
