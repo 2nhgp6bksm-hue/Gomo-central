@@ -558,9 +558,16 @@
     function reply(target){const t=tx();return target==="vs-planner"?t.vs:target==="shiny-radar"?t.shiny:target==="train"?t.train:target==="classements"?t.ranking:target==="gomo-assistant"?t.assistant:target==="traduction"?t.translate:t.fallback;}
     const R5_LINKS = {
       "vs-planner":"https://2nhgp6bksm-hue.github.io/-GoMo-VS-Planner-/",
-      "train":"https://chic-sopapillas-82fbc8.netlify.app/#weeklyTrainPlanCard"
+      "shiny-radar":"https://timely-meringue-812f51.netlify.app/",
+      "train":"https://chic-sopapillas-82fbc8.netlify.app/?goto=weeklyTrainPlanCard",
+      "classements":"https://chic-sopapillas-82fbc8.netlify.app/?goto=weeklyChampionsCard",
+      "gomo-assistant":"https://chic-sopapillas-82fbc8.netlify.app/"
     };
     function clickMatching(target){
+      if(target==="traduction"){
+        const communication=document.querySelector('[data-go="communication"],[data-page="communication"]');
+        if(communication){communication.click();return true;}
+      }
       const exact=R5_LINKS[target];
       if(exact){ location.href=exact; return true; }
       const direct=document.querySelector('[data-go="'+target+'"],[data-page="'+target+'"]'); if(direct){direct.click();return true;}

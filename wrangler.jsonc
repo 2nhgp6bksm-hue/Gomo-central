@@ -1,6 +1,6 @@
 {
   "name": "gomo-central-site",
-  "main": "worker-v1.13.js",
+  "main": "worker-v1.10.js",
   "compatibility_date": "2026-08-02",
   "assets": {
     "directory": ".",
