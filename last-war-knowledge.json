@@ -1,0 +1,1547 @@
+{
+  "version": "12.0",
+  "updated": "2026-08-03",
+  "purpose": "Catalogue de reconnaissance pour l'analyse de captures Last War dans GoMo Central.",
+  "safety_rules": [
+    "N'affirmer que ce qui est réellement visible sur la capture.",
+    "Distinguer confirmé, probable et manquant.",
+    "Ne jamais inventer un nom de héros, un niveau, une quantité, un événement ou une ressource.",
+    "Ne jamais recommander de dépenser une ressource rare si la capture ne suffit pas à justifier la dépense.",
+    "Ne pas décrire l'apparence physique des personnages : ce n'est pas utile à l'analyse du jeu.",
+    "Si un écran ou une valeur est ambigu, utiliser 'À confirmer' et réduire la confiance.",
+    "Les valeurs d'événements et coûts peuvent changer avec les mises à jour : privilégier les nombres visibles sur la capture."
+  ],
+  "screen_categories": [
+    {
+      "id": "formation",
+      "labels": {
+        "fr": "Formation d’équipe",
+        "de": "Team-Formation",
+        "en": "Team formation",
+        "ro": "Formație de echipă",
+        "uk": "Формація команди",
+        "ko": "팀 편성",
+        "hr": "Postava tima",
+        "pt": "Formação da equipa"
+      },
+      "aliases": [
+        "formation",
+        "équipe",
+        "equipe",
+        "team",
+        "preset",
+        "préréglage",
+        "prereglage",
+        "squad",
+        "escouade"
+      ],
+      "look_for": [
+        "numéro d’équipe",
+        "puissance",
+        "niveau des 5 héros/unités",
+        "étoiles",
+        "type tank/avion/missile",
+        "héros sélectionnés",
+        "drone/compagnon si visible"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "hero_profile",
+      "labels": {
+        "fr": "Fiche héros",
+        "de": "Heldenprofil",
+        "en": "Hero profile",
+        "ro": "Profil erou",
+        "uk": "Профіль героя",
+        "ko": "영웅 정보",
+        "hr": "Profil heroja",
+        "pt": "Perfil de herói"
+      },
+      "aliases": [
+        "héros",
+        "heros",
+        "hero",
+        "hero profile",
+        "niveau héros",
+        "étoiles héros",
+        "compétence héros",
+        "skill hero"
+      ],
+      "look_for": [
+        "nom visible",
+        "niveau",
+        "étoiles",
+        "rôle",
+        "type",
+        "compétences",
+        "puissance",
+        "arme exclusive"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "hero_roster",
+      "labels": {
+        "fr": "Liste des héros",
+        "de": "Heldenliste",
+        "en": "Hero roster",
+        "ro": "Listă eroi",
+        "uk": "Список героїв",
+        "ko": "영웅 목록",
+        "hr": "Popis heroja",
+        "pt": "Lista de heróis"
+      },
+      "aliases": [
+        "liste héros",
+        "roster",
+        "heroes",
+        "collection héros",
+        "all heroes"
+      ],
+      "look_for": [
+        "héros visibles",
+        "niveau",
+        "étoiles",
+        "type",
+        "sélection"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "exclusive_weapon",
+      "labels": {
+        "fr": "Arme exclusive",
+        "de": "Exklusive Waffe",
+        "en": "Exclusive weapon",
+        "ro": "Armă exclusivă",
+        "uk": "Ексклюзивна зброя",
+        "ko": "전용 무기",
+        "hr": "Ekskluzivno oružje",
+        "pt": "Arma exclusiva"
+      },
+      "aliases": [
+        "arme exclusive",
+        "exclusive weapon",
+        "weapon shard",
+        "fragments arme",
+        "new era recruitment"
+      ],
+      "look_for": [
+        "héros concerné",
+        "niveau de l’arme",
+        "fragments",
+        "matériaux",
+        "prochaine amélioration"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "wall_of_honor",
+      "labels": {
+        "fr": "Mur d’honneur",
+        "de": "Ehrenmauer",
+        "en": "Wall of Honor",
+        "ro": "Zidul de Onoare",
+        "uk": "Стіна пошани",
+        "ko": "명예의 벽",
+        "hr": "Zid časti",
+        "pt": "Mural de Honra"
+      },
+      "aliases": [
+        "mur d'honneur",
+        "mur d’honneur",
+        "wall of honor",
+        "honor wall"
+      ],
+      "look_for": [
+        "héros",
+        "niveau d’honneur",
+        "bonus",
+        "progression"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "hero_gear",
+      "labels": {
+        "fr": "Équipement héros",
+        "de": "Heldenausrüstung",
+        "en": "Hero gear",
+        "ro": "Echipament erou",
+        "uk": "Спорядження героя",
+        "ko": "영웅 장비",
+        "hr": "Oprema heroja",
+        "pt": "Equipamento do herói"
+      },
+      "aliases": [
+        "équipement",
+        "equipement",
+        "gear",
+        "canon",
+        "radar",
+        "armure",
+        "armor",
+        "data chip",
+        "blueprint",
+        "plan rouge",
+        "plan légendaire"
+      ],
+      "look_for": [
+        "pièce d’équipement",
+        "niveau",
+        "étoiles",
+        "plans",
+        "minerai d’amélioration",
+        "matériaux rares"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "drone_overview",
+      "labels": {
+        "fr": "Drone",
+        "de": "Drohne",
+        "en": "Drone",
+        "ro": "Dronă",
+        "uk": "Дрон",
+        "ko": "드론",
+        "hr": "Dron",
+        "pt": "Drone"
+      },
+      "aliases": [
+        "drone",
+        "battle data",
+        "données de combat",
+        "donnees de combat",
+        "drone parts",
+        "pièces de drone",
+        "pieces de drone"
+      ],
+      "look_for": [
+        "niveau",
+        "données de combat",
+        "pièces de drone",
+        "barre de progression",
+        "puissance"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "drone_components",
+      "labels": {
+        "fr": "Composants du drone",
+        "de": "Drohnenkomponenten",
+        "en": "Drone components",
+        "ro": "Componente dronă",
+        "uk": "Компоненти дрона",
+        "ko": "드론 부품",
+        "hr": "Komponente drona",
+        "pt": "Componentes do drone"
+      },
+      "aliases": [
+        "composant drone",
+        "component chest",
+        "component",
+        "coffre composant",
+        "quick combine"
+      ],
+      "look_for": [
+        "niveau des 6 composants",
+        "coffres composants",
+        "fusion",
+        "points de recherche"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "drone_chips",
+      "labels": {
+        "fr": "Puces du drone",
+        "de": "Drohnenchips",
+        "en": "Drone chips",
+        "ro": "Cipuri dronă",
+        "uk": "Чипи дрона",
+        "ko": "드론 칩",
+        "hr": "Čipovi drona",
+        "pt": "Chips do drone"
+      },
+      "aliases": [
+        "chip",
+        "puce",
+        "skill chip",
+        "chip lab",
+        "premium chip material",
+        "basic chip material",
+        "combat boost"
+      ],
+      "look_for": [
+        "type de puce",
+        "rareté",
+        "niveau",
+        "matériaux",
+        "coffres de puces",
+        "bonus"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "inventory_resources",
+      "labels": {
+        "fr": "Inventaire / ressources",
+        "de": "Inventar / Ressourcen",
+        "en": "Inventory / resources",
+        "ro": "Inventar / resurse",
+        "uk": "Інвентар / ресурси",
+        "ko": "인벤토리 / 자원",
+        "hr": "Inventar / resursi",
+        "pt": "Inventário / recursos"
+      },
+      "aliases": [
+        "inventaire",
+        "inventory",
+        "ressource",
+        "resources",
+        "sac",
+        "bag",
+        "coffre",
+        "chest",
+        "stock"
+      ],
+      "look_for": [
+        "nom exact de chaque ressource",
+        "quantité",
+        "rareté",
+        "coffres non ouverts",
+        "ressources protégées",
+        "accélérateurs"
+      ],
+      "priority": "critical"
+    },
+    {
+      "id": "hq_buildings",
+      "labels": {
+        "fr": "QG / bâtiments",
+        "de": "HQ / Gebäude",
+        "en": "HQ / buildings",
+        "ro": "HQ / clădiri",
+        "uk": "Штаб / будівлі",
+        "ko": "본부 / 건물",
+        "hr": "Stožer / zgrade",
+        "pt": "QG / edifícios"
+      },
+      "aliases": [
+        "qg",
+        "hq",
+        "headquarters",
+        "bâtiment",
+        "batiment",
+        "building",
+        "centre technologie",
+        "caserne",
+        "hospital",
+        "drill ground"
+      ],
+      "look_for": [
+        "niveau du QG",
+        "prérequis",
+        "fer",
+        "nourriture",
+        "pièces",
+        "temps",
+        "accélérateurs"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "technology",
+      "labels": {
+        "fr": "Technologie / recherche",
+        "de": "Technologie / Forschung",
+        "en": "Technology / research",
+        "ro": "Tehnologie / cercetare",
+        "uk": "Технології / дослідження",
+        "ko": "기술 / 연구",
+        "hr": "Tehnologija / istraživanje",
+        "pt": "Tecnologia / pesquisa"
+      },
+      "aliases": [
+        "technologie",
+        "technology",
+        "research",
+        "recherche",
+        "valor badge",
+        "badge de bravoure",
+        "special forces",
+        "alliance duel tech"
+      ],
+      "look_for": [
+        "arbre de recherche",
+        "niveau",
+        "temps",
+        "coût",
+        "badges de bravoure",
+        "bonus"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "troops",
+      "labels": {
+        "fr": "Troupes / caserne",
+        "de": "Truppen / Kaserne",
+        "en": "Troops / barracks",
+        "ro": "Trupe / cazarmă",
+        "uk": "Війська / казарма",
+        "ko": "병력 / 병영",
+        "hr": "Trupe / vojarna",
+        "pt": "Tropas / quartel"
+      },
+      "aliases": [
+        "troupes",
+        "troops",
+        "caserne",
+        "barracks",
+        "t10",
+        "t11",
+        "training",
+        "entraînement",
+        "entrainement",
+        "healing",
+        "soins"
+      ],
+      "look_for": [
+        "niveau des troupes",
+        "quantité",
+        "formation",
+        "entraînement",
+        "soins",
+        "accélérateurs"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "alliance_duel_vs",
+      "labels": {
+        "fr": "Duel d’alliance VS",
+        "de": "Allianzduell VS",
+        "en": "Alliance Duel VS",
+        "ro": "Duel de alianță VS",
+        "uk": "Дуель альянсів VS",
+        "ko": "동맹 대결 VS",
+        "hr": "Saveznički duel VS",
+        "pt": "Duelo de Aliança VS"
+      },
+      "aliases": [
+        "vs",
+        "duel alliance",
+        "alliance duel",
+        "radar training",
+        "base expansion",
+        "age of science",
+        "train heroes",
+        "total mobilization",
+        "enemy buster"
+      ],
+      "look_for": [
+        "jour du VS",
+        "points actuels",
+        "objectif",
+        "actions comptées",
+        "ressources disponibles",
+        "bonus"
+      ],
+      "priority": "critical"
+    },
+    {
+      "id": "shiny",
+      "labels": {
+        "fr": "Mission Shiny",
+        "de": "Shiny-Mission",
+        "en": "Shiny mission",
+        "ro": "Misiune Shiny",
+        "uk": "Місія Shiny",
+        "ko": "Shiny 임무",
+        "hr": "Shiny misija",
+        "pt": "Missão Shiny"
+      },
+      "aliases": [
+        "shiny",
+        "mission brillante",
+        "sparkle",
+        "étincelle",
+        "etoile mission"
+      ],
+      "look_for": [
+        "serveur",
+        "mission",
+        "brillance/étoile",
+        "qualité",
+        "jour",
+        "preuve visuelle"
+      ],
+      "priority": "critical"
+    },
+    {
+      "id": "secret_tasks",
+      "labels": {
+        "fr": "Missions secrètes",
+        "de": "Geheimaufgaben",
+        "en": "Secret tasks",
+        "ro": "Misiuni secrete",
+        "uk": "Секретні завдання",
+        "ko": "비밀 임무",
+        "hr": "Tajni zadaci",
+        "pt": "Missões secretas"
+      },
+      "aliases": [
+        "mission secrète",
+        "mission secrete",
+        "secret task",
+        "legendary secret",
+        "ur secret"
+      ],
+      "look_for": [
+        "rareté",
+        "récompense",
+        "statut",
+        "qualité UR/légendaire"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "trade_trucks",
+      "labels": {
+        "fr": "Camions commerciaux",
+        "de": "Handelslaster",
+        "en": "Trade trucks",
+        "ro": "Camioane comerciale",
+        "uk": "Торгові вантажівки",
+        "ko": "교역 트럭",
+        "hr": "Trgovački kamioni",
+        "pt": "Camiões comerciais"
+      },
+      "aliases": [
+        "camion",
+        "truck",
+        "trade truck",
+        "ur truck",
+        "camion commercial"
+      ],
+      "look_for": [
+        "rareté",
+        "récompenses",
+        "statut envoyé",
+        "qualité UR"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "alliance_rankings",
+      "labels": {
+        "fr": "Classements alliance",
+        "de": "Allianzranglisten",
+        "en": "Alliance rankings",
+        "ro": "Clasamente alianță",
+        "uk": "Рейтинги альянсу",
+        "ko": "동맹 순위",
+        "hr": "Poredak saveza",
+        "pt": "Classificações da aliança"
+      },
+      "aliases": [
+        "classement",
+        "ranking",
+        "donations",
+        "dons alliance",
+        "points vs",
+        "tempête du désert",
+        "desert storm score"
+      ],
+      "look_for": [
+        "nom du joueur",
+        "rang",
+        "points",
+        "catégorie",
+        "date/semaine"
+      ],
+      "priority": "critical"
+    },
+    {
+      "id": "train_vip",
+      "labels": {
+        "fr": "Train / Conducteur / VIP",
+        "de": "Zug / Fahrer / VIP",
+        "en": "Train / Conductor / VIP",
+        "ro": "Tren / Conductor / VIP",
+        "uk": "Потяг / Провідник / VIP",
+        "ko": "열차 / 지휘자 / VIP",
+        "hr": "Vlak / Vođa / VIP",
+        "pt": "Comboio / Condutor / VIP"
+      },
+      "aliases": [
+        "train",
+        "conducteur",
+        "conductor",
+        "driver",
+        "vip",
+        "guardian",
+        "wagon"
+      ],
+      "look_for": [
+        "conducteur",
+        "VIP",
+        "jour",
+        "récompenses",
+        "rotation"
+      ],
+      "priority": "critical"
+    },
+    {
+      "id": "desert_storm",
+      "labels": {
+        "fr": "Tempête du désert",
+        "de": "Wüstensturm",
+        "en": "Desert Storm",
+        "ro": "Furtuna deșertului",
+        "uk": "Пустельна буря",
+        "ko": "사막 폭풍",
+        "hr": "Pustinjska oluja",
+        "pt": "Tempestade do Deserto"
+      },
+      "aliases": [
+        "tempête du désert",
+        "tempete du desert",
+        "desert storm",
+        "desert score"
+      ],
+      "look_for": [
+        "équipe",
+        "score",
+        "bâtiments",
+        "inscriptions",
+        "horaire",
+        "résultat"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "zombie",
+      "labels": {
+        "fr": "Zombies / Vagues",
+        "de": "Zombies / Wellen",
+        "en": "Zombies / waves",
+        "ro": "Zombi / valuri",
+        "uk": "Зомбі / хвилі",
+        "ko": "좀비 / 웨이브",
+        "hr": "Zombiji / valovi",
+        "pt": "Zombies / vagas"
+      },
+      "aliases": [
+        "zombie",
+        "vague",
+        "wave",
+        "zombie invasion",
+        "bus",
+        "mur"
+      ],
+      "look_for": [
+        "numéro de vague",
+        "puissance recommandée",
+        "troupes sur le mur",
+        "résultat"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "generals_trial",
+      "labels": {
+        "fr": "Épreuve du général",
+        "de": "Generalprüfung",
+        "en": "General’s Trial",
+        "ro": "Proba generalului",
+        "uk": "Випробування генерала",
+        "ko": "장군의 시험",
+        "hr": "Generalov izazov",
+        "pt": "Prova do General"
+      },
+      "aliases": [
+        "épreuve du général",
+        "epreuve du general",
+        "general's trial",
+        "general trial"
+      ],
+      "look_for": [
+        "niveau choisi",
+        "récompenses",
+        "progression",
+        "pertes"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "alliance_exercise",
+      "labels": {
+        "fr": "Exercice d’alliance / Maréchal",
+        "de": "Allianzübung / Marschall",
+        "en": "Alliance Exercise / Marshal",
+        "ro": "Exercițiu alianță / Mareșal",
+        "uk": "Вправа альянсу / Маршал",
+        "ko": "동맹 훈련 / 원수",
+        "hr": "Vježba saveza / Maršal",
+        "pt": "Exercício da aliança / Marechal"
+      },
+      "aliases": [
+        "garde du maréchal",
+        "garde du marechal",
+        "marshal guard",
+        "alliance exercise",
+        "maréchal",
+        "marechal"
+      ],
+      "look_for": [
+        "niveau",
+        "dégâts",
+        "tentatives",
+        "récompenses",
+        "placement alliance"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "giant_worm",
+      "labels": {
+        "fr": "Vers géant",
+        "de": "Riesenwurm",
+        "en": "Giant Worm",
+        "ro": "Vierme uriaș",
+        "uk": "Гігантський черв’як",
+        "ko": "거대 벌레",
+        "hr": "Divovski crv",
+        "pt": "Verme gigante"
+      },
+      "aliases": [
+        "vers géant",
+        "vers geant",
+        "giant worm",
+        "worm"
+      ],
+      "look_for": [
+        "niveau",
+        "dégâts",
+        "tentatives",
+        "bonus petits vers",
+        "récompenses"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "celestial_predator",
+      "labels": {
+        "fr": "Prédateur céleste",
+        "de": "Himmelsjäger",
+        "en": "Celestial Predator",
+        "ro": "Prădător ceresc",
+        "uk": "Небесний хижак",
+        "ko": "천공 포식자",
+        "hr": "Nebeski predator",
+        "pt": "Predador Celestial"
+      },
+      "aliases": [
+        "prédateur céleste",
+        "predateur celeste",
+        "celestial predator",
+        "sky predator"
+      ],
+      "look_for": [
+        "quota/tentatives visibles",
+        "dégâts",
+        "équipe",
+        "récompenses"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "capitol_titles",
+      "labels": {
+        "fr": "Capitole / Titres",
+        "de": "Kapitol / Titel",
+        "en": "Capitol / Titles",
+        "ro": "Capitoliu / Titluri",
+        "uk": "Капітолій / Титули",
+        "ko": "수도 / 직책",
+        "hr": "Kapitol / Titule",
+        "pt": "Capitólio / Títulos"
+      },
+      "aliases": [
+        "capitole",
+        "capitol",
+        "secrétaire",
+        "secretaire",
+        "secretary",
+        "science secretary",
+        "interior secretary",
+        "title"
+      ],
+      "look_for": [
+        "titre",
+        "bonus",
+        "durée",
+        "demande/attribution"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "overlord_gorilla",
+      "labels": {
+        "fr": "Suzerain / Gorille Overlord",
+        "de": "Overlord-Gorilla",
+        "en": "Overlord Gorilla",
+        "ro": "Gorila Overlord",
+        "uk": "Горила Overlord",
+        "ko": "오버로드 고릴라",
+        "hr": "Overlord Gorilla",
+        "pt": "Gorila Overlord"
+      },
+      "aliases": [
+        "suzerain",
+        "overlord",
+        "gorille",
+        "gorilla",
+        "overlord gorilla",
+        "rookie partner",
+        "partenaire novice",
+        "bond rating",
+        "lien",
+        "tactical institute"
+      ],
+      "look_for": [
+        "phase sauvetage",
+        "progression soin",
+        "niveau entraînement spécialisé",
+        "certificats d’entraînement",
+        "guides d’entraînement",
+        "badges de lien",
+        "fragments universels Overlord",
+        "badges de compétence Overlord",
+        "puissance",
+        "compétences",
+        "déploiement"
+      ],
+      "priority": "critical"
+    },
+    {
+      "id": "battle_report",
+      "labels": {
+        "fr": "Rapport de combat",
+        "de": "Kampfbericht",
+        "en": "Battle report",
+        "ro": "Raport de luptă",
+        "uk": "Звіт бою",
+        "ko": "전투 보고서",
+        "hr": "Izvještaj borbe",
+        "pt": "Relatório de combate"
+      },
+      "aliases": [
+        "rapport combat",
+        "battle report",
+        "victory",
+        "defeat",
+        "victoire",
+        "défaite",
+        "degats",
+        "dégâts"
+      ],
+      "look_for": [
+        "vainqueur",
+        "puissance",
+        "pertes",
+        "dégâts",
+        "héros",
+        "bonus"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "season",
+      "labels": {
+        "fr": "Saison / progression",
+        "de": "Saison / Fortschritt",
+        "en": "Season / progression",
+        "ro": "Sezon / progres",
+        "uk": "Сезон / прогрес",
+        "ko": "시즌 / 진행",
+        "hr": "Sezona / napredak",
+        "pt": "Temporada / progresso"
+      },
+      "aliases": [
+        "saison",
+        "season",
+        "profession",
+        "métier",
+        "metier",
+        "obelisk",
+        "chronologie",
+        "timeline"
+      ],
+      "look_for": [
+        "saison",
+        "jour/semaine",
+        "profession",
+        "ressource saisonnière",
+        "objectif"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "generic_event",
+      "labels": {
+        "fr": "Événement",
+        "de": "Ereignis",
+        "en": "Event",
+        "ro": "Eveniment",
+        "uk": "Подія",
+        "ko": "이벤트",
+        "hr": "Događaj",
+        "pt": "Evento"
+      },
+      "aliases": [
+        "événement",
+        "evenement",
+        "event",
+        "arms race",
+        "course aux armements",
+        "wanted",
+        "campaign",
+        "arena"
+      ],
+      "look_for": [
+        "nom de l’événement",
+        "temps restant",
+        "tentatives",
+        "score",
+        "récompenses"
+      ],
+      "priority": "medium"
+    }
+  ],
+  "resources": [
+    {
+      "id": "food",
+      "labels": [
+        "Nourriture",
+        "Food"
+      ],
+      "aliases": [
+        "nourriture",
+        "food"
+      ],
+      "rarity": "common",
+      "group": "base"
+    },
+    {
+      "id": "iron",
+      "labels": [
+        "Fer",
+        "Iron"
+      ],
+      "aliases": [
+        "fer",
+        "iron"
+      ],
+      "rarity": "common",
+      "group": "base"
+    },
+    {
+      "id": "coin",
+      "labels": [
+        "Pièces",
+        "Coin",
+        "Gold"
+      ],
+      "aliases": [
+        "pièces",
+        "pieces",
+        "coin",
+        "gold"
+      ],
+      "rarity": "common",
+      "group": "base"
+    },
+    {
+      "id": "diamonds",
+      "labels": [
+        "Diamants",
+        "Diamonds"
+      ],
+      "aliases": [
+        "diamant",
+        "diamonds",
+        "gems"
+      ],
+      "rarity": "valuable",
+      "group": "currency"
+    },
+    {
+      "id": "hero_exp",
+      "labels": [
+        "EXP héros",
+        "Hero EXP"
+      ],
+      "aliases": [
+        "exp héros",
+        "hero exp",
+        "xp héros"
+      ],
+      "rarity": "strategic",
+      "group": "hero"
+    },
+    {
+      "id": "ur_shard",
+      "labels": [
+        "Fragment universel UR",
+        "Universal Legendary Hero Shard"
+      ],
+      "aliases": [
+        "fragment ur",
+        "universal legendary shard",
+        "golden shard",
+        "fragment doré"
+      ],
+      "rarity": "rare",
+      "group": "hero"
+    },
+    {
+      "id": "ssr_shard",
+      "labels": [
+        "Fragment SSR"
+      ],
+      "aliases": [
+        "ssr shard",
+        "fragment ssr"
+      ],
+      "rarity": "strategic",
+      "group": "hero"
+    },
+    {
+      "id": "r_shard",
+      "labels": [
+        "Fragment R"
+      ],
+      "aliases": [
+        "r shard",
+        "rare shard",
+        "fragment r"
+      ],
+      "rarity": "common",
+      "group": "hero"
+    },
+    {
+      "id": "skill_medal",
+      "labels": [
+        "Médaille de compétence",
+        "Skill Medal"
+      ],
+      "aliases": [
+        "skill medal",
+        "médaille compétence",
+        "medaille competence"
+      ],
+      "rarity": "strategic",
+      "group": "hero"
+    },
+    {
+      "id": "exclusive_weapon_shard",
+      "labels": [
+        "Fragment d’arme exclusive",
+        "Exclusive Weapon Shard"
+      ],
+      "aliases": [
+        "weapon shard",
+        "fragment arme exclusive"
+      ],
+      "rarity": "rare",
+      "group": "exclusive_weapon"
+    },
+    {
+      "id": "universal_exclusive_weapon_shard",
+      "labels": [
+        "Fragment universel d’arme exclusive"
+      ],
+      "aliases": [
+        "universal exclusive weapon shard",
+        "fragment universel arme exclusive"
+      ],
+      "rarity": "rare",
+      "group": "exclusive_weapon"
+    },
+    {
+      "id": "upgrade_ore",
+      "labels": [
+        "Minerai d’amélioration",
+        "Upgrade Ore"
+      ],
+      "aliases": [
+        "upgrade ore",
+        "minerai amélioration",
+        "minerai d'amélioration"
+      ],
+      "rarity": "strategic",
+      "group": "gear"
+    },
+    {
+      "id": "gear_blueprint",
+      "labels": [
+        "Plan d’équipement légendaire"
+      ],
+      "aliases": [
+        "legendary blueprint",
+        "plan légendaire",
+        "blueprint"
+      ],
+      "rarity": "rare",
+      "group": "gear"
+    },
+    {
+      "id": "mythic_blueprint",
+      "labels": [
+        "Plan mythique / rouge"
+      ],
+      "aliases": [
+        "mythic blueprint",
+        "red blueprint",
+        "plan rouge"
+      ],
+      "rarity": "very_rare",
+      "group": "gear"
+    },
+    {
+      "id": "battle_data",
+      "labels": [
+        "Données de combat drone",
+        "Battle Data"
+      ],
+      "aliases": [
+        "battle data",
+        "données de combat",
+        "donnees de combat"
+      ],
+      "rarity": "strategic",
+      "group": "drone"
+    },
+    {
+      "id": "drone_parts",
+      "labels": [
+        "Pièces de drone",
+        "Drone Parts"
+      ],
+      "aliases": [
+        "drone parts",
+        "pièces de drone",
+        "pieces de drone"
+      ],
+      "rarity": "rare",
+      "group": "drone"
+    },
+    {
+      "id": "drone_component_chest",
+      "labels": [
+        "Coffre de composant drone"
+      ],
+      "aliases": [
+        "drone component chest",
+        "coffre composant drone"
+      ],
+      "rarity": "strategic",
+      "group": "drone"
+    },
+    {
+      "id": "basic_chip_material",
+      "labels": [
+        "Matériau de puce basique"
+      ],
+      "aliases": [
+        "basic chip material",
+        "matériau puce basique"
+      ],
+      "rarity": "strategic",
+      "group": "drone_chip"
+    },
+    {
+      "id": "premium_chip_material",
+      "labels": [
+        "Matériau de puce premium"
+      ],
+      "aliases": [
+        "premium chip material",
+        "matériau puce premium"
+      ],
+      "rarity": "rare",
+      "group": "drone_chip"
+    },
+    {
+      "id": "skill_chip_chest",
+      "labels": [
+        "Coffre de puce"
+      ],
+      "aliases": [
+        "skill chip chest",
+        "coffre puce"
+      ],
+      "rarity": "strategic",
+      "group": "drone_chip"
+    },
+    {
+      "id": "valor_badge",
+      "labels": [
+        "Badge de bravoure",
+        "Valor Badge"
+      ],
+      "aliases": [
+        "valor badge",
+        "badge de bravoure"
+      ],
+      "rarity": "rare",
+      "group": "technology"
+    },
+    {
+      "id": "construction_speedup",
+      "labels": [
+        "Accélérateur construction"
+      ],
+      "aliases": [
+        "construction speedup",
+        "accélérateur construction"
+      ],
+      "rarity": "strategic",
+      "group": "speedup"
+    },
+    {
+      "id": "research_speedup",
+      "labels": [
+        "Accélérateur recherche"
+      ],
+      "aliases": [
+        "research speedup",
+        "accélérateur recherche"
+      ],
+      "rarity": "strategic",
+      "group": "speedup"
+    },
+    {
+      "id": "training_speedup",
+      "labels": [
+        "Accélérateur entraînement"
+      ],
+      "aliases": [
+        "training speedup",
+        "accélérateur entraînement"
+      ],
+      "rarity": "strategic",
+      "group": "speedup"
+    },
+    {
+      "id": "healing_speedup",
+      "labels": [
+        "Accélérateur soins"
+      ],
+      "aliases": [
+        "healing speedup",
+        "accélérateur soins"
+      ],
+      "rarity": "strategic",
+      "group": "speedup"
+    },
+    {
+      "id": "universal_speedup",
+      "labels": [
+        "Accélérateur universel"
+      ],
+      "aliases": [
+        "universal speedup",
+        "accélérateur universel"
+      ],
+      "rarity": "rare",
+      "group": "speedup"
+    },
+    {
+      "id": "stamina",
+      "labels": [
+        "Endurance",
+        "Stamina"
+      ],
+      "aliases": [
+        "stamina",
+        "endurance"
+      ],
+      "rarity": "strategic",
+      "group": "activity"
+    },
+    {
+      "id": "survivor_ticket",
+      "labels": [
+        "Ticket recrutement survivant"
+      ],
+      "aliases": [
+        "survivor recruitment ticket",
+        "ticket survivant"
+      ],
+      "rarity": "strategic",
+      "group": "recruitment"
+    },
+    {
+      "id": "hero_recruit_ticket",
+      "labels": [
+        "Ticket recrutement héros"
+      ],
+      "aliases": [
+        "hero recruitment ticket",
+        "ticket héros",
+        "ticket recrutement"
+      ],
+      "rarity": "strategic",
+      "group": "recruitment"
+    },
+    {
+      "id": "new_era_ticket",
+      "labels": [
+        "Ticket Nouvel Âge / New Era"
+      ],
+      "aliases": [
+        "new era recruitment ticket",
+        "ticket new era",
+        "ticket nouvel âge"
+      ],
+      "rarity": "rare",
+      "group": "exclusive_weapon"
+    },
+    {
+      "id": "trade_contract",
+      "labels": [
+        "Contrat commercial"
+      ],
+      "aliases": [
+        "trade contract",
+        "contrat commercial"
+      ],
+      "rarity": "strategic",
+      "group": "truck"
+    },
+    {
+      "id": "secret_order",
+      "labels": [
+        "Ordre secret"
+      ],
+      "aliases": [
+        "secret order",
+        "ordre secret"
+      ],
+      "rarity": "strategic",
+      "group": "secret_task"
+    },
+    {
+      "id": "overlord_training_certificate",
+      "labels": [
+        "Certificat d’entraînement Overlord"
+      ],
+      "aliases": [
+        "training certificate",
+        "certificat entraînement",
+        "certificat d'entrainement",
+        "overlord certificate"
+      ],
+      "rarity": "rare",
+      "group": "overlord"
+    },
+    {
+      "id": "overlord_training_guidebook",
+      "labels": [
+        "Guide d’entraînement Overlord"
+      ],
+      "aliases": [
+        "training guidebook",
+        "guide entraînement",
+        "guide d'entrainement"
+      ],
+      "rarity": "strategic",
+      "group": "overlord"
+    },
+    {
+      "id": "overlord_bond_badge",
+      "labels": [
+        "Badge de lien Overlord"
+      ],
+      "aliases": [
+        "bond badge",
+        "badge de lien",
+        "bond rating"
+      ],
+      "rarity": "very_rare",
+      "group": "overlord"
+    },
+    {
+      "id": "overlord_universal_shard",
+      "labels": [
+        "Fragment universel Overlord"
+      ],
+      "aliases": [
+        "overlord universal shard",
+        "fragment universel overlord"
+      ],
+      "rarity": "very_rare",
+      "group": "overlord"
+    },
+    {
+      "id": "overlord_skill_badge",
+      "labels": [
+        "Badge de compétence Overlord"
+      ],
+      "aliases": [
+        "overlord skill badge",
+        "badge compétence overlord"
+      ],
+      "rarity": "very_rare",
+      "group": "overlord"
+    },
+    {
+      "id": "overlord_rescue_supplies",
+      "labels": [
+        "Ravitaillement de sauvetage Overlord"
+      ],
+      "aliases": [
+        "water",
+        "food",
+        "medicine",
+        "eau",
+        "nourriture",
+        "médicament",
+        "medicament"
+      ],
+      "rarity": "event",
+      "group": "overlord_rescue"
+    },
+    {
+      "id": "season_resource",
+      "labels": [
+        "Ressource saisonnière"
+      ],
+      "aliases": [
+        "coal",
+        "charbon",
+        "season resource",
+        "ressource saison"
+      ],
+      "rarity": "seasonal",
+      "group": "season"
+    }
+  ],
+  "event_groups": {
+    "alliance": [
+      "Duel VS",
+      "Train/VIP",
+      "Tempête du désert",
+      "Exercice d’alliance / Maréchal",
+      "Capitole",
+      "Classements",
+      "Donations"
+    ],
+    "combat": [
+      "Zombies / Vagues",
+      "Vers géant",
+      "Prédateur céleste",
+      "Épreuve du général",
+      "Rapports de combat"
+    ],
+    "progression": [
+      "Héros",
+      "Armes exclusives",
+      "Équipement",
+      "Drone",
+      "Technologie",
+      "QG/Bâtiments",
+      "Troupes",
+      "Suzerain / Overlord"
+    ],
+    "missions": [
+      "Radar",
+      "Missions secrètes",
+      "Camions commerciaux",
+      "Shiny"
+    ],
+    "economy": [
+      "Inventaire",
+      "Ressources",
+      "Boutiques",
+      "Coffres",
+      "Accélérateurs"
+    ]
+  },
+  "overlord_suzerain": {
+    "canonical_name": "Overlord Gorilla",
+    "user_aliases": [
+      "Suzerain",
+      "Gorille",
+      "Overlord",
+      "Gorilla"
+    ],
+    "screen_phases": [
+      "Sauvetage / soins",
+      "Entraînement spécialisé",
+      "Promotion / lien",
+      "Compétences",
+      "Déploiement / aperçu"
+    ],
+    "resources_to_recognize": [
+      "Eau / nourriture / médicaments de sauvetage",
+      "Certificats d’entraînement",
+      "Guides d’entraînement",
+      "Badges de lien",
+      "Fragments universels Overlord",
+      "Badges de compétence Overlord"
+    ],
+    "analysis_rule": "Ne pas recommander de dépenser les ressources Overlord uniquement parce qu'elles sont disponibles. Vérifier le stade, les quantités visibles et l'objectif du joueur."
+  },
+  "vs_groups": {
+    "day1": [
+      "Endurance",
+      "Missions radar",
+      "EXP héros",
+      "Données de combat drone",
+      "Pièces de drone",
+      "Récolte nourriture/fer/pièces",
+      "Points puces drone"
+    ],
+    "day2": [
+      "Accélérateurs construction",
+      "Puissance bâtiment",
+      "Camions UR",
+      "Missions secrètes UR",
+      "Recrutement survivants"
+    ],
+    "day3": [
+      "Accélérateurs recherche",
+      "Puissance technologie",
+      "Badges de bravoure",
+      "Missions radar",
+      "Coffres composants drone"
+    ],
+    "day4": [
+      "Recrutement héros",
+      "EXP héros",
+      "Fragments héros",
+      "Médailles de compétence",
+      "Armes exclusives"
+    ],
+    "day5": [
+      "Accélérateurs",
+      "Puissance",
+      "Entraînement troupes",
+      "Éléments Overlord lorsque le jeu les compte"
+    ],
+    "day6": [
+      "Combat/PvP",
+      "Camions/missions selon règles visibles",
+      "Soins",
+      "Pertes et éliminations"
+    ]
+  }
+}
