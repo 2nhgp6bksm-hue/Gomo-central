@@ -1,0 +1,15 @@
+{
+  "title": "R5Fapper",
+  "hello": "Salut! Te pot ghida în GoMo.",
+  "placeholder": "Scrie întrebarea…",
+  "send": "Trimite",
+  "close": "Închide",
+  "choose": "Acces rapid",
+  "fallback": "Te pot ghida către instrumentul GoMo potrivit. Alege un acces rapid mai jos.",
+  "vs": "Pentru 7,2 M și resursele VS, deschide VS Planner.",
+  "shiny": "Pentru serverele și misiunile Shiny, deschide Shiny Radar.",
+  "train": "Pentru conductor și VIP, deschide pagina Tren.",
+  "ranking": "Pentru rezultate și podiumuri, deschide Clasamente.",
+  "assistant": "Pentru gestionarea alianței, deschide GoMo Assistant.",
+  "translate": "Pentru traducerea unui mesaj, deschide Traducere."
+}

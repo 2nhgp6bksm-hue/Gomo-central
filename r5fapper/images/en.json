@@ -1,0 +1,15 @@
+{
+  "title": "R5Fapper",
+  "hello": "Hi! I can guide you through GoMo.",
+  "placeholder": "Ask your question…",
+  "send": "Send",
+  "close": "Close",
+  "choose": "Quick access",
+  "fallback": "I can guide you to the right GoMo tool. Choose a quick access below.",
+  "vs": "For 7.2M and VS resources, open VS Planner.",
+  "shiny": "For Shiny servers and missions, open Shiny Radar.",
+  "train": "For driver and VIP planning, open Train.",
+  "ranking": "For results and podiums, open Rankings.",
+  "assistant": "For full alliance management, open GoMo Assistant.",
+  "translate": "To translate a message, open Translation."
+}

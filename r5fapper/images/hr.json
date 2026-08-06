@@ -1,0 +1,15 @@
+{
+  "title": "R5Fapper",
+  "hello": "Bok! Mogu te voditi kroz GoMo.",
+  "placeholder": "Postavi pitanje…",
+  "send": "Pošalji",
+  "close": "Zatvori",
+  "choose": "Brzi pristup",
+  "fallback": "Mogu te odvesti do pravog GoMo alata. Odaberi brzi pristup ispod.",
+  "vs": "Za 7,2 M i VS resurse otvori VS Planner.",
+  "shiny": "Za Shiny servere i misije otvori Shiny Radar.",
+  "train": "Za vozača i VIP otvori stranicu Vlak.",
+  "ranking": "Za rezultate i podije otvori Poredak.",
+  "assistant": "Za upravljanje savezom otvori GoMo Assistant.",
+  "translate": "Za prijevod poruke otvori Prijevod."
+}

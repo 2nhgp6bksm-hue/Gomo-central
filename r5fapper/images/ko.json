@@ -1,0 +1,15 @@
+{
+  "title": "R5Fapper",
+  "hello": "안녕하세요! GoMo에서 필요한 곳으로 안내할게요.",
+  "placeholder": "질문을 입력하세요…",
+  "send": "보내기",
+  "close": "닫기",
+  "choose": "빠른 이동",
+  "fallback": "알맞은 GoMo 도구로 안내할 수 있어요. 아래에서 선택하세요.",
+  "vs": "7.2M과 VS 자원 계획은 VS Planner를 여세요.",
+  "shiny": "Shiny 서버와 미션은 Shiny Radar를 여세요.",
+  "train": "열차 운전수와 VIP는 열차 페이지를 여세요.",
+  "ranking": "결과와 포디움은 순위를 여세요.",
+  "assistant": "동맹 전체 관리는 GoMo Assistant를 여세요.",
+  "translate": "메시지 번역은 번역을 여세요."
+}

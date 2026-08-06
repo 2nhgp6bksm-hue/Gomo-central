@@ -1,0 +1,15 @@
+{
+  "title": "R5Fapper",
+  "hello": "Olá! Posso guiar-te no GoMo.",
+  "placeholder": "Faz a tua pergunta…",
+  "send": "Enviar",
+  "close": "Fechar",
+  "choose": "Acesso rápido",
+  "fallback": "Posso levar-te à ferramenta GoMo certa. Escolhe um acesso rápido abaixo.",
+  "vs": "Para preparar 7,2 M e os recursos do VS, abre VS Planner.",
+  "shiny": "Para servidores e missões Shiny, abre Shiny Radar.",
+  "train": "Para condutor e VIP, abre a página Comboio.",
+  "ranking": "Para resultados e pódios, abre Classificações.",
+  "assistant": "Para gerir a aliança, abre GoMo Assistant.",
+  "translate": "Para traduzir uma mensagem, abre Tradução."
+}
