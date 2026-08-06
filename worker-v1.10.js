@@ -1,4 +1,4 @@
-// v17 : affichage court iPhone — classification v16 inchangée.
+// v18 : R5Fapper intégré à GoMo Central — base v17 conservée.
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -595,6 +595,83 @@ const APP_PATCH = String.raw`
     });
     observer.observe(demo, { childList: true, subtree: true, characterData: true });
   }
+
+
+  // ===== GoMo Central v18 : R5Fapper =====
+  const R5FAPPER_TX = {
+    fr:{hello:"Salut ! Je peux te guider dans GoMo.",placeholder:"Pose ta question…",send:"Envoyer",choose:"Accès rapides",fallback:"Je peux te guider vers le bon outil GoMo. Choisis un accès rapide ci-dessous.",vs:"Pour préparer 7,2 M et les ressources du VS, ouvre VS Planner.",shiny:"Pour les serveurs et missions Shiny, ouvre Shiny Radar.",train:"Pour le conducteur et les VIP, ouvre la page Train.",ranking:"Pour les résultats et podiums, ouvre Classements.",assistant:"Pour la gestion complète de l’alliance, ouvre GoMo Assistant.",translate:"Pour traduire un message, ouvre Traduction."},
+    de:{hello:"Hallo! Ich kann dich in GoMo führen.",placeholder:"Stelle deine Frage…",send:"Senden",choose:"Schnellzugriff",fallback:"Ich kann dich zum richtigen GoMo-Tool führen. Wähle unten einen Schnellzugriff.",vs:"Für 7,2 Mio. und VS-Ressourcen öffne den VS Planner.",shiny:"Für Shiny-Server und Missionen öffne Shiny Radar.",train:"Für Fahrer und VIP öffne die Zug-Seite.",ranking:"Für Ergebnisse und Podien öffne Ranglisten.",assistant:"Für die komplette Allianzverwaltung öffne GoMo Assistant.",translate:"Zum Übersetzen einer Nachricht öffne Übersetzung."},
+    en:{hello:"Hi! I can guide you through GoMo.",placeholder:"Ask your question…",send:"Send",choose:"Quick access",fallback:"I can guide you to the right GoMo tool. Choose a quick access below.",vs:"For 7.2M and VS resources, open VS Planner.",shiny:"For Shiny servers and missions, open Shiny Radar.",train:"For driver and VIP planning, open Train.",ranking:"For results and podiums, open Rankings.",assistant:"For full alliance management, open GoMo Assistant.",translate:"To translate a message, open Translation."},
+    ro:{hello:"Salut! Te pot ghida în GoMo.",placeholder:"Scrie întrebarea…",send:"Trimite",choose:"Acces rapid",fallback:"Te pot ghida către instrumentul GoMo potrivit.",vs:"Pentru 7,2 M și resursele VS, deschide VS Planner.",shiny:"Pentru serverele și misiunile Shiny, deschide Shiny Radar.",train:"Pentru conductor și VIP, deschide pagina Tren.",ranking:"Pentru rezultate și podiumuri, deschide Clasamente.",assistant:"Pentru gestionarea alianței, deschide GoMo Assistant.",translate:"Pentru traducerea unui mesaj, deschide Traducere."},
+    uk:{hello:"Привіт! Я допоможу зорієнтуватися в GoMo.",placeholder:"Постав запитання…",send:"Надіслати",choose:"Швидкий доступ",fallback:"Я можу відкрити потрібний інструмент GoMo.",vs:"Для 7,2 млн і ресурсів VS відкрий VS Planner.",shiny:"Для Shiny-серверів і місій відкрий Shiny Radar.",train:"Для водія та VIP відкрий сторінку Потяг.",ranking:"Для результатів і подіумів відкрий Рейтинги.",assistant:"Для керування альянсом відкрий GoMo Assistant.",translate:"Для перекладу повідомлення відкрий Переклад."},
+    ko:{hello:"안녕하세요! GoMo에서 필요한 곳으로 안내할게요.",placeholder:"질문을 입력하세요…",send:"보내기",choose:"빠른 이동",fallback:"알맞은 GoMo 도구로 안내할 수 있어요.",vs:"7.2M과 VS 자원 계획은 VS Planner를 여세요.",shiny:"Shiny 서버와 미션은 Shiny Radar를 여세요.",train:"열차 운전수와 VIP는 열차 페이지를 여세요.",ranking:"결과와 포디움은 순위를 여세요.",assistant:"동맹 전체 관리는 GoMo Assistant를 여세요.",translate:"메시지 번역은 번역을 여세요."},
+    hr:{hello:"Bok! Mogu te voditi kroz GoMo.",placeholder:"Postavi pitanje…",send:"Pošalji",choose:"Brzi pristup",fallback:"Mogu te odvesti do pravog GoMo alata.",vs:"Za 7,2 M i VS resurse otvori VS Planner.",shiny:"Za Shiny servere i misije otvori Shiny Radar.",train:"Za vozača i VIP otvori stranicu Vlak.",ranking:"Za rezultate i podije otvori Poredak.",assistant:"Za upravljanje savezom otvori GoMo Assistant.",translate:"Za prijevod poruke otvori Prijevod."},
+    pt:{hello:"Olá! Posso guiar-te no GoMo.",placeholder:"Faz a tua pergunta…",send:"Enviar",choose:"Acesso rápido",fallback:"Posso levar-te à ferramenta GoMo certa.",vs:"Para preparar 7,2 M e os recursos do VS, abre VS Planner.",shiny:"Para servidores e missões Shiny, abre Shiny Radar.",train:"Para condutor e VIP, abre a página Comboio.",ranking:"Para resultados e pódios, abre Classificações.",assistant:"Para gerir a aliança, abre GoMo Assistant.",translate:"Para traduzir uma mensagem, abre Tradução."}
+  };
+  const R5FAPPER_LABELS = {
+    "vs-planner":["vs planner","7,2","7.2","duel","vs"],
+    "shiny-radar":["shiny radar","shiny"],
+    train:["train","vip","conducteur","fahrer","zug","tren","vlak","comboio","потяг","열차"],
+    classements:["classement","ranking","rangliste","clasament","poredak","classificação","рейтинг","순위"],
+    "gomo-assistant":["gomo assistant","assistant"],
+    traduction:["traduction","traducteur","translate","translation","übersetzung","prevod","traduc","переклад","번역"]
+  };
+  function r5Lang(){ return (typeof currentLanguage !== "undefined" && currentLanguage) || localStorage.getItem("gomo-central-language") || "fr"; }
+  function r5Tx(){ return R5FAPPER_TX[r5Lang()] || R5FAPPER_TX.fr; }
+  function r5Img(state){ return "/r5fapper/images/r5fapper-" + state + ".webp"; }
+  function r5SetState(state){ const img=document.getElementById("gomo-r5fapper-face"); if(img) img.src=r5Img(state); const b=document.querySelector("#gomo-r5fapper-launcher img"); if(b) b.src=r5Img(state); }
+  function r5Say(text,state){ const box=document.getElementById("gomo-r5fapper-message"); if(box) box.textContent=text; r5SetState(state||"explication"); }
+  function r5FindTargetFromText(text){
+    const low=String(text||"").toLowerCase();
+    if(/7[,.]2|\bvs\b|duel|ressource|resource/.test(low)) return "vs-planner";
+    if(/shiny|serveur|server/.test(low)) return "shiny-radar";
+    if(/train|vip|conducteur|fahrer|zug|tren|vlak|comboio|потяг|열차/.test(low)) return "train";
+    if(/classement|ranking|rangliste|clasament|poredak|classifica|рейтинг|순위|podium/.test(low)) return "classements";
+    if(/trad|translate|übersetz|prevod|переклад|번역/.test(low)) return "traduction";
+    if(/assistant/.test(low)) return "gomo-assistant";
+    return null;
+  }
+  function r5ReplyFor(target){ const tx=r5Tx(); if(target==="vs-planner")return tx.vs; if(target==="shiny-radar")return tx.shiny; if(target==="train")return tx.train; if(target==="classements")return tx.ranking; if(target==="gomo-assistant")return tx.assistant; if(target==="traduction")return tx.translate; return tx.fallback; }
+  function r5ClickMatching(target){
+    const direct=document.querySelector('[data-go="'+target+'"],[data-page="'+target+'"]'); if(direct){ direct.click(); return true; }
+    const words=R5FAPPER_LABELS[target]||[];
+    const clickables=[...document.querySelectorAll('a,button,[role="button"],[data-go],[data-page]')];
+    const found=clickables.find(el=>{ const txt=(el.textContent||"").trim().toLowerCase(); return words.some(w=>txt.includes(w)); });
+    if(found){ found.click(); return true; }
+    const external=window.GOMO_R5FAPPER_CONFIG && window.GOMO_R5FAPPER_CONFIG.links && window.GOMO_R5FAPPER_CONFIG.links[target];
+    if(external){ location.href=external; return true; }
+    return false;
+  }
+  function r5Go(target){
+    r5Say(r5ReplyFor(target),"explication");
+    if(r5ClickMatching(target)) return;
+    const tools=document.querySelector('[data-go="tools"],[data-page="tools"]');
+    if(tools){ tools.click(); setTimeout(()=>r5ClickMatching(target),180); }
+  }
+  function r5Build(){
+    if(document.getElementById("gomo-r5fapper-launcher")) return;
+    const style=document.createElement("style"); style.id="gomo-r5fapper-style"; style.textContent=
+      '#gomo-r5fapper-launcher{position:fixed;right:14px;bottom:92px;width:64px;height:64px;border-radius:50%;border:2px solid rgba(86,224,255,.85);background:#071b2b;padding:0;overflow:hidden;z-index:2147483000;box-shadow:0 10px 28px rgba(0,0,0,.45)}'+
+      '#gomo-r5fapper-launcher img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}'+
+      '#gomo-r5fapper-panel{position:fixed;right:12px;bottom:90px;width:min(390px,calc(100vw - 24px));max-height:min(650px,calc(100vh - 120px));overflow:auto;z-index:2147483001;background:linear-gradient(180deg,#0a263a,#061724);border:1px solid rgba(84,216,255,.45);border-radius:24px;box-shadow:0 18px 55px rgba(0,0,0,.6);color:#eef9ff;font-family:system-ui,-apple-system,sans-serif;display:none}'+
+      '#gomo-r5fapper-panel.open{display:block}.gomo-r5fapper-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.1)}'+
+      '.gomo-r5fapper-head img{width:68px;height:84px;object-fit:contain}.gomo-r5fapper-head strong{font-size:19px}.gomo-r5fapper-close{margin-left:auto;border:0;background:rgba(255,255,255,.1);color:#fff;border-radius:12px;width:38px;height:38px;font-size:20px}'+
+      '.gomo-r5fapper-body{padding:14px}.gomo-r5fapper-message{background:rgba(255,255,255,.075);border-radius:16px;padding:12px;line-height:1.35;margin-bottom:12px}.gomo-r5fapper-quick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 14px}.gomo-r5fapper-quick button{border:1px solid rgba(84,216,255,.3);background:#0d3248;color:#eefaff;border-radius:13px;padding:10px 8px;font-weight:700}.gomo-r5fapper-form{display:flex;gap:8px}.gomo-r5fapper-form input{min-width:0;flex:1;border:1px solid rgba(255,255,255,.16);border-radius:13px;background:#06131e;color:#fff;padding:12px;font-size:16px}.gomo-r5fapper-form button{border:0;border-radius:13px;background:#4fdcf5;color:#06202d;padding:0 14px;font-weight:800}@media(max-width:480px){#gomo-r5fapper-panel{left:8px;right:8px;width:auto;bottom:82px}}';
+    document.head.appendChild(style);
+    const launch=document.createElement("button"); launch.id="gomo-r5fapper-launcher"; launch.setAttribute("aria-label","R5Fapper"); launch.innerHTML='<img src="'+r5Img("normal")+'" alt="R5Fapper">';
+    const panel=document.createElement("section"); panel.id="gomo-r5fapper-panel"; panel.innerHTML='<div class="gomo-r5fapper-head"><img id="gomo-r5fapper-face" src="'+r5Img("bonjour")+'" alt="R5Fapper"><strong>R5Fapper</strong><button class="gomo-r5fapper-close" type="button">×</button></div><div class="gomo-r5fapper-body"><div id="gomo-r5fapper-message" class="gomo-r5fapper-message"></div><div class="gomo-r5fapper-quick"><button data-r5-go="vs-planner">VS Planner</button><button data-r5-go="shiny-radar">Shiny Radar</button><button data-r5-go="train">Train / VIP</button><button data-r5-go="classements">Classements</button><button data-r5-go="gomo-assistant">GoMo Assistant</button><button data-r5-go="traduction">Traduction</button></div><form class="gomo-r5fapper-form"><input id="gomo-r5fapper-input" autocomplete="off"><button type="submit"></button></form></div>';
+    document.body.appendChild(launch); document.body.appendChild(panel);
+    function syncWords(){ const tx=r5Tx(); const msg=document.getElementById("gomo-r5fapper-message"); const input=document.getElementById("gomo-r5fapper-input"); const send=panel.querySelector('.gomo-r5fapper-form button'); if(msg && !msg.dataset.used)msg.textContent=tx.hello; if(input)input.placeholder=tx.placeholder; if(send)send.textContent=tx.send; }
+    syncWords();
+    launch.addEventListener("click",()=>{ panel.classList.toggle("open"); if(panel.classList.contains("open")){ r5SetState("bonjour"); syncWords(); } });
+    panel.querySelector(".gomo-r5fapper-close").addEventListener("click",()=>{ panel.classList.remove("open"); r5SetState("normal"); });
+    panel.querySelectorAll("[data-r5-go]").forEach(btn=>btn.addEventListener("click",()=>r5Go(btn.getAttribute("data-r5-go"))));
+    panel.querySelector("form").addEventListener("submit",event=>{ event.preventDefault(); const input=document.getElementById("gomo-r5fapper-input"); const value=input.value.trim(); if(!value)return; const target=r5FindTargetFromText(value); const msg=document.getElementById("gomo-r5fapper-message"); if(msg)msg.dataset.used="1"; if(target){ r5Go(target); } else { r5Say(r5Tx().fallback,"reflexion"); } input.value=""; });
+    if(typeof translatePage==="function"){ const oldTranslateR5=translatePage; translatePage=function(...args){ const result=oldTranslateR5.apply(this,args); setTimeout(syncWords,0); return result; }; }
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",r5Build,{once:true}); else r5Build();
+  // ===== fin R5Fapper v18 =====
+
 })();
 `;
 
@@ -1187,4 +1264,3 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
-
