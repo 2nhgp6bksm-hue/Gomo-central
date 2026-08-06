@@ -1,0 +1,5 @@
+.git
+.wrangler
+worker-v1.10.js
+wrangler.jsonc
+README.md
