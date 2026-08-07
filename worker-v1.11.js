@@ -1,9 +1,9 @@
-// GoMo Central v20.5 — langues synchronisées, classements internes et mascottes dédiées.
+// GoMo Central v20.6 — navigation compacte, GoMo Coach complet et train royal multilingue.
 // Les routes transformées passent par le Worker avant les ressources statiques.
 import baseWorker from "./worker-v1.10.js";
 import legacyRankingsWorker from "./worker-v1.6.js";
 
-const VERSION = "20.5";
+const VERSION = "20.6";
 const SHINY_ORIGIN = "https://gomo-shiny-central.gjp86wh7p2.workers.dev";
 const SHINY_PREFIX = "/shiny-radar";
 const SHINY_FORWARDED_HEADERS = [
@@ -24,8 +24,8 @@ function clientFunctionCall(fn) {
 }
 
 function centralUpgrade() {
-  if (window.__GOMO_CENTRAL_V20__) return;
-  window.__GOMO_CENTRAL_V20__ = true;
+  if (window.__GOMO_CENTRAL_V206__) return;
+  window.__GOMO_CENTRAL_V206__ = true;
 
   const LOCALES = {
     fr: "fr-BE", de: "de-DE", en: "en-GB", ro: "ro-RO",
@@ -42,14 +42,24 @@ function centralUpgrade() {
     pt: { label: "Copiar ligação do site", done: "Ligação do site copiada", failed: "Não foi possível copiar a ligação" }
   };
   const TRAIN = {
-    fr: { eyebrow: "GOMO FOREVER", title: "Train de la semaine", subtitle: "Conducteurs et VIP en cours", day: "Jour", driver: "Conducteur", vip: "VIP", select: "À sélectionner" },
-    de: { eyebrow: "GOMO FOREVER", title: "Zug der Woche", subtitle: "Aktuelle Zugführer und VIP", day: "Tag", driver: "Zugführer", vip: "VIP", select: "Auswählen" },
-    en: { eyebrow: "GOMO FOREVER", title: "Train of the week", subtitle: "Current conductors and VIPs", day: "Day", driver: "Conductor", vip: "VIP", select: "Select" },
-    ro: { eyebrow: "GOMO FOREVER", title: "Trenul săptămânii", subtitle: "Conductorii și VIP-urile curente", day: "Zi", driver: "Conductor", vip: "VIP", select: "De selectat" },
-    uk: { eyebrow: "GOMO FOREVER", title: "Потяг тижня", subtitle: "Поточні провідники та VIP", day: "День", driver: "Провідник", vip: "VIP", select: "Обрати" },
-    ko: { eyebrow: "GOMO FOREVER", title: "이번 주 열차", subtitle: "현재 차장 및 VIP", day: "요일", driver: "차장", vip: "VIP", select: "선택" },
-    hr: { eyebrow: "GOMO FOREVER", title: "Vlak tjedna", subtitle: "Trenutačni voditelji i VIP-ovi", day: "Dan", driver: "Voditelj", vip: "VIP", select: "Odaberi" },
-    pt: { eyebrow: "GOMO FOREVER", title: "Comboio da semana", subtitle: "Condutores e VIP atuais", day: "Dia", driver: "Condutor", vip: "VIP", select: "Selecionar" }
+    fr: { eyebrow: "GOMO FOREVER", title: "Train de la semaine", subtitle: "Conducteurs et VIP en cours", day: "Jour", driver: "Conducteur", vip: "VIP", select: "À sélectionner", back: "Retour" },
+    de: { eyebrow: "GOMO FOREVER", title: "Zug der Woche", subtitle: "Aktuelle Zugführer und VIP", day: "Tag", driver: "Zugführer", vip: "VIP", select: "Auswählen", back: "Zurück" },
+    en: { eyebrow: "GOMO FOREVER", title: "Train of the week", subtitle: "Current conductors and VIPs", day: "Day", driver: "Conductor", vip: "VIP", select: "Select", back: "Back" },
+    ro: { eyebrow: "GOMO FOREVER", title: "Trenul săptămânii", subtitle: "Conductorii și VIP-urile curente", day: "Zi", driver: "Conductor", vip: "VIP", select: "De selectat", back: "Înapoi" },
+    uk: { eyebrow: "GOMO FOREVER", title: "Потяг тижня", subtitle: "Поточні провідники та VIP", day: "День", driver: "Провідник", vip: "VIP", select: "Обрати", back: "Назад" },
+    ko: { eyebrow: "GOMO FOREVER", title: "이번 주 열차", subtitle: "현재 차장 및 VIP", day: "요일", driver: "차장", vip: "VIP", select: "선택", back: "뒤로" },
+    hr: { eyebrow: "GOMO FOREVER", title: "Vlak tjedna", subtitle: "Trenutačni voditelji i VIP-ovi", day: "Dan", driver: "Voditelj", vip: "VIP", select: "Odaberi", back: "Natrag" },
+    pt: { eyebrow: "GOMO FOREVER", title: "Comboio da semana", subtitle: "Condutores e VIP atuais", day: "Dia", driver: "Condutor", vip: "VIP", select: "Selecionar", back: "Voltar" }
+  };
+  const HOME = {
+    fr: { ranking: "Classement", train: "Train", planner: "VS", coach: "GoMo Coach", shiny: "Shiny", settings: "Paramètres", coachText: "Conseils et stratégies Last War organisés pour l’alliance." },
+    de: { ranking: "Rangliste", train: "Zug", planner: "VS", coach: "GoMo Coach", shiny: "Shiny", settings: "Einstellungen", coachText: "Geordnete Last-War-Tipps und Strategien für die Allianz." },
+    en: { ranking: "Ranking", train: "Train", planner: "VS", coach: "GoMo Coach", shiny: "Shiny", settings: "Settings", coachText: "Organised Last War advice and strategies for the alliance." },
+    ro: { ranking: "Clasament", train: "Tren", planner: "VS", coach: "GoMo Coach", shiny: "Shiny", settings: "Setări", coachText: "Sfaturi și strategii Last War organizate pentru alianță." },
+    uk: { ranking: "Рейтинг", train: "Потяг", planner: "VS", coach: "GoMo Coach", shiny: "Shiny", settings: "Налаштування", coachText: "Упорядковані поради та стратегії Last War для альянсу." },
+    ko: { ranking: "순위", train: "열차", planner: "VS", coach: "GoMo Coach", shiny: "Shiny", settings: "설정", coachText: "연맹을 위해 정리된 Last War 팁과 전략입니다." },
+    hr: { ranking: "Poredak", train: "Vlak", planner: "VS", coach: "GoMo Coach", shiny: "Shiny", settings: "Postavke", coachText: "Organizirani Last War savjeti i strategije za savez." },
+    pt: { ranking: "Classificação", train: "Comboio", planner: "VS", coach: "GoMo Coach", shiny: "Shiny", settings: "Definições", coachText: "Conselhos e estratégias de Last War organizados para a aliança." }
   };
   const NEWS = {
     fr: "Actualités GoMo", de: "GoMo-Neuigkeiten", en: "GoMo News", ro: "Noutăți GoMo",
@@ -78,23 +88,29 @@ function centralUpgrade() {
   }
 
   function addStyles() {
-    if (document.getElementById("gomo-central-v20-style")) return;
+    if (document.getElementById("gomo-central-v206-style")) return;
     const style = document.createElement("style");
-    style.id = "gomo-central-v20-style";
+    style.id = "gomo-central-v206-style";
     style.textContent = `
       .gomo-copy-link{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px}
       .gomo-v20-toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));z-index:2147483600;transform:translate(-50%,18px);max-width:calc(100vw - 32px);padding:11px 15px;border:1px solid rgba(242,193,78,.46);border-radius:999px;background:#0a1c2d;color:#fff4cf;box-shadow:0 14px 38px rgba(0,0,0,.45);font-weight:800;opacity:0;pointer-events:none;transition:.2s ease;text-align:center}
       .gomo-v20-toast.show{opacity:1;transform:translate(-50%,0)}
+      .royal-nav-grid{display:grid!important;grid-template-columns:none!important;grid-auto-flow:column;grid-auto-columns:minmax(84px,1fr);gap:8px!important;overflow-x:auto;overscroll-behavior-inline:contain;scroll-snap-type:inline proximity;scrollbar-width:none;padding:11px!important}
+      .royal-nav-grid::-webkit-scrollbar{display:none}.royal-nav-button{min-width:84px!important;min-height:112px;padding:7px 5px 9px!important;gap:6px!important;scroll-snap-align:start;font-size:clamp(.68rem,2.3vw,.88rem)!important}.royal-nav-button img{width:72px!important;height:72px!important;max-width:none!important;flex:0 0 72px;object-fit:cover}.royal-nav-button span{white-space:normal!important;overflow-wrap:anywhere;line-height:1.05;min-height:1.05em}
+      .gomo-coach-quick .gomo-quick-icon{border:2px solid rgba(82,220,255,.75);box-shadow:0 9px 24px rgba(0,0,0,.35),0 0 20px rgba(82,220,255,.16)}
       .gomo-train-visual{display:none!important}
-      .translated-train{overflow:hidden;border:1px solid rgba(242,193,78,.36);border-radius:24px;background:linear-gradient(145deg,rgba(9,31,49,.98),rgba(5,18,31,.98));box-shadow:0 20px 48px rgba(0,0,0,.24)}
-      .translated-train__head{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.09);background:radial-gradient(circle at 92% 0,rgba(242,193,78,.18),transparent 36%)}
-      .translated-train__head .eyebrow{display:block;margin-bottom:6px;color:#f2c14e}.translated-train__head h1{margin:0 0 5px}.translated-train__head p{margin:0;color:#bfd0df}.translated-train__dates{display:inline-flex;margin-top:12px;padding:6px 10px;border-radius:999px;background:rgba(242,193,78,.1);color:#ffe4a0;font-weight:800}
-      .translated-train__scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}.translated-train table{width:100%;border-collapse:collapse;min-width:570px}.translated-train th,.translated-train td{padding:13px 15px;border-bottom:1px solid rgba(255,255,255,.07);text-align:left}.translated-train th{color:#f5d477;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.025)}.translated-train tbody tr:last-child td{border-bottom:0}.translated-train__person{display:flex;align-items:center;gap:10px;font-weight:800}.translated-train__avatar{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:50%;border:1px solid rgba(242,193,78,.34);background:linear-gradient(145deg,#163c59,#0a2034);color:#ffe29b;font-size:.72rem}.translated-train__pending{color:#9db2c4;font-style:italic}
+      #train.gomo-train-page{max-width:980px}.gomo-subnav{margin:0 0 18px}.gomo-back-button{min-height:52px;padding:10px 23px!important;border:1px solid #d89d1d!important;border-radius:999px!important;background:linear-gradient(180deg,#101b29,#08111c)!important;color:#f5c75d!important;font-size:1.05rem!important;box-shadow:inset 0 0 0 1px rgba(255,213,111,.06),0 10px 26px rgba(0,0,0,.28)!important}.gomo-train-home-wrap{display:none!important}
+      .translated-train{overflow:hidden;border:1px solid rgba(225,161,34,.84);border-radius:25px;background:#071320;box-shadow:0 22px 54px rgba(0,0,0,.38),inset 0 0 0 1px rgba(255,220,129,.05)}
+      .translated-train__hero{position:relative;display:grid;grid-template-columns:minmax(0,48%) minmax(0,52%);height:250px;overflow:hidden;border-bottom:1px solid rgba(225,161,34,.8);background:radial-gradient(circle at 23% 48%,rgba(39,126,219,.32),transparent 38%),radial-gradient(circle at 88% 32%,rgba(228,164,38,.14),transparent 39%),linear-gradient(135deg,#06111e,#081b2d 58%,#050c14)}
+      .translated-train__hero::before,.translated-train__hero::after{content:"";position:absolute;pointer-events:none}.translated-train__hero::before{inset:8px;border:1px solid rgba(241,190,73,.24);border-radius:18px}.translated-train__hero::after{inset:0;background:linear-gradient(90deg,transparent 33%,#071523 52%,transparent 72%);opacity:.86}
+      .translated-train__art{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;object-position:center 18%;filter:saturate(1.12) contrast(1.06);mask-image:linear-gradient(90deg,#000 0 72%,transparent 100%);-webkit-mask-image:linear-gradient(90deg,#000 0 72%,transparent 100%)}
+      .translated-train__hero-copy{position:relative;z-index:2;display:flex;min-width:0;flex-direction:column;align-items:center;justify-content:center;padding:22px 20px 20px 0;text-align:center}.translated-train__hero-copy .eyebrow{margin:0 0 7px;color:#f2c14e;font-size:.72rem;letter-spacing:.18em}.translated-train__hero-copy h1{max-width:430px;margin:0;color:#f6cf70;font-family:Georgia,"Times New Roman",serif;font-size:clamp(1.75rem,4.5vw,2.8rem);line-height:.98;text-wrap:balance;text-shadow:0 2px 0 #5c3304,0 0 16px rgba(244,184,53,.26)}.translated-train__hero-copy p{margin:10px 0 0;color:#e4e9ef;font-size:clamp(.82rem,2vw,1.05rem);line-height:1.2}.translated-train__dates{display:inline-flex;margin-top:12px;padding:6px 12px;border-block:1px solid rgba(242,193,78,.56);color:#f5c75d;font-weight:900;white-space:nowrap}
+      .translated-train__scroll{padding:12px 14px 15px;overflow:visible}.translated-train__table-frame{overflow:hidden;border:1px solid rgba(225,161,34,.72);border-radius:18px;background:linear-gradient(180deg,rgba(8,25,41,.98),rgba(5,16,28,.98))}.translated-train table{width:100%;min-width:0;border-collapse:collapse;table-layout:fixed}.translated-train th,.translated-train td{padding:10px 12px;border-bottom:1px solid rgba(225,161,34,.48);text-align:left;vertical-align:middle}.translated-train th{color:#f4c55d;font-size:.82rem;letter-spacing:.035em;text-transform:uppercase;background:rgba(255,255,255,.015)}.translated-train th:nth-child(1),.translated-train td:nth-child(1){width:29%}.translated-train th:nth-child(2),.translated-train td:nth-child(2){width:35.5%}.translated-train th:nth-child(3),.translated-train td:nth-child(3){width:35.5%}.translated-train tbody tr:last-child td{border-bottom:0}.translated-train__day{display:grid;gap:2px;font-weight:900;text-transform:capitalize}.translated-train__day small{color:#aebdcc;font-size:.76rem;font-weight:600}.translated-train__person{display:flex;min-width:0;align-items:center;gap:9px;font-weight:800}.translated-train__name{min-width:0;overflow-wrap:anywhere;line-height:1.14}.translated-train__avatar{display:grid;place-items:center;flex:0 0 46px;width:46px;height:46px;border-radius:50%;border:1px solid rgba(242,193,78,.76);background:radial-gradient(circle at 35% 28%,#22577b,#0a2034 68%);color:#ffe29b;box-shadow:inset 0 0 0 2px rgba(4,13,23,.84),0 5px 13px rgba(0,0,0,.28);font-size:.72rem}.translated-train__avatar--pending{font-size:1.35rem}.translated-train__pending{color:#b7c5d2;font-size:.88rem;font-style:normal}
       .tool-card__symbol{display:grid;place-items:center;width:56px;height:56px;border:1px solid rgba(242,193,78,.34);border-radius:14px;background:linear-gradient(145deg,#173754,#091c2e);font-size:31px;box-shadow:0 7px 18px rgba(0,0,0,.28)}
       .coach-intro.gomo-coach-with-mascot{grid-template-columns:112px minmax(0,1.35fr) minmax(220px,.65fr)}.gomo-coach-mascot{width:112px;aspect-ratio:1;object-fit:cover;border-radius:22px;border:1px solid rgba(242,199,103,.55);box-shadow:0 12px 30px rgba(0,0,0,.32)}
       @media(max-width:760px){.coach-intro.gomo-coach-with-mascot{grid-template-columns:84px minmax(0,1fr)}.gomo-coach-mascot{width:84px}.coach-intro.gomo-coach-with-mascot .coach-safety{grid-column:1/-1}}
-      @media(max-width:600px){.translated-train__scroll{overflow:visible}.translated-train table{min-width:0}.translated-train thead{display:none}.translated-train tbody{display:grid;gap:10px;padding:12px}.translated-train tr{display:grid;border:1px solid rgba(255,255,255,.09);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.025)}.translated-train td{display:grid;grid-template-columns:88px minmax(0,1fr);align-items:center;gap:9px;padding:10px 12px}.translated-train td::before{content:attr(data-label);color:#f5d477;font-size:.72rem;font-weight:900;letter-spacing:.045em;text-transform:uppercase}.translated-train tbody tr:last-child td{border-bottom:1px solid rgba(255,255,255,.07)}.translated-train tbody tr:last-child td:last-child,.translated-train td:last-child{border-bottom:0}}
-      @media(max-width:460px){.translated-train__head{padding:18px 16px}.coach-intro.gomo-coach-with-mascot{grid-template-columns:72px minmax(0,1fr)}.gomo-coach-mascot{width:72px}}
+      @media(max-width:620px){.royal-nav-grid{grid-auto-columns:82px;padding:9px 8px!important;gap:6px!important}.royal-nav-button{min-width:82px!important;min-height:108px;font-size:.72rem!important}.royal-nav-button img{width:68px!important;height:68px!important;flex-basis:68px}.translated-train__hero{grid-template-columns:45% 55%;height:218px}.translated-train__hero-copy{padding:16px 12px 16px 0}.translated-train__hero-copy h1{font-size:clamp(1.35rem,7vw,2rem)}.translated-train__hero-copy p{font-size:.73rem}.translated-train__dates{margin-top:9px;padding:5px 6px;font-size:.75rem}.translated-train__scroll{padding:8px}.translated-train__table-frame{border-radius:14px}.translated-train th,.translated-train td{padding:8px 5px}.translated-train th{font-size:.68rem}.translated-train__person{gap:5px;font-size:.77rem}.translated-train__avatar{flex-basis:36px;width:36px;height:36px;font-size:.58rem}.translated-train__avatar--pending{font-size:1.05rem}.translated-train__day{font-size:.82rem}.translated-train__day small{font-size:.65rem}.translated-train__pending{font-size:.7rem}.translated-train th:nth-child(1),.translated-train td:nth-child(1){width:30%}.translated-train th:nth-child(2),.translated-train td:nth-child(2){width:35%}.translated-train th:nth-child(3),.translated-train td:nth-child(3){width:35%}}
+      @media(max-width:390px){.translated-train__hero{grid-template-columns:43% 57%;height:202px}.translated-train__hero-copy .eyebrow{font-size:.58rem}.translated-train__hero-copy h1{font-size:1.28rem}.translated-train__hero-copy p{font-size:.66rem}.translated-train__dates{font-size:.66rem}.translated-train th,.translated-train td{padding-inline:4px}.translated-train__avatar{flex-basis:32px;width:32px;height:32px}.translated-train__person{font-size:.7rem}.translated-train__day{font-size:.76rem}.coach-intro.gomo-coach-with-mascot{grid-template-columns:72px minmax(0,1fr)}.gomo-coach-mascot{width:72px}}
     `;
     document.head.appendChild(style);
   }
@@ -158,6 +174,30 @@ function centralUpgrade() {
     return String(value).split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
   }
 
+  function escapeMarkup(value) {
+    return String(value).replace(/[&<>"']/g, (character) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[character]);
+  }
+
+  function avatarMarkup(name, pending = false) {
+    if (pending) return '<span class="translated-train__avatar translated-train__avatar--pending" aria-hidden="true">?</span>';
+    const configured = window.GOMO_MEMBER_PHOTOS && window.GOMO_MEMBER_PHOTOS[name];
+    if (configured) {
+      try {
+        const url = new URL(configured, location.origin);
+        if (url.origin === location.origin || url.protocol === "https:") {
+          return `<img class="translated-train__avatar" src="${escapeMarkup(url.href)}" alt="">`;
+        }
+      } catch {}
+    }
+    return `<span class="translated-train__avatar" aria-hidden="true">${escapeMarkup(initials(name))}</span>`;
+  }
+
+  function personMarkup(name) {
+    return `<span class="translated-train__person">${avatarMarkup(name)}<span class="translated-train__name">${escapeMarkup(name)}</span></span>`;
+  }
+
   function renderTrain() {
     const section = document.getElementById("train");
     if (!section) return;
@@ -173,14 +213,96 @@ function centralUpgrade() {
     }
     const locale = LOCALES[lang] || LOCALES.fr;
     const date = (value, options) => new Intl.DateTimeFormat(locale, options).format(new Date(`${value}T12:00:00`));
-    const period = `${date(ROWS[0].date, { day: "2-digit", month: "long" })} – ${date(ROWS[ROWS.length - 1].date, { day: "2-digit", month: "long", year: "numeric" })}`;
+    const period = `${date(ROWS[0].date, { day: "2-digit", month: "long" })} – ${date(ROWS[ROWS.length - 1].date, { day: "2-digit", month: "long" })}`;
     const rows = ROWS.map((row) => {
       const vip = row.vip
-        ? `<span class="gomo-train__person"><span class="translated-train__avatar">${initials(row.vip)}</span>${row.vip}</span>`
-        : `<span class="translated-train__pending">${tx.select}</span>`;
-      return `<tr><td data-label="${tx.day}"><strong>${date(row.date, { weekday: "long", day: "2-digit", month: "2-digit" })}</strong></td><td data-label="${tx.driver}"><span class="translated-train__person"><span class="translated-train__avatar">${initials(row.driver)}</span>${row.driver}</span></td><td data-label="${tx.vip}">${vip}</td></tr>`;
+        ? personMarkup(row.vip)
+        : `<span class="translated-train__person">${avatarMarkup("", true)}<span class="translated-train__pending">${escapeMarkup(tx.select)}</span></span>`;
+      const weekday = date(row.date, { weekday: "long" });
+      const numericDate = date(row.date, { day: "2-digit", month: "2-digit", year: "numeric" });
+      return `<tr><td><span class="translated-train__day"><span>${escapeMarkup(weekday)}</span><small>${escapeMarkup(numericDate)}</small></span></td><td>${personMarkup(row.driver)}</td><td>${vip}</td></tr>`;
     }).join("");
-    card.innerHTML = `<header class="translated-train__head"><span class="eyebrow">${tx.eyebrow}</span><h1>${tx.title}</h1><p>${tx.subtitle}</p><span class="translated-train__dates">📅 ${period}</span></header><div class="translated-train__scroll"><table><thead><tr><th>${tx.day}</th><th>${tx.driver}</th><th>${tx.vip}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    card.innerHTML = `<header class="translated-train__hero"><img class="translated-train__art" src="/assets/assets/03_GoMo_Train.png?v=20.6" alt=""><div class="translated-train__hero-copy"><span class="eyebrow">${escapeMarkup(tx.eyebrow)}</span><h1>${escapeMarkup(tx.title)}</h1><p>${escapeMarkup(tx.subtitle)}</p><span class="translated-train__dates">${escapeMarkup(period)}</span></div></header><div class="translated-train__scroll"><div class="translated-train__table-frame"><table><thead><tr><th>✦ ${escapeMarkup(tx.day)}</th><th>${escapeMarkup(tx.driver)}</th><th>${escapeMarkup(tx.vip)} ✦</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    const backLabel = section.querySelector(".gomo-back-button [data-gomo-extra='back']");
+    if (backLabel) backLabel.textContent = tx.back;
+    section.querySelector(".gomo-back-button")?.setAttribute("aria-label", tx.back);
+  }
+
+  function syncHomeShortcuts() {
+    const tx = HOME[language()] || HOME.fr;
+    const nav = document.querySelector("#home .royal-nav-grid");
+    if (nav) {
+      const entries = [
+        [nav.querySelector('[data-gomo-extra="ranking"]')?.closest("a,button"), tx.ranking],
+        [nav.querySelector('[data-gomo-extra="train"]')?.closest("a,button"), tx.train],
+        [nav.querySelector('[data-gomo-extra="vs"]')?.closest("a,button"), tx.planner],
+        [(nav.querySelector("[data-gomo-coach-label]") || nav.querySelector('[data-gomo-extra="guide"]'))?.closest("a,button"), tx.coach],
+        [nav.querySelector('[data-gomo-extra="shiny"]')?.closest("a,button"), tx.shiny],
+        [nav.querySelector('[data-gomo-extra="settings"]')?.closest("a,button"), tx.settings]
+      ];
+      entries.forEach(([entry, label]) => {
+        if (!entry) return;
+        const text = entry.querySelector("span");
+        if (text) text.textContent = label;
+        entry.setAttribute("aria-label", label);
+      });
+      const planner = nav.querySelector('[data-gomo-extra="vs"]')?.closest("a,button");
+      const coachLabel = nav.querySelector("[data-gomo-coach-label]") || nav.querySelector('[data-gomo-extra="guide"]');
+      const coach = coachLabel?.closest("a,button");
+      if (coach) {
+        coach.dataset.gomoCoachShortcut = "1";
+        if (coachLabel) {
+          coachLabel.dataset.gomoCoachLabel = "1";
+          coachLabel.removeAttribute("data-gomo-extra");
+          coachLabel.textContent = tx.coach;
+        }
+        const image = coach.querySelector("img");
+        if (image) {
+          image.src = "/mascots/gomo-coach-mascot.webp?v=20.6";
+          image.alt = "";
+        }
+        if (planner && planner.nextElementSibling !== coach) planner.after(coach);
+      }
+    }
+
+    const list = document.querySelector("#home .gomo-quick-list");
+    if (!list) return;
+    const planner = [...list.querySelectorAll(".gomo-quick-card")].find((card) =>
+      (card.getAttribute("href") || "").includes("vs-planner")
+    );
+    let coach = list.querySelector("[data-gomo-coach-quick]");
+    if (!coach) {
+      coach = document.createElement("button");
+      coach.type = "button";
+      coach.className = "gomo-quick-card gomo-coach-quick";
+      coach.dataset.go = "guides";
+      coach.dataset.gomoCoachQuick = "1";
+      coach.innerHTML = '<img class="gomo-quick-icon" src="/mascots/gomo-coach-mascot.webp?v=20.6" alt=""><span class="gomo-quick-copy"><strong></strong><small data-gomo-coach-quick-text></small></span><span class="gomo-quick-arrow" aria-hidden="true">›</span>';
+      if (planner) planner.after(coach);
+      else list.appendChild(coach);
+    }
+    if (planner && planner.nextElementSibling !== coach) planner.after(coach);
+    const title = coach.querySelector("strong");
+    const description = coach.querySelector("[data-gomo-coach-quick-text]");
+    if (title) title.textContent = tx.coach;
+    if (description) description.textContent = tx.coachText;
+    coach.setAttribute("aria-label", tx.coach);
+  }
+
+  function syncR5Coach() {
+    const quick = document.querySelector("#gomo-r5fapper-panel .gomo-r5fapper-quick");
+    if (!quick) return;
+    let coach = quick.querySelector('[data-r5-go="gomo-coach"]');
+    if (!coach) {
+      coach = document.createElement("button");
+      coach.type = "button";
+      coach.dataset.r5Go = "gomo-coach";
+      const planner = quick.querySelector('[data-r5-go="vs-planner"]');
+      if (planner) planner.after(coach);
+      else quick.prepend(coach);
+    }
+    coach.textContent = (HOME[language()] || HOME.fr).coach;
+    coach.setAttribute("aria-label", coach.textContent);
   }
 
   function syncTools() {
@@ -192,13 +314,13 @@ function centralUpgrade() {
     if (coach) {
       const image = coach.querySelector("img");
       if (image) {
-        image.src = "/mascots/gomo-coach-mascot.webp?v=20.5";
+        image.src = "/mascots/gomo-coach-mascot.webp?v=20.6";
         image.alt = "GoMo Coach";
       }
       if (planner && planner.nextElementSibling !== coach) planner.after(coach);
     }
     if (plannerImage) {
-      plannerImage.src = "/mascots/gomo-vs-planner-mascot.webp?v=20.5";
+      plannerImage.src = "/mascots/gomo-vs-planner-mascot.webp?v=20.6";
       plannerImage.alt = "GoMo VS Planner";
       planner?.setAttribute("data-gomo-planner-card", "1");
     }
@@ -226,7 +348,7 @@ function centralUpgrade() {
     intro.classList.add("gomo-coach-with-mascot");
     const image = document.createElement("img");
     image.className = "gomo-coach-mascot";
-    image.src = "/mascots/gomo-coach-mascot.webp?v=20.5";
+    image.src = "/mascots/gomo-coach-mascot.webp?v=20.6";
     image.alt = "GoMo Coach";
     intro.prepend(image);
   }
@@ -245,6 +367,8 @@ function centralUpgrade() {
   function syncAll() {
     addStyles();
     addCopyButton();
+    syncHomeShortcuts();
+    syncR5Coach();
     renderTrain();
     syncTools();
     syncCoachMascot();
@@ -252,6 +376,15 @@ function centralUpgrade() {
   }
 
   document.addEventListener("click", (event) => {
+    const coach = event.target.closest('[data-r5-go="gomo-coach"]');
+    if (coach) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      document.getElementById("gomo-r5fapper-panel")?.classList.remove("open");
+      if (typeof openPage === "function") openPage("guides");
+      else location.hash = "guides";
+      return;
+    }
     const rankings = event.target.closest('[data-gomo-rankings-card] button,[data-r5-go="classements"]');
     if (rankings) {
       event.preventDefault();
@@ -606,6 +739,9 @@ async function serveCentralServiceWorker(request, env, ctx) {
   const response = await baseWorker.fetch(request, env, ctx);
   if (!response.ok) return response;
   let source = await response.text();
+  source = source
+    .replace('const CACHE_NAME = "gomo-central-v19-2";', `const CACHE_NAME = "gomo-central-v${VERSION.replace(".", "-")}";`)
+    .replaceAll("?v=19.2", `?v=${VERSION}`);
   source = source.replace(
     '  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;',
     '  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/") || url.pathname.startsWith("/shiny-radar/")) return;'
