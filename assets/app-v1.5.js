@@ -761,12 +761,23 @@ function openPage(pageId, { updateHash = true } = {}) {
   $$(".page").forEach((page) => page.classList.toggle("active", page.id === pageId));
   $$(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.page === pageId));
   document.body.classList.remove("menu-open");
+  syncR5FapperVisibility(pageId);
 
   if (updateHash && window.location.hash !== `#${pageId}`) {
     history.replaceState(null, "", `#${pageId}`);
   }
 
   window.scrollTo({ top: 0, behavior: "auto" });
+}
+
+function syncR5FapperVisibility(pageId) {
+  const isHome = pageId === "home";
+  const launcher = $("#gomo-r5fapper-launcher");
+  const panel = $("#gomo-r5fapper-panel");
+
+  launcher?.classList.toggle("hidden", !isHome);
+  panel?.classList.toggle("hidden", !isHome);
+  if (!isHome) panel?.classList.remove("open");
 }
 
 function renderLanguageList() {
@@ -946,6 +957,12 @@ $("#overlay").addEventListener("click", () => {
 
 // Navigation déléguée : plus robuste sur Safari/iPhone et pour les futurs boutons ajoutés.
 document.addEventListener("click", (event) => {
+  const rankingLink = event.target.closest('.royal-nav-button[aria-label="Classement"]');
+  if (rankingLink) {
+    syncR5FapperVisibility("ranking");
+    return;
+  }
+
   const navButton = event.target.closest("[data-page]");
   if (navButton) {
     event.preventDefault();
@@ -963,6 +980,11 @@ document.addEventListener("click", (event) => {
 window.addEventListener("hashchange", () => {
   const pageId = window.location.hash.slice(1);
   if (pageId) openPage(pageId, { updateHash: false });
+});
+
+window.addEventListener("pageshow", () => {
+  const activePage = $(".page.active")?.id || "home";
+  syncR5FapperVisibility(activePage);
 });
 
 $("#languageButton").addEventListener("click", () => {
@@ -1117,4 +1139,4 @@ translatePage();
 renderMessages();
 
 const initialPage = window.location.hash.slice(1);
-if (initialPage) openPage(initialPage, { updateHash: false });
+openPage(initialPage || "home", { updateHash: false });
