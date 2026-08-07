@@ -20,6 +20,12 @@
       "/shiny-radar/*"
     ]
   },
+  "services": [
+    {
+      "binding": "SHINY",
+      "service": "gomo-shiny-central"
+    }
+  ],
   "ai": {
     "binding": "AI"
   }
