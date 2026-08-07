@@ -1,9 +1,9 @@
-// GoMo Central v20.4 — langues synchronisées, classements internes et mascottes dédiées.
+// GoMo Central v20.5 — langues synchronisées, classements internes et mascottes dédiées.
 // Les routes transformées passent par le Worker avant les ressources statiques.
 import baseWorker from "./worker-v1.10.js";
 import legacyRankingsWorker from "./worker-v1.6.js";
 
-const VERSION = "20.4";
+const VERSION = "20.5";
 const SHINY_ORIGIN = "https://gomo-shiny-central.gjp86wh7p2.workers.dev";
 const SHINY_PREFIX = "/shiny-radar";
 const SHINY_FORWARDED_HEADERS = [
@@ -192,13 +192,13 @@ function centralUpgrade() {
     if (coach) {
       const image = coach.querySelector("img");
       if (image) {
-        image.src = "/mascots/gomo-coach-mascot.webp?v=20.4";
+        image.src = "/mascots/gomo-coach-mascot.webp?v=20.5";
         image.alt = "GoMo Coach";
       }
       if (planner && planner.nextElementSibling !== coach) planner.after(coach);
     }
     if (plannerImage) {
-      plannerImage.src = "/mascots/gomo-vs-planner-mascot.webp?v=20.4";
+      plannerImage.src = "/mascots/gomo-vs-planner-mascot.webp?v=20.5";
       plannerImage.alt = "GoMo VS Planner";
       planner?.setAttribute("data-gomo-planner-card", "1");
     }
@@ -226,7 +226,7 @@ function centralUpgrade() {
     intro.classList.add("gomo-coach-with-mascot");
     const image = document.createElement("img");
     image.className = "gomo-coach-mascot";
-    image.src = "/mascots/gomo-coach-mascot.webp?v=20.4";
+    image.src = "/mascots/gomo-coach-mascot.webp?v=20.5";
     image.alt = "GoMo Coach";
     intro.prepend(image);
   }
@@ -398,6 +398,16 @@ function shinyBootstrap() {
     fr:["📋 Copier les serveurs","✓ Copié"],de:["📋 Server kopieren","✓ Kopiert"],en:["📋 Copy servers","✓ Copied"],ro:["📋 Copiază serverele","✓ Copiat"],
     uk:["📋 Копіювати сервери","✓ Скопійовано"],ko:["📋 서버 복사","✓ 복사됨"],hr:["📋 Kopiraj servere","✓ Kopirano"],pt:["📋 Copiar servidores","✓ Copiado"]
   };
+  const STATIC = {
+    fr:{ local:"Serveur 1591", language:"Langue", serverNumber:"Numéro du serveur" },
+    de:{ local:"Server 1591", language:"Sprache", serverNumber:"Servernummer" },
+    en:{ local:"Server 1591", language:"Language", serverNumber:"Server number" },
+    ro:{ local:"Server 1591", language:"Limbă", serverNumber:"Numărul serverului" },
+    uk:{ local:"Сервер 1591", language:"Мова", serverNumber:"Номер сервера" },
+    ko:{ local:"1591 서버", language:"언어", serverNumber:"서버 번호" },
+    hr:{ local:"Server 1591", language:"Jezik", serverNumber:"Broj servera" },
+    pt:{ local:"Servidor 1591", language:"Idioma", serverNumber:"Número do servidor" }
+  };
   const params = new URLSearchParams(location.search);
   const requested = params.get("lang");
   const central = localStorage.getItem("gomo-central-language");
@@ -408,9 +418,14 @@ function shinyBootstrap() {
   document.addEventListener("DOMContentLoaded", () => {
     const button = document.getElementById("copyTodayBtn");
     const language = document.getElementById("language");
+    const localServer = document.querySelector(".local-card strong");
+    const serverSearch = document.getElementById("serverSearch");
     const sync = () => {
       const lang = LANGS.includes(language?.value) ? language.value : selected;
       if (button) button.textContent = COPY[lang][0];
+      if (localServer) localServer.textContent = STATIC[lang].local;
+      if (language) language.setAttribute("aria-label", STATIC[lang].language);
+      if (serverSearch) serverSearch.setAttribute("aria-label", STATIC[lang].serverNumber);
       localStorage.setItem("gomo-central-language", lang);
     };
     if (button) {
