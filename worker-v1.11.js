@@ -1,9 +1,9 @@
-// GoMo Central v20.1 — langues synchronisées, classements internes et mascottes dédiées.
+// GoMo Central v20.2 — langues synchronisées, classements internes et mascottes dédiées.
 // Les routes transformées passent par le Worker avant les ressources statiques.
 import baseWorker from "./worker-v1.10.js";
 import legacyRankingsWorker from "./worker-v1.6.js";
 
-const VERSION = "20.1";
+const VERSION = "20.2";
 const SHINY_ORIGIN = "https://gomo-shiny-central.gjp86wh7p2.workers.dev";
 const SHINY_PREFIX = "/shiny-radar";
 const SHINY_FORWARDED_HEADERS = [
@@ -188,13 +188,13 @@ function centralUpgrade() {
     if (coach) {
       const image = coach.querySelector("img");
       if (image) {
-        image.src = "/mascots/gomo-coach-mascot.webp?v=20.1";
+        image.src = "/mascots/gomo-coach-mascot.webp?v=20.2";
         image.alt = "GoMo Coach";
       }
       if (planner && planner.nextElementSibling !== coach) planner.after(coach);
     }
     if (plannerImage) {
-      plannerImage.src = "/mascots/gomo-vs-planner-mascot.webp?v=20.1";
+      plannerImage.src = "/mascots/gomo-vs-planner-mascot.webp?v=20.2";
       plannerImage.alt = "GoMo VS Planner";
       planner?.setAttribute("data-gomo-planner-card", "1");
     }
@@ -222,7 +222,7 @@ function centralUpgrade() {
     intro.classList.add("gomo-coach-with-mascot");
     const image = document.createElement("img");
     image.className = "gomo-coach-mascot";
-    image.src = "/mascots/gomo-coach-mascot.webp?v=20.1";
+    image.src = "/mascots/gomo-coach-mascot.webp?v=20.2";
     image.alt = "GoMo Coach";
     intro.prepend(image);
   }
@@ -593,11 +593,11 @@ function createShinyRequest(target, request) {
   return new Request(target, init);
 }
 
-async function proxyShiny(request) {
+async function proxyShiny(request, env) {
   const incoming = new URL(request.url);
   const suffix = incoming.pathname.slice(SHINY_PREFIX.length) || "/";
   const target = new URL(suffix + incoming.search, SHINY_ORIGIN);
-  const upstream = await fetch(createShinyRequest(target, request));
+  const upstream = await env.SHINY.fetch(createShinyRequest(target, request));
   const contentType = upstream.headers.get("content-type") || "";
   if (!contentType.includes("text/html")) return upstream;
 
@@ -650,10 +650,10 @@ export default {
       url.pathname = `${SHINY_PREFIX}/`;
       return Response.redirect(url.toString(), 308);
     }
-    if (url.pathname.startsWith(`${SHINY_PREFIX}/`)) return proxyShiny(request);
+    if (url.pathname.startsWith(`${SHINY_PREFIX}/`)) return proxyShiny(request, env);
     if (url.pathname === "/api/shiny-data" || url.pathname === "/fallback.json") {
       const target = new URL(url.pathname + url.search, SHINY_ORIGIN);
-      return fetch(createShinyRequest(target, request));
+      return env.SHINY.fetch(createShinyRequest(target, request));
     }
     if (url.pathname === "/assets/app-v1.5.js") return serveCentralApp(request, env, ctx);
     if (url.pathname === "/assets/gomo-v19.js") return serveCoachApp(request, env, ctx);
