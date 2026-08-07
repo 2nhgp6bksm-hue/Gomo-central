@@ -1,9 +1,9 @@
-// GoMo Central v20.8 — accès GoMo Assistant adapté aux appareils R4/R5.
+// GoMo Central v20.9 — activation locale du vrai GoMo Assistant pour R4/R5.
 // Les routes transformées passent par le Worker avant les ressources statiques.
 import baseWorker from "./worker-v1.10.js";
 import legacyRankingsWorker from "./worker-v1.6.js";
 
-const VERSION = "20.8";
+const VERSION = "20.9";
 const SHINY_ORIGIN = "https://gomo-shiny-central.gjp86wh7p2.workers.dev";
 const SHINY_PREFIX = "/shiny-radar";
 const SHINY_FORWARDED_HEADERS = [
@@ -24,8 +24,8 @@ function clientFunctionCall(fn) {
 }
 
 function centralUpgrade() {
-  if (window.__GOMO_CENTRAL_V208__) return;
-  window.__GOMO_CENTRAL_V208__ = true;
+  if (window.__GOMO_CENTRAL_V209__) return;
+  window.__GOMO_CENTRAL_V209__ = true;
 
   const REAL_ASSISTANT_URL = "https://chic-sopapillas-82fbc8.netlify.app/";
   const ACCESS_MODE_KEY = "gomo-central-access-mode";
@@ -43,6 +43,16 @@ function centralUpgrade() {
     ko: { label: "사이트 링크 복사", done: "사이트 링크가 복사되었습니다", failed: "링크를 복사할 수 없습니다" },
     hr: { label: "Kopiraj poveznicu stranice", done: "Poveznica je kopirana", failed: "Poveznicu nije moguće kopirati" },
     pt: { label: "Copiar ligação do site", done: "Ligação do site copiada", failed: "Não foi possível copiar a ligação" }
+  };
+  const ASSISTANT_ACCESS = {
+    fr: { title: "Activer mon accès R5 / R4", text: "Colle ici le lien « R5 / R4 » copié depuis GoMo Assistant. Il restera enregistré uniquement sur cet appareil.", placeholder: "Lien R5 / R4", activate: "Activer et ouvrir GoMo Assistant", cancel: "Annuler", invalid: "Ce lien R5 / R4 n’est pas valide.", button: "Configurer l’accès R5 / R4" },
+    de: { title: "R5-/R4-Zugang aktivieren", text: "Füge hier den in GoMo Assistant kopierten Link „R5 / R4“ ein. Er wird nur auf diesem Gerät gespeichert.", placeholder: "R5-/R4-Link", activate: "Aktivieren und GoMo Assistant öffnen", cancel: "Abbrechen", invalid: "Dieser R5-/R4-Link ist ungültig.", button: "R5-/R4-Zugang einrichten" },
+    en: { title: "Activate my R5 / R4 access", text: "Paste the “R5 / R4” link copied from GoMo Assistant. It will only be saved on this device.", placeholder: "R5 / R4 link", activate: "Activate and open GoMo Assistant", cancel: "Cancel", invalid: "This R5 / R4 link is not valid.", button: "Set up R5 / R4 access" },
+    ro: { title: "Activează accesul meu R5 / R4", text: "Lipește aici linkul „R5 / R4” copiat din GoMo Assistant. Va fi salvat numai pe acest dispozitiv.", placeholder: "Link R5 / R4", activate: "Activează și deschide GoMo Assistant", cancel: "Anulează", invalid: "Acest link R5 / R4 nu este valid.", button: "Configurează accesul R5 / R4" },
+    uk: { title: "Активувати мій доступ R5 / R4", text: "Вставте сюди посилання «R5 / R4», скопійоване з GoMo Assistant. Воно збережеться лише на цьому пристрої.", placeholder: "Посилання R5 / R4", activate: "Активувати й відкрити GoMo Assistant", cancel: "Скасувати", invalid: "Це посилання R5 / R4 недійсне.", button: "Налаштувати доступ R5 / R4" },
+    ko: { title: "R5 / R4 접근 활성화", text: "GoMo Assistant에서 복사한 ‘R5 / R4’ 링크를 붙여 넣으세요. 이 기기에만 저장됩니다.", placeholder: "R5 / R4 링크", activate: "활성화하고 GoMo Assistant 열기", cancel: "취소", invalid: "유효한 R5 / R4 링크가 아닙니다.", button: "R5 / R4 접근 설정" },
+    hr: { title: "Aktiviraj moj R5 / R4 pristup", text: "Ovdje zalijepi poveznicu „R5 / R4” kopiranu iz GoMo Assistanta. Bit će spremljena samo na ovom uređaju.", placeholder: "Poveznica R5 / R4", activate: "Aktiviraj i otvori GoMo Assistant", cancel: "Odustani", invalid: "Ova poveznica R5 / R4 nije valjana.", button: "Postavi pristup R5 / R4" },
+    pt: { title: "Ativar o meu acesso R5 / R4", text: "Cola aqui a ligação «R5 / R4» copiada do GoMo Assistant. Ficará guardada apenas neste dispositivo.", placeholder: "Ligação R5 / R4", activate: "Ativar e abrir o GoMo Assistant", cancel: "Cancelar", invalid: "Esta ligação R5 / R4 não é válida.", button: "Configurar acesso R5 / R4" }
   };
   const TRAIN = {
     fr: { eyebrow: "GOMO FOREVER", title: "Train de la semaine", subtitle: "Conducteurs et VIP en cours", day: "Jour", driver: "Conducteur", vip: "VIP", select: "À sélectionner", back: "Retour" },
@@ -84,6 +94,7 @@ function centralUpgrade() {
     return LOCALES[value] ? value : "fr";
   };
   const copyText = () => COPY[language()] || COPY.fr;
+  const assistantAccessText = () => ASSISTANT_ACCESS[language()] || ASSISTANT_ACCESS.fr;
   const query = new URLSearchParams(location.search);
   const requestedLanguage = query.get("lang");
   const requestedAccess = query.get("access");
@@ -108,26 +119,95 @@ function centralUpgrade() {
     }
   }
 
-  function realAssistantUrl() {
-    let cloudUrl = "";
-    let cloudKey = "";
-    let alliance = "gomo-1591";
+  function assistantConfig() {
+    const config = { cloudUrl: "", cloudKey: "", alliance: "gomo-1591" };
     try {
-      cloudUrl = String(localStorage.getItem("gomo-central-rankings-url") || "").replace(/\/+$/, "");
-      cloudKey = String(localStorage.getItem("gomo-central-rankings-key") || "");
-      alliance = String(localStorage.getItem("gomo-central-rankings-alliance") || alliance);
+      config.cloudUrl = String(localStorage.getItem("gomo-central-rankings-url") || "").replace(/\/+$/, "");
+      config.cloudKey = String(localStorage.getItem("gomo-central-rankings-key") || "");
+      config.alliance = String(localStorage.getItem("gomo-central-rankings-alliance") || config.alliance);
     } catch {}
-    if (/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(cloudUrl) && cloudKey.length >= 20) {
-      const params = new URLSearchParams({ mode: "editor", url: cloudUrl, key: cloudKey, alliance });
+    return config;
+  }
+
+  function hasAssistantConfig() {
+    const config = assistantConfig();
+    return /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(config.cloudUrl) && config.cloudKey.length >= 20;
+  }
+
+  function realAssistantUrl() {
+    const config = assistantConfig();
+    if (hasAssistantConfig()) {
+      const params = new URLSearchParams({ mode: "editor", url: config.cloudUrl, key: config.cloudKey, alliance: config.alliance });
       return `${REAL_ASSISTANT_URL}#${params.toString()}`;
     }
     return REAL_ASSISTANT_URL;
   }
 
+  function importAssistantAccessLink(value) {
+    try {
+      const shared = new URL(String(value || "").trim());
+      const assistant = new URL(REAL_ASSISTANT_URL);
+      const params = new URLSearchParams(String(shared.hash || "").replace(/^#/, ""));
+      const mode = params.get("mode");
+      const cloudUrl = String(params.get("url") || "").replace(/\/+$/, "");
+      const cloudKey = String(params.get("key") || "");
+      const alliance = String(params.get("alliance") || "gomo-1591").trim();
+      if (shared.origin !== assistant.origin || mode !== "editor") return false;
+      if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(cloudUrl) || cloudKey.length < 20 || alliance.length < 3) return false;
+      localStorage.setItem("gomo-central-rankings-url", cloudUrl);
+      localStorage.setItem("gomo-central-rankings-key", cloudKey);
+      localStorage.setItem("gomo-central-rankings-alliance", alliance);
+      localStorage.setItem("gomo-central-assistant-url", `${assistant.origin}/`);
+      localStorage.setItem(ACCESS_MODE_KEY, "r4r5");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function closeAssistantAccessModal() {
+    document.getElementById("gomoAssistantAccessModal")?.remove();
+  }
+
+  function openRealAssistant() {
+    const target = window.open(realAssistantUrl(), "_blank");
+    if (target) {
+      try { target.opener = null; } catch {}
+    } else {
+      location.assign(realAssistantUrl());
+    }
+  }
+
+  function showAssistantAccessModal() {
+    closeAssistantAccessModal();
+    const tx = assistantAccessText();
+    const modal = document.createElement("div");
+    modal.id = "gomoAssistantAccessModal";
+    modal.className = "gomo-access-modal";
+    modal.innerHTML = `<button class="gomo-access-modal__backdrop" type="button" aria-label="${escapeMarkup(tx.cancel)}"></button><section class="gomo-access-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="gomoAssistantAccessTitle"><h2 id="gomoAssistantAccessTitle">${escapeMarkup(tx.title)}</h2><p>${escapeMarkup(tx.text)}</p><form id="gomoAssistantAccessForm"><input id="gomoAssistantAccessInput" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${escapeMarkup(tx.placeholder)}" aria-label="${escapeMarkup(tx.placeholder)}" required><p id="gomoAssistantAccessError" class="gomo-access-modal__error" role="alert"></p><button class="primary-button" type="submit">${escapeMarkup(tx.activate)}</button><button class="secondary-button" data-gomo-access-cancel type="button">${escapeMarkup(tx.cancel)}</button></form></section>`;
+    document.body.appendChild(modal);
+    modal.querySelector(".gomo-access-modal__backdrop")?.addEventListener("click", closeAssistantAccessModal);
+    modal.querySelector("[data-gomo-access-cancel]")?.addEventListener("click", closeAssistantAccessModal);
+    modal.querySelector("form")?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const input = modal.querySelector("#gomoAssistantAccessInput");
+      const error = modal.querySelector("#gomoAssistantAccessError");
+      if (!importAssistantAccessLink(input?.value)) {
+        if (error) error.textContent = tx.invalid;
+        input?.focus();
+        return;
+      }
+      closeAssistantAccessModal();
+      openRealAssistant();
+    });
+    setTimeout(() => modal.querySelector("#gomoAssistantAccessInput")?.focus(), 0);
+  }
+
   function openAssistantForAccess() {
     document.getElementById("gomo-r5fapper-panel")?.classList.remove("open");
     if (isLeaderAccess()) {
-      location.assign(realAssistantUrl());
+      if (hasAssistantConfig()) openRealAssistant();
+      else showAssistantAccessModal();
       return;
     }
     if (typeof EXTERNAL_LINKS !== "undefined") delete EXTERNAL_LINKS["gomo-assistant"];
@@ -136,11 +216,13 @@ function centralUpgrade() {
   }
 
   function addStyles() {
-    if (document.getElementById("gomo-central-v208-style")) return;
+    if (document.getElementById("gomo-central-v209-style")) return;
     const style = document.createElement("style");
-    style.id = "gomo-central-v208-style";
+    style.id = "gomo-central-v209-style";
     style.textContent = `
       .gomo-copy-link{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px}
+      .gomo-access-trigger{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;border-color:rgba(242,193,78,.54)!important;color:#ffe29b!important}
+      .gomo-access-modal{position:fixed;z-index:2147483640;inset:0;display:grid;place-items:center;padding:18px}.gomo-access-modal__backdrop{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:0;background:rgba(2,8,15,.82);backdrop-filter:blur(7px)}.gomo-access-modal__dialog{position:relative;width:min(520px,100%);padding:24px;border:1px solid rgba(242,193,78,.7);border-radius:24px;background:linear-gradient(145deg,#10283d,#071522);box-shadow:0 26px 70px rgba(0,0,0,.58);color:#f7f8fb}.gomo-access-modal__dialog h2{margin:0 0 10px;color:#f8d778}.gomo-access-modal__dialog p{margin:0 0 16px;color:#c8d4e1;line-height:1.45}.gomo-access-modal__dialog form{display:grid;gap:10px}.gomo-access-modal__dialog input{box-sizing:border-box;width:100%;min-height:52px;padding:11px 13px;border:1px solid rgba(255,255,255,.25);border-radius:14px;background:#07111d;color:#fff;font:inherit}.gomo-access-modal__dialog button{width:100%;min-height:48px}.gomo-access-modal__error{min-height:1.4em!important;margin:0!important;color:#ffadad!important;font-weight:800}
       .gomo-v20-toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));z-index:2147483600;transform:translate(-50%,18px);max-width:calc(100vw - 32px);padding:11px 15px;border:1px solid rgba(242,193,78,.46);border-radius:999px;background:#0a1c2d;color:#fff4cf;box-shadow:0 14px 38px rgba(0,0,0,.45);font-weight:800;opacity:0;pointer-events:none;transition:.2s ease;text-align:center}
       .gomo-v20-toast.show{opacity:1;transform:translate(-50%,0)}
       .royal-nav-grid{display:grid!important;grid-template-columns:none!important;grid-auto-flow:column;grid-auto-columns:minmax(84px,1fr);gap:8px!important;overflow-x:auto;overscroll-behavior-inline:contain;scroll-snap-type:inline proximity;scrollbar-width:none;padding:11px!important}
@@ -219,6 +301,27 @@ function centralUpgrade() {
     const label = button.querySelector("[data-copy-site-label]");
     if (label) label.textContent = copyText().label;
     button.setAttribute("aria-label", copyText().label);
+  }
+
+  function addAssistantAccessButton() {
+    const footer = document.querySelector(".sidebar-footer");
+    if (!footer) return;
+    let button = document.getElementById("assistantAccessSetupButton");
+    if (!isLeaderAccess() || hasAssistantConfig()) {
+      button?.remove();
+      return;
+    }
+    const tx = assistantAccessText();
+    if (!button) {
+      button = document.createElement("button");
+      button.id = "assistantAccessSetupButton";
+      button.type = "button";
+      button.className = "secondary-button gomo-access-trigger";
+      button.addEventListener("click", showAssistantAccessModal);
+      footer.prepend(button);
+    }
+    button.innerHTML = `<span aria-hidden="true">🔐</span><span>${escapeMarkup(tx.button)}</span>`;
+    button.setAttribute("aria-label", tx.button);
   }
 
   function initials(value) {
@@ -466,6 +569,7 @@ function centralUpgrade() {
   function syncAll() {
     addStyles();
     addCopyButton();
+    addAssistantAccessButton();
     syncHomeShortcuts();
     syncR5Coach();
     renderTrain();
@@ -534,6 +638,10 @@ function centralUpgrade() {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", syncAll, { once: true });
   else syncAll();
   window.addEventListener("pageshow", syncAll);
+  if (requestedAccess === "r4r5" && !hasAssistantConfig()) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", showAssistantAccessModal, { once: true });
+    else setTimeout(showAssistantAccessModal, 0);
+  }
 }
 
 function plannerDictionaryUpgrade() {
