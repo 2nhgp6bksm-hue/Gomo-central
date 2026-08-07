@@ -1,11 +1,11 @@
-// GoMo Central v18.12 — Shiny ouvre la page Cloudflare dédiée.
+// GoMo Central v18.14 — version complète, Shiny ouvre la page Cloudflare dédiée.
 // Le Radar Netlify n'est pas modifié.
 import baseWorker from "./worker-v1.10.js";
 
 const SHINY_URL = "https://gomo-shiny-central.gjp86wh7p2.workers.dev/";
 
 const SHINY_ROUTER_SCRIPT = `
-<script id="gomo-shiny-router-v1812">
+<script id="gomo-shiny-router-v1814">
 (() => {
   const SHINY_URL = ${JSON.stringify(SHINY_URL)};
 
@@ -44,8 +44,20 @@ export default {
       return response;
     }
 
-    return new HTMLRewriter()
+    const rewritten = new HTMLRewriter()
       .on("body", new BodyAppender())
       .transform(response);
+
+    const headers = new Headers(rewritten.headers);
+    headers.delete("content-length");
+    headers.delete("etag");
+    headers.set("cache-control", "no-store, no-cache, must-revalidate");
+    headers.set("x-gomo-central-version", "18.14");
+
+    return new Response(rewritten.body, {
+      status: rewritten.status,
+      statusText: rewritten.statusText,
+      headers
+    });
   }
 };

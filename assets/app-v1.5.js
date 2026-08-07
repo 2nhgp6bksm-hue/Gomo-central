@@ -11,6 +11,344 @@ const languages = {
   hr:{flag:"🇭🇷",label:"Hrvatski",short:"HR"}
 };
 
+const LIVE_TRANSLATIONS = {
+  fr: {
+    "nav.communication":"Traducteur",
+    "ask.demoTitle":"Assistant GoMo actif",
+    "ask.demoText":"Les réponses utilisent les informations GoMo et Last War déjà vérifiées.",
+    "ask.demoReply":"Je n’ai pas pu répondre pour le moment.",
+    "ask.loading":"GoMo prépare la réponse…",
+    "ask.error":"La réponse est momentanément indisponible.",
+    "capture.choose":"Choisis d’abord une capture.",
+    "capture.running":"Analyse en cours…",
+    "capture.done":"Analyse terminée",
+    "capture.error":"Analyse indisponible",
+    "capture.validation":"La capture est envoyée à l’IA pour analyse, puis n’est pas enregistrée par GoMo Central. Vérifie toujours le résultat.",
+    "communication.eyebrow":"TRADUCTION",
+    "communication.title":"Traducteur GoMo",
+    "communication.new":"Nouveau texte",
+    "communication.nameLabel":"Nom (facultatif)",
+    "communication.namePlaceholder":"Nom ou joueur",
+    "communication.messageLabel":"Texte",
+    "actions.publish":"Ajouter",
+    "communication.emptyTitle":"Ajoute un texte à traduire",
+    "communication.emptyText":"Le texte est enregistré sur cet appareil. Il est envoyé à l’IA seulement lorsque tu demandes une traduction.",
+    "communication.nextTitle":"Mode privé",
+    "communication.nextText":"Rien n’est publié ni partagé avec les autres membres.",
+    "communication.demoNotice":"Le texte est conservé localement et transmis à l’IA uniquement pour l’action demandée.",
+    "communication.translating":"Traduction…",
+    "communication.explaining":"Explication…",
+    "communication.failed":"Action momentanément indisponible.",
+    "news.demoTitle":"GoMo Central est prêt",
+    "news.demoText":"Train, classements, VS Planner, Shiny Radar, analyse IA, traduction et guides sont accessibles depuis un seul endroit.",
+    "news.emptyTitle":"GoMo un jour, GoMo pour toujours",
+    "news.emptyText":"Les informations importantes de l’alliance seront ajoutées ici après validation.",
+    "tools.rankings":"Podiums VS, donations et Tempête du désert.",
+    "tools.rankingsTitle":"Classements",
+    "tools.analysis":"Analyse des captures Last War avec des résultats vérifiables.",
+    "tools.translate":"Traduction simple dans les langues de l’alliance.",
+    "tools.news":"Annonces et informations importantes de l’alliance.",
+    "tools.open":"Ouvrir"
+  },
+  de: {
+    "nav.communication":"Übersetzer",
+    "ask.demoTitle":"GoMo-Assistent aktiv",
+    "ask.demoText":"Die Antworten verwenden bereits geprüfte GoMo- und Last-War-Informationen.",
+    "ask.demoReply":"Im Moment konnte ich nicht antworten.",
+    "ask.loading":"GoMo bereitet die Antwort vor…",
+    "ask.error":"Die Antwort ist vorübergehend nicht verfügbar.",
+    "capture.choose":"Wähle zuerst einen Screenshot.",
+    "capture.running":"Analyse läuft…",
+    "capture.done":"Analyse abgeschlossen",
+    "capture.error":"Analyse nicht verfügbar",
+    "capture.validation":"Der Screenshot wird zur Analyse an die KI gesendet und danach von GoMo Central nicht gespeichert. Prüfe das Ergebnis immer.",
+    "communication.eyebrow":"ÜBERSETZUNG",
+    "communication.title":"GoMo-Übersetzer",
+    "communication.new":"Neuer Text",
+    "communication.nameLabel":"Name (optional)",
+    "communication.namePlaceholder":"Name oder Spieler",
+    "communication.messageLabel":"Text",
+    "actions.publish":"Hinzufügen",
+    "communication.emptyTitle":"Füge einen Text zum Übersetzen hinzu",
+    "communication.emptyText":"Der Text wird auf diesem Gerät gespeichert. Er wird nur an die KI gesendet, wenn du eine Übersetzung anforderst.",
+    "communication.nextTitle":"Privater Modus",
+    "communication.nextText":"Nichts wird veröffentlicht oder mit anderen Mitgliedern geteilt.",
+    "communication.demoNotice":"Der Text bleibt lokal gespeichert und wird nur für die angeforderte Aktion an die KI übertragen.",
+    "communication.translating":"Übersetzung…",
+    "communication.explaining":"Erklärung…",
+    "communication.failed":"Aktion vorübergehend nicht verfügbar.",
+    "news.demoTitle":"GoMo Central ist bereit",
+    "news.demoText":"Zug, Ranglisten, VS Planner, Shiny Radar, KI-Analyse, Übersetzung und Anleitungen sind an einem Ort verfügbar.",
+    "news.emptyTitle":"Einmal GoMo, immer GoMo",
+    "news.emptyText":"Wichtige Allianz-Informationen werden hier nach der Bestätigung ergänzt.",
+    "tools.rankings":"VS-, Spenden- und Wüstensturm-Podien.",
+    "tools.rankingsTitle":"Ranglisten",
+    "tools.analysis":"Last-War-Screenshots mit überprüfbaren Ergebnissen analysieren.",
+    "tools.translate":"Einfache Übersetzung in die Sprachen der Allianz.",
+    "tools.news":"Ankündigungen und wichtige Allianz-Informationen.",
+    "tools.open":"Öffnen"
+  },
+  en: {
+    "nav.communication":"Translator",
+    "ask.demoTitle":"GoMo Assistant active",
+    "ask.demoText":"Answers use verified GoMo and Last War information.",
+    "ask.demoReply":"I could not answer right now.",
+    "ask.loading":"GoMo is preparing the answer…",
+    "ask.error":"The answer is temporarily unavailable.",
+    "capture.choose":"Choose a screenshot first.",
+    "capture.running":"Analysis in progress…",
+    "capture.done":"Analysis complete",
+    "capture.error":"Analysis unavailable",
+    "capture.validation":"The screenshot is sent to AI for analysis and is not stored by GoMo Central afterwards. Always verify the result.",
+    "communication.eyebrow":"TRANSLATION",
+    "communication.title":"GoMo Translator",
+    "communication.new":"New text",
+    "communication.nameLabel":"Name (optional)",
+    "communication.namePlaceholder":"Name or player",
+    "communication.messageLabel":"Text",
+    "actions.publish":"Add",
+    "communication.emptyTitle":"Add text to translate",
+    "communication.emptyText":"The text is stored on this device. It is sent to AI only when you request a translation.",
+    "communication.nextTitle":"Private mode",
+    "communication.nextText":"Nothing is published or shared with other members.",
+    "communication.demoNotice":"The text is kept locally and sent to AI only for the action you request.",
+    "communication.translating":"Translating…",
+    "communication.explaining":"Explaining…",
+    "communication.failed":"Action temporarily unavailable.",
+    "news.demoTitle":"GoMo Central is ready",
+    "news.demoText":"Train, rankings, VS Planner, Shiny Radar, AI analysis, translation and guides are available in one place.",
+    "news.emptyTitle":"GoMo once, GoMo forever",
+    "news.emptyText":"Important alliance information will be added here after confirmation.",
+    "tools.rankings":"VS, donations and Desert Storm podiums.",
+    "tools.rankingsTitle":"Rankings",
+    "tools.analysis":"Analyze Last War screenshots with verifiable results.",
+    "tools.translate":"Simple translation into the alliance languages.",
+    "tools.news":"Alliance announcements and important information.",
+    "tools.open":"Open"
+  },
+  ro: {
+    "nav.communication":"Traducător",
+    "ask.demoTitle":"Asistentul GoMo este activ",
+    "ask.demoText":"Răspunsurile folosesc informații GoMo și Last War deja verificate.",
+    "ask.demoReply":"Nu am putut răspunde acum.",
+    "ask.loading":"GoMo pregătește răspunsul…",
+    "ask.error":"Răspunsul este momentan indisponibil.",
+    "capture.choose":"Alege mai întâi o captură.",
+    "capture.running":"Analiză în curs…",
+    "capture.done":"Analiză terminată",
+    "capture.error":"Analiză indisponibilă",
+    "capture.validation":"Captura este trimisă către IA pentru analiză, apoi nu este stocată de GoMo Central. Verifică întotdeauna rezultatul.",
+    "communication.eyebrow":"TRADUCERE",
+    "communication.title":"Traducător GoMo",
+    "communication.new":"Text nou",
+    "communication.nameLabel":"Nume (opțional)",
+    "communication.namePlaceholder":"Nume sau jucător",
+    "communication.messageLabel":"Text",
+    "actions.publish":"Adaugă",
+    "communication.emptyTitle":"Adaugă un text de tradus",
+    "communication.emptyText":"Textul este salvat pe acest dispozitiv. Este trimis către IA doar când ceri o traducere.",
+    "communication.nextTitle":"Mod privat",
+    "communication.nextText":"Nimic nu este publicat sau distribuit altor membri.",
+    "communication.demoNotice":"Textul este păstrat local și trimis către IA doar pentru acțiunea cerută.",
+    "communication.translating":"Se traduce…",
+    "communication.explaining":"Se explică…",
+    "communication.failed":"Acțiunea este momentan indisponibilă.",
+    "news.demoTitle":"GoMo Central este gata",
+    "news.demoText":"Trenul, clasamentele, VS Planner, Shiny Radar, analiza IA, traducerea și ghidurile sunt într-un singur loc.",
+    "news.emptyTitle":"GoMo o dată, GoMo pentru totdeauna",
+    "news.emptyText":"Informațiile importante ale alianței vor fi adăugate aici după confirmare.",
+    "tools.rankings":"Podiumuri VS, donații și Furtuna din deșert.",
+    "tools.rankingsTitle":"Clasamente",
+    "tools.analysis":"Analizează capturi Last War cu rezultate verificabile.",
+    "tools.translate":"Traducere simplă în limbile alianței.",
+    "tools.news":"Anunțuri și informații importante ale alianței.",
+    "tools.open":"Deschide"
+  },
+  uk: {
+    "nav.communication":"Перекладач",
+    "ask.demoTitle":"Помічник GoMo активний",
+    "ask.demoText":"Відповіді використовують уже перевірену інформацію GoMo та Last War.",
+    "ask.demoReply":"Зараз не вдалося відповісти.",
+    "ask.loading":"GoMo готує відповідь…",
+    "ask.error":"Відповідь тимчасово недоступна.",
+    "capture.choose":"Спочатку виберіть знімок.",
+    "capture.running":"Триває аналіз…",
+    "capture.done":"Аналіз завершено",
+    "capture.error":"Аналіз недоступний",
+    "capture.validation":"Знімок надсилається ШІ для аналізу, після чого GoMo Central його не зберігає. Завжди перевіряйте результат.",
+    "communication.eyebrow":"ПЕРЕКЛАД",
+    "communication.title":"Перекладач GoMo",
+    "communication.new":"Новий текст",
+    "communication.nameLabel":"Ім’я (необов’язково)",
+    "communication.namePlaceholder":"Ім’я або гравець",
+    "communication.messageLabel":"Текст",
+    "actions.publish":"Додати",
+    "communication.emptyTitle":"Додайте текст для перекладу",
+    "communication.emptyText":"Текст зберігається на цьому пристрої. Він надсилається ШІ лише тоді, коли ви просите переклад.",
+    "communication.nextTitle":"Приватний режим",
+    "communication.nextText":"Нічого не публікується й не передається іншим учасникам.",
+    "communication.demoNotice":"Текст зберігається локально й надсилається ШІ лише для запитаної дії.",
+    "communication.translating":"Переклад…",
+    "communication.explaining":"Пояснення…",
+    "communication.failed":"Дія тимчасово недоступна.",
+    "news.demoTitle":"GoMo Central готовий",
+    "news.demoText":"Потяг, рейтинги, VS Planner, Shiny Radar, аналіз ШІ, переклад і посібники доступні в одному місці.",
+    "news.emptyTitle":"GoMo раз — GoMo назавжди",
+    "news.emptyText":"Важливу інформацію альянсу буде додано сюди після підтвердження.",
+    "tools.rankings":"Подіуми VS, пожертв і Бурі в пустелі.",
+    "tools.rankingsTitle":"Рейтинги",
+    "tools.analysis":"Аналіз знімків Last War із перевірюваними результатами.",
+    "tools.translate":"Простий переклад мовами альянсу.",
+    "tools.news":"Оголошення та важлива інформація альянсу.",
+    "tools.open":"Відкрити"
+  },
+  ko: {
+    "nav.communication":"번역기",
+    "ask.demoTitle":"GoMo 도우미 활성화",
+    "ask.demoText":"답변은 확인된 GoMo 및 Last War 정보를 사용합니다.",
+    "ask.demoReply":"지금은 답변할 수 없습니다.",
+    "ask.loading":"GoMo가 답변을 준비 중입니다…",
+    "ask.error":"답변을 일시적으로 사용할 수 없습니다.",
+    "capture.choose":"먼저 스크린샷을 선택하세요.",
+    "capture.running":"분석 중…",
+    "capture.done":"분석 완료",
+    "capture.error":"분석 사용 불가",
+    "capture.validation":"스크린샷은 분석을 위해 AI로 전송되며, 이후 GoMo Central에 저장되지 않습니다. 항상 결과를 확인하세요.",
+    "communication.eyebrow":"번역",
+    "communication.title":"GoMo 번역기",
+    "communication.new":"새 텍스트",
+    "communication.nameLabel":"이름 (선택)",
+    "communication.namePlaceholder":"이름 또는 플레이어",
+    "communication.messageLabel":"텍스트",
+    "actions.publish":"추가",
+    "communication.emptyTitle":"번역할 텍스트를 추가하세요",
+    "communication.emptyText":"텍스트는 이 기기에 저장됩니다. 번역을 요청할 때만 AI로 전송됩니다.",
+    "communication.nextTitle":"비공개 모드",
+    "communication.nextText":"다른 멤버에게 게시되거나 공유되지 않습니다.",
+    "communication.demoNotice":"텍스트는 로컬에 보관되며 요청한 작업을 위해서만 AI로 전송됩니다.",
+    "communication.translating":"번역 중…",
+    "communication.explaining":"설명 중…",
+    "communication.failed":"작업을 일시적으로 사용할 수 없습니다.",
+    "news.demoTitle":"GoMo Central 준비 완료",
+    "news.demoText":"열차, 순위, VS Planner, Shiny Radar, AI 분석, 번역 및 가이드를 한곳에서 이용할 수 있습니다.",
+    "news.emptyTitle":"한번 GoMo는 영원한 GoMo",
+    "news.emptyText":"중요한 동맹 정보는 확인 후 여기에 추가됩니다.",
+    "tools.rankings":"VS, 기부 및 사막 폭풍 순위.",
+    "tools.rankingsTitle":"순위",
+    "tools.analysis":"검증 가능한 결과로 Last War 스크린샷을 분석합니다.",
+    "tools.translate":"동맹 언어로 간단히 번역합니다.",
+    "tools.news":"동맹 공지 및 중요 정보.",
+    "tools.open":"열기"
+  },
+  hr: {
+    "nav.communication":"Prevoditelj",
+    "ask.demoTitle":"GoMo pomoćnik je aktivan",
+    "ask.demoText":"Odgovori koriste već provjerene GoMo i Last War informacije.",
+    "ask.demoReply":"Trenutačno nisam mogao odgovoriti.",
+    "ask.loading":"GoMo priprema odgovor…",
+    "ask.error":"Odgovor trenutačno nije dostupan.",
+    "capture.choose":"Najprije odaberi snimku.",
+    "capture.running":"Analiza je u tijeku…",
+    "capture.done":"Analiza završena",
+    "capture.error":"Analiza nije dostupna",
+    "capture.validation":"Snimka se šalje AI-ju na analizu, a GoMo Central je nakon toga ne sprema. Uvijek provjeri rezultat.",
+    "communication.eyebrow":"PRIJEVOD",
+    "communication.title":"GoMo prevoditelj",
+    "communication.new":"Novi tekst",
+    "communication.nameLabel":"Ime (nije obavezno)",
+    "communication.namePlaceholder":"Ime ili igrač",
+    "communication.messageLabel":"Tekst",
+    "actions.publish":"Dodaj",
+    "communication.emptyTitle":"Dodaj tekst za prijevod",
+    "communication.emptyText":"Tekst se sprema na ovom uređaju. AI-ju se šalje samo kada zatražiš prijevod.",
+    "communication.nextTitle":"Privatni način",
+    "communication.nextText":"Ništa se ne objavljuje niti dijeli s drugim članovima.",
+    "communication.demoNotice":"Tekst se čuva lokalno i šalje AI-ju samo za zatraženu radnju.",
+    "communication.translating":"Prevođenje…",
+    "communication.explaining":"Objašnjavanje…",
+    "communication.failed":"Radnja trenutačno nije dostupna.",
+    "news.demoTitle":"GoMo Central je spreman",
+    "news.demoText":"Vlak, poredak, VS Planner, Shiny Radar, AI analiza, prijevod i vodiči dostupni su na jednom mjestu.",
+    "news.emptyTitle":"Jednom GoMo, zauvijek GoMo",
+    "news.emptyText":"Važne informacije saveza bit će dodane ovdje nakon potvrde.",
+    "tools.rankings":"VS, donacije i Pustinjska oluja — pobjednička postolja.",
+    "tools.rankingsTitle":"Poredak",
+    "tools.analysis":"Analiziraj Last War snimke s provjerljivim rezultatima.",
+    "tools.translate":"Jednostavan prijevod na jezike saveza.",
+    "tools.news":"Obavijesti i važne informacije saveza.",
+    "tools.open":"Otvori"
+  }
+};
+
+const GUIDE_DETAILS = {
+  fr: {
+    vs:["Utilise VS Planner avant de dépenser : l’objectif est 7,2 M, pas le maximum.","Active « semaine d’économie » pour garder les ressources des jours suivants.","Vérifie le jour VS et désactive toute ressource que tu ne veux pas utiliser."],
+    heroes:["Améliore d’abord l’équipe réellement utilisée.","Avant une dépense rare, vérifie le héros, le niveau, la puissance et l’objet visibles.","Si la capture ne suffit pas, le résultat doit rester « À confirmer »."],
+    shiny:["Les jours Shiny du serveur 1591 sont mardi et samedi.","Le serveur 1591 n’apparaît jamais dans la liste des serveurs extérieurs.","Utilise Shiny Radar pour les confirmations du Bot et l’historique."],
+    train:["Le planning de la semaine va du dimanche au samedi.","Rotation prévue : 4 conducteurs R4/R5 et 3 conducteurs R3, plus les VIP R3.","Un R3 déjà premier attend son prochain tour avant de reprendre le train."],
+    desert:["Deux créneaux sont suivis : environ 13 h 30 et 22 h 30.","Une saisie oubliée peut être ajoutée le lendemain.","Les résultats comptent dans le classement hebdomadaire."],
+    events:["Épreuve du général : choisir au maximum 4★ si l’équipe n’est pas certaine.","Prédateur céleste : quota limité, meilleure équipe et aucune attaque gaspillée.","Avant de dormir le vendredi : activer le bouclier pour protéger les troupes."]
+  },
+  de: {
+    vs:["Nutze den VS Planner vor dem Ausgeben: Das Ziel sind 7,2 Mio., nicht das Maximum.","Aktiviere die Sparwoche, um Ressourcen für die nächsten Tage zu behalten.","Prüfe den VS-Tag und deaktiviere jede Ressource, die du nicht einsetzen willst."],
+    heroes:["Verbessere zuerst das Team, das du wirklich benutzt.","Prüfe vor seltenen Ausgaben den sichtbaren Helden, das Level, die Stärke und den Gegenstand.","Reicht der Screenshot nicht aus, bleibt das Ergebnis „Zu bestätigen“."],
+    shiny:["Shiny-Tage auf Server 1591 sind Dienstag und Samstag.","Server 1591 erscheint nie in der Liste externer Server.","Nutze Shiny Radar für Bot-Bestätigungen und den Verlauf."],
+    train:["Die Wochenplanung läuft von Sonntag bis Samstag.","Geplante Rotation: 4 R4/R5-Fahrer und 3 R3-Fahrer sowie R3-VIP.","Ein R3 auf Platz eins wartet bis zu seiner nächsten Rotation."],
+    desert:["Zwei Zeiten werden verfolgt: ungefähr 13:30 und 22:30 Uhr.","Ein vergessener Eintrag kann am Folgetag ergänzt werden.","Die Ergebnisse zählen für die Wochenrangliste."],
+    events:["Generalprüfung: höchstens 4★ wählen, wenn das Team nicht sicher ist.","Himmlischer Jäger: begrenztes Kontingent, bestes Team, keine Angriffe verschwenden.","Vor dem Schlafen am Freitag den Schild aktivieren, um die Truppen zu schützen."]
+  },
+  en: {
+    vs:["Use VS Planner before spending: the target is 7.2M, not the maximum.","Enable Economy Week to save resources for the following days.","Check the VS day and disable any resource you do not want to use."],
+    heroes:["Upgrade the team you actually use first.","Before spending rare items, check the visible hero, level, power and item.","If the screenshot is insufficient, the result must remain ‘To confirm’."],
+    shiny:["Server 1591 Shiny days are Tuesday and Saturday.","Server 1591 never appears in the outside-server list.","Use Shiny Radar for Bot confirmations and history."],
+    train:["The weekly plan runs from Sunday to Saturday.","Planned rotation: 4 R4/R5 drivers and 3 R3 drivers, plus R3 VIPs.","An R3 already in first place waits for their next turn before driving again."],
+    desert:["Two time slots are tracked: around 13:30 and 22:30.","A missed entry can be added the next day.","Results count toward the weekly ranking."],
+    events:["General Trial: choose no more than 4★ when the team is uncertain.","Celestial Predator: limited quota, strongest team and no wasted attacks.","Before sleeping on Friday, activate the shield to protect troops."]
+  },
+  ro: {
+    vs:["Folosește VS Planner înainte de a cheltui: ținta este 7,2 M, nu maximul.","Activează Săptămâna de economie pentru a păstra resursele zilelor următoare.","Verifică ziua VS și dezactivează resursele pe care nu vrei să le folosești."],
+    heroes:["Îmbunătățește mai întâi echipa pe care o folosești cu adevărat.","Înainte de o cheltuială rară, verifică eroul, nivelul, puterea și obiectul vizibile.","Dacă captura nu este suficientă, rezultatul rămâne „De confirmat”."],
+    shiny:["Zilele Shiny ale serverului 1591 sunt marți și sâmbătă.","Serverul 1591 nu apare niciodată în lista serverelor exterioare.","Folosește Shiny Radar pentru confirmările Botului și istoric."],
+    train:["Planificarea săptămânii este de duminică până sâmbătă.","Rotație: 4 conductori R4/R5 și 3 conductori R3, plus VIP R3.","Un R3 deja pe primul loc așteaptă următoarea rotație."],
+    desert:["Sunt urmărite două intervale: aproximativ 13:30 și 22:30.","O înregistrare uitată poate fi adăugată a doua zi.","Rezultatele intră în clasamentul săptămânal."],
+    events:["Proba generalului: alege cel mult 4★ dacă echipa nu este sigură.","Prădător celest: cotă limitată, cea mai bună echipă, fără atacuri irosite.","Vineri, înainte de somn, activează scutul pentru a proteja trupele."]
+  },
+  uk: {
+    vs:["Перед витратами використовуйте VS Planner: мета — 7,2 млн, а не максимум.","Увімкніть Тиждень економії, щоб зберегти ресурси на наступні дні.","Перевірте день VS і вимкніть ресурси, які не хочете використовувати."],
+    heroes:["Спочатку покращуйте команду, якою справді користуєтеся.","Перед витратою рідкісних предметів перевірте видимі героя, рівень, силу й предмет.","Якщо знімка недостатньо, результат має залишатися «Потрібне підтвердження»."],
+    shiny:["Дні Shiny сервера 1591 — вівторок і субота.","Сервер 1591 ніколи не входить до списку зовнішніх серверів.","Використовуйте Shiny Radar для підтверджень бота та історії."],
+    train:["Тижневий план триває з неділі до суботи.","Ротація: 4 водії R4/R5 і 3 водії R3, а також VIP R3.","R3, який уже був першим, чекає наступної ротації."],
+    desert:["Відстежуються два часи: приблизно 13:30 та 22:30.","Пропущений запис можна додати наступного дня.","Результати входять до тижневого рейтингу."],
+    events:["Випробування генерала: обирайте не більше 4★, якщо команда не впевнена.","Небесний хижак: ліміт атак, найсильніша команда, без марних атак.","У п’ятницю перед сном активуйте щит для захисту військ."]
+  },
+  ko: {
+    vs:["소비 전에 VS Planner를 사용하세요. 목표는 최대치가 아니라 7.2M입니다.","절약 주간을 켜 다음 날의 자원을 보존하세요.","VS 요일을 확인하고 사용하지 않을 자원은 비활성화하세요."],
+    heroes:["실제로 사용하는 팀부터 강화하세요.","희귀 자원을 쓰기 전에 화면에 보이는 영웅, 레벨, 전투력과 아이템을 확인하세요.","스크린샷이 충분하지 않으면 결과는 ‘확인 필요’로 남겨야 합니다."],
+    shiny:["1591 서버의 Shiny 요일은 화요일과 토요일입니다.","1591 서버는 외부 서버 목록에 포함되지 않습니다.","Bot 확인과 기록은 Shiny Radar에서 확인하세요."],
+    train:["주간 계획은 일요일부터 토요일까지입니다.","예정 로테이션: R4/R5 운전수 4명, R3 운전수 3명과 R3 VIP.","이미 1위를 한 R3는 다음 순서까지 기다립니다."],
+    desert:["약 13:30과 22:30의 두 시간대를 기록합니다.","누락된 입력은 다음 날 추가할 수 있습니다.","결과는 주간 순위에 반영됩니다."],
+    events:["장군의 시험: 팀이 확실하지 않으면 최대 4★를 선택하세요.","천상의 포식자: 제한된 횟수, 최강 팀 사용, 공격 낭비 금지.","금요일 잠들기 전에 병력 보호를 위해 보호막을 켜세요."]
+  },
+  hr: {
+    vs:["Prije trošenja koristi VS Planner: cilj je 7,2 M, a ne maksimum.","Uključi Tjedan štednje kako bi sačuvao resurse za sljedeće dane.","Provjeri VS dan i isključi svaki resurs koji ne želiš koristiti."],
+    heroes:["Najprije poboljšaj tim koji stvarno koristiš.","Prije rijetkog troška provjeri vidljivog heroja, razinu, snagu i predmet.","Ako snimka nije dovoljna, rezultat ostaje „Za potvrdu“."],
+    shiny:["Shiny dani servera 1591 su utorak i subota.","Server 1591 nikad se ne pojavljuje na popisu vanjskih servera.","Koristi Shiny Radar za potvrde Bota i povijest."],
+    train:["Tjedni plan traje od nedjelje do subote.","Planirana rotacija: 4 R4/R5 vozača i 3 R3 vozača, plus R3 VIP.","R3 koji je već bio prvi čeka svoj sljedeći red."],
+    desert:["Prate se dva termina: oko 13:30 i 22:30.","Propušteni unos može se dodati sljedeći dan.","Rezultati ulaze u tjedni poredak."],
+    events:["Generalova kušnja: odaberi najviše 4★ ako tim nije siguran.","Nebeski predator: ograničena kvota, najjači tim i bez uzaludnih napada.","Prije spavanja u petak uključi štit kako bi zaštitio trupe."]
+  }
+};
+
+const EXTERNAL_LINKS = {
+  train: "https://chic-sopapillas-82fbc8.netlify.app/?goto=weeklyTrainPlanCard",
+  rankings: "https://chic-sopapillas-82fbc8.netlify.app/?goto=weeklyChampionsCard",
+  classements: "https://chic-sopapillas-82fbc8.netlify.app/?goto=weeklyChampionsCard",
+  shiny: "https://gomo-shiny-central.gjp86wh7p2.workers.dev/",
+  "shiny-radar": "https://gomo-shiny-central.gjp86wh7p2.workers.dev/",
+  "vs-planner": "https://2nhgp6bksm-hue.github.io/-GoMo-VS-Planner-/",
+  "gomo-assistant": "https://chic-sopapillas-82fbc8.netlify.app/"
+};
+
 const fr = {
   "equal.title":"Tous ensemble",
   "equal.text":"Même accès et même place pour chaque membre.",
@@ -726,14 +1064,45 @@ const translations = {
   }
 };
 
+Object.entries(LIVE_TRANSLATIONS).forEach(([code, values]) => {
+  if (translations[code]) Object.assign(translations[code], values);
+});
+
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 let currentLanguage = localStorage.getItem("gomo-central-language") || "fr";
+if (!languages[currentLanguage]) currentLanguage = "fr";
 let deferredPrompt = null;
 
 function text(key) {
   return translations[currentLanguage]?.[key] || fr[key] || key;
+}
+
+function renderGuideDetails() {
+  const details = GUIDE_DETAILS[currentLanguage] || GUIDE_DETAILS.fr;
+
+  $$('[data-guide-details]').forEach((container) => {
+    const rows = details[container.dataset.guideDetails] || [];
+    const list = document.createElement("ul");
+    rows.forEach((row) => {
+      const item = document.createElement("li");
+      item.textContent = row;
+      list.appendChild(item);
+    });
+    container.replaceChildren(list);
+  });
+}
+
+async function requestGoMo(path, payload) {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...payload, locale: currentLanguage })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) throw new Error(data.error || text("communication.failed"));
+  return data;
 }
 
 function translatePage() {
@@ -752,15 +1121,24 @@ function translatePage() {
   localStorage.setItem("gomo-central-language", currentLanguage);
 
   renderMessages();
+  renderGuideDetails();
 }
 
 function openPage(pageId, { updateHash = true } = {}) {
+  const externalUrl = EXTERNAL_LINKS[pageId];
+  if (externalUrl) {
+    document.getElementById("gomo-r5fapper-panel")?.classList.remove("open");
+    window.location.assign(externalUrl);
+    return;
+  }
+
   const target = document.getElementById(pageId);
   if (!target || !target.classList.contains("page")) return;
 
   $$(".page").forEach((page) => page.classList.toggle("active", page.id === pageId));
   $$(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.page === pageId));
   document.body.classList.remove("menu-open");
+  document.getElementById("gomo-r5fapper-panel")?.classList.remove("open");
 
   if (updateHash && window.location.hash !== `#${pageId}`) {
     history.replaceState(null, "", `#${pageId}`);
@@ -832,6 +1210,14 @@ function saveStoredMessages(messages) {
   localStorage.setItem("gomo-central-messages", JSON.stringify(messages));
 }
 
+function updateStoredMessage(id, values) {
+  const messages = getStoredMessages().map((message) =>
+    message.id === id ? { ...message, ...values } : message
+  );
+  saveStoredMessages(messages);
+  renderMessages();
+}
+
 function renderMessages() {
   const list = $("#messageList");
   const empty = $("#communicationEmpty");
@@ -863,18 +1249,56 @@ function renderMessages() {
     const paragraph = document.createElement("p");
     paragraph.textContent = message.text;
 
+    const result = document.createElement("div");
+    result.className = "communication-result";
+    result.hidden = !message.translation && !message.explanation;
+    if (message.translation) {
+      const translation = document.createElement("p");
+      translation.textContent = message.translation;
+      result.appendChild(translation);
+    }
+    if (message.explanation) {
+      const explanation = document.createElement("p");
+      explanation.textContent = message.explanation;
+      result.appendChild(explanation);
+    }
+
     const actions = document.createElement("div");
     actions.className = "communication-actions";
 
     const translateButton = document.createElement("button");
     translateButton.type = "button";
     translateButton.textContent = text("communication.translate");
-    translateButton.disabled = true;
+    translateButton.addEventListener("click", async () => {
+      translateButton.disabled = true;
+      translateButton.textContent = text("communication.translating");
+      try {
+        const data = await requestGoMo("/api/translate", { text: message.text });
+        updateStoredMessage(message.id, { translation: data.translation });
+      } catch (error) {
+        window.alert(error.message || text("communication.failed"));
+        translateButton.disabled = false;
+        translateButton.textContent = text("communication.translate");
+      }
+    });
 
     const explainButton = document.createElement("button");
     explainButton.type = "button";
     explainButton.textContent = text("communication.explain");
-    explainButton.disabled = true;
+    explainButton.addEventListener("click", async () => {
+      explainButton.disabled = true;
+      explainButton.textContent = text("communication.explaining");
+      try {
+        const data = await requestGoMo("/api/ask", {
+          question: `Explique simplement ce texte sans inventer d'information : ${message.text}`
+        });
+        updateStoredMessage(message.id, { explanation: data.answer });
+      } catch (error) {
+        window.alert(error.message || text("communication.failed"));
+        explainButton.disabled = false;
+        explainButton.textContent = text("communication.explain");
+      }
+    });
 
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
@@ -887,7 +1311,7 @@ function renderMessages() {
     });
 
     actions.append(translateButton, explainButton, deleteButton);
-    card.append(head, paragraph, actions);
+    card.append(head, paragraph, result, actions);
     list.appendChild(card);
   });
 }
@@ -896,18 +1320,17 @@ function publishMessage() {
   const authorInput = $("#messageAuthor");
   const textInput = $("#messageText");
 
-  const author = authorInput.value.trim();
+  const author = authorInput.value.trim() || "GoMo";
   const messageText = textInput.value.trim();
 
-  if (!author || !messageText) {
-    if (!author) authorInput.focus();
-    else textInput.focus();
+  if (!messageText) {
+    textInput.focus();
     return;
   }
 
   const messages = getStoredMessages();
   messages.push({
-    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    id: globalThis.crypto?.randomUUID?.() || `${Date.now()}`,
     author,
     text: messageText,
     createdAt: new Date().toISOString()
@@ -932,6 +1355,8 @@ function previewCapture(file) {
     $("#analysisDemo").classList.remove("hidden");
     $("#analysisStatus").textContent = text("capture.ready");
     $("#analysisStatus").classList.add("status-pill--ready");
+    $("#analyzeButton").disabled = false;
+    $("#analysisText")?.remove();
   };
   reader.readAsDataURL(file);
 }
@@ -945,6 +1370,16 @@ $("#overlay").addEventListener("click", () => {
 });
 
 // Navigation déléguée : plus robuste sur Safari/iPhone et pour les futurs boutons ajoutés.
+document.addEventListener("click", (event) => {
+  const shinyButton = event.target.closest("[data-gomo-shiny-open]");
+  if (!shinyButton) return;
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  document.getElementById("gomo-r5fapper-panel")?.classList.remove("open");
+  window.location.assign(EXTERNAL_LINKS.shiny);
+}, true);
+
 document.addEventListener("click", (event) => {
   const navButton = event.target.closest("[data-page]");
   if (navButton) {
@@ -970,9 +1405,10 @@ $("#languageButton").addEventListener("click", () => {
   $("#languageDialog").showModal();
 });
 
-$("#askForm").addEventListener("submit", (event) => {
+$("#askForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const input = $("#askInput");
+  const submit = event.submitter || $("#askForm button[type='submit']");
   const question = input.value.trim();
   if (!question) {
     input.focus();
@@ -981,10 +1417,19 @@ $("#askForm").addEventListener("submit", (event) => {
 
   addAssistantMessage(question, "message--user");
   input.value = "";
+  submit.disabled = true;
+  const waiting = text("ask.loading");
+  addAssistantMessage(waiting, "message--demo");
+  const pending = $("#chatMessages .message--demo:last-child p");
 
-  window.setTimeout(() => {
-    addAssistantMessage(text("ask.demoReply"), "message--demo");
-  }, 450);
+  try {
+    const data = await requestGoMo("/api/ask", { question });
+    if (pending) pending.textContent = data.answer;
+  } catch (error) {
+    if (pending) pending.textContent = error.message || text("ask.error");
+  } finally {
+    submit.disabled = false;
+  }
 });
 
 $$(".example-question").forEach((button) => {
@@ -1002,15 +1447,15 @@ $("#analyzeButton").addEventListener("click", async () => {
   const image = $("#capturePreview").src;
 
   if (!image || !image.startsWith("data:image/")) {
-    alert("Choisis d’abord une capture.");
+    alert(text("capture.choose"));
     return;
   }
 
   const oldText = button.textContent;
 
   button.disabled = true;
-  button.textContent = "Analyse en cours…";
-  $("#analysisStatus").textContent = "Analyse en cours…";
+  button.textContent = text("capture.running");
+  $("#analysisStatus").textContent = text("capture.running");
 
   try {
     const response = await fetch("/api/analyze", {
@@ -1018,7 +1463,7 @@ $("#analyzeButton").addEventListener("click", async () => {
       headers: {
         "content-type": "application/json"
       },
-      body: JSON.stringify({ image })
+      body: JSON.stringify({ image, locale: currentLanguage })
     });
 
     const data = await response.json();
@@ -1040,9 +1485,15 @@ $("#analyzeButton").addEventListener("click", async () => {
     }
 
     box.textContent = data.analysis;
-    $("#analysisStatus").textContent = "Analyse terminée";
+    const rows = $$("#analysisDemo .result-row");
+    if (rows[0]) $("strong", rows[0]).textContent = data.type || text("capture.unknown");
+    if (rows[1]) $("strong", rows[1]).textContent = data.language || text("capture.auto");
+    if (rows[2]) $("strong", rows[2]).textContent = Number.isFinite(Number(data.confidence))
+      ? `${Math.round(Number(data.confidence))}%`
+      : "—";
+    $("#analysisStatus").textContent = text("capture.done");
   } catch (error) {
-    $("#analysisStatus").textContent = "Erreur";
+    $("#analysisStatus").textContent = text("capture.error");
     alert(error.message);
   } finally {
     button.disabled = false;

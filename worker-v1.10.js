@@ -9,7 +9,7 @@ function json(data, status = 200) {
   });
 }
 
-const SUPPORTED_LOCALES = new Set(["fr", "de", "en", "ro", "uk", "ko", "hr", "pt"]);
+const SUPPORTED_LOCALES = new Set(["fr", "de", "en", "ro", "uk", "ko", "hr"]);
 
 const LOCALE_NAMES = {
   fr: "français",
@@ -605,18 +605,14 @@ const APP_PATCH = String.raw`
 async function servePatchedApp(request, env) {
   const asset = await env.ASSETS.fetch(request);
   if (!asset.ok) return asset;
-
-  const source = await asset.text();
   const headers = new Headers(asset.headers);
   headers.set("content-type", "application/javascript; charset=utf-8");
   headers.set("cache-control", "no-store, max-age=0");
-  headers.delete("content-length");
-  headers.delete("etag");
+  headers.set("x-gomo-central-version", "18.14");
 
-  headers.set("x-gomo-central-version", "18.2");
-
-  return new Response(`${source}\n${R5FAPPER_BOOT_PATCH}\n${APP_PATCH}`, {
+  return new Response(asset.body, {
     status: asset.status,
+    statusText: asset.statusText,
     headers
   });
 }
@@ -844,7 +840,7 @@ let knowledgeCache = null;
 async function loadGameKnowledge(request, env) {
   if (knowledgeCache) return knowledgeCache;
   try {
-    const knowledgeUrl = new URL("/data/last-war-knowledge.json", request.url);
+    const knowledgeUrl = new URL("/last-war-knowledge.json", request.url);
     const response = await env.ASSETS.fetch(new Request(knowledgeUrl.toString()));
     if (response.ok) {
       const parsed = await response.json();
@@ -996,16 +992,142 @@ function buildCompactFallbackAnalysis(text, detectedType, locale = "fr") {
   return `${tx.confirmed}\n${lines.slice(0, 6).join("\n")}`.trim();
 }
 
-async function analyzeImage(request, env) {
+const GOMO_ALLIANCE_FACTS = `
+- GoMo Central concerne l'alliance GoMo du serveur 1591.
+- Les jours Shiny du serveur 1591 sont mardi et samedi. Le serveur 1591 reste exclu des listes de serveurs extérieurs.
+- Le planning Train/VIP va du dimanche au samedi. Rotation prévue : 4 conducteurs R4/R5 et 3 conducteurs R3, plus les VIP R3. Un R3 déjà premier attend son prochain tour.
+- Tempête du désert : deux créneaux sont suivis, vers 13 h 30 et 22 h 30. Une saisie oubliée peut être ajoutée le lendemain et les résultats comptent dans le classement hebdomadaire.
+- VS : l'objectif du Planner est 7,2 M. Le mode « semaine d'économie » sert à préserver les ressources des jours suivants.
+- Épreuve du général : choisir au maximum 4 étoiles si l'équipe n'est pas certaine.
+- Prédateur céleste : quota limité, utiliser la meilleure équipe et ne pas gaspiller d'attaques.
+- Avant de dormir le vendredi, activer le bouclier pour protéger les troupes.
+`;
+
+function validateJsonApiRequest(request, maximumBytes) {
   if (request.method !== "POST") {
     return json({ ok: false, error: "Méthode non autorisée" }, 405);
   }
 
+  const url = new URL(request.url);
+  const origin = request.headers.get("origin");
+  const fetchSite = request.headers.get("sec-fetch-site");
+  const contentType = request.headers.get("content-type") || "";
+  const contentLength = Number(request.headers.get("content-length") || 0);
+
+  if ((origin && origin !== url.origin) || fetchSite === "cross-site") {
+    return json({ ok: false, error: "Origine non autorisée" }, 403);
+  }
+  if (!contentType.toLowerCase().includes("application/json")) {
+    return json({ ok: false, error: "Format invalide" }, 415);
+  }
+  if (contentLength > maximumBytes) {
+    return json({ ok: false, error: "Requête trop volumineuse" }, 413);
+  }
+  return null;
+}
+
+function localeFromBody(body) {
+  const requested = typeof body?.locale === "string" ? body.locale : "fr";
+  return SUPPORTED_LOCALES.has(requested) ? requested : "fr";
+}
+
+function compactKnowledge(knowledge) {
+  if (!knowledge) return "Catalogue indisponible.";
+  return JSON.stringify({
+    version: knowledge.version,
+    updated: knowledge.updated,
+    safety_rules: knowledge.safety_rules,
+    screen_categories: knowledge.screen_categories,
+    resources: knowledge.resources,
+    event_groups: knowledge.event_groups,
+    overlord_suzerain: knowledge.overlord_suzerain,
+    vs_groups: knowledge.vs_groups
+  });
+}
+
+async function askGoMo(request, env) {
+  const invalid = validateJsonApiRequest(request, 20_000);
+  if (invalid) return invalid;
+
+  try {
+    const body = await request.json();
+    const question = cleanMarkdown(body?.question).slice(0, 1000);
+    const locale = localeFromBody(body);
+    if (!question) return json({ ok: false, error: "Question manquante" }, 400);
+    if (!env.AI) return json({ ok: false, error: "Assistant indisponible" }, 503);
+
+    const knowledge = await loadGameKnowledge(request, env);
+    const outputLanguage = LOCALE_NAMES[locale] || LOCALE_NAMES.fr;
+    const result = await env.AI.run("@cf/google/gemma-4-26b-a4b-it", {
+      messages: [
+        {
+          role: "system",
+          content:
+            `Tu es l'assistant officiel de GoMo Central pour Last War. Réponds en ${outputLanguage}, en 3 à 8 lignes courtes adaptées à un téléphone. ` +
+            "Utilise uniquement les faits fournis ci-dessous. N'invente jamais de coût, date, horaire, règle, nom, niveau ou stratégie. " +
+            "Si l'information n'est pas fournie ou pas confirmée, dis clairement qu'elle reste à confirmer. " +
+            "Ne demande jamais de mot de passe, code, jeton ou donnée personnelle."
+        },
+        {
+          role: "user",
+          content:
+            `FAITS GOMO CONFIRMÉS :\n${GOMO_ALLIANCE_FACTS}\n\nCATALOGUE LAST WAR :\n${compactKnowledge(knowledge)}\n\nQUESTION :\n${question}`
+        }
+      ],
+      max_completion_tokens: 420,
+      temperature: 0.1
+    });
+
+    const answer = cleanMarkdown(extractModelText(result));
+    if (!answer) return json({ ok: false, error: "Réponse vide" }, 502);
+    return json({ ok: true, answer });
+  } catch (error) {
+    return json({ ok: false, error: error?.message || "Erreur de l'assistant" }, 500);
+  }
+}
+
+async function translateGoMo(request, env) {
+  const invalid = validateJsonApiRequest(request, 20_000);
+  if (invalid) return invalid;
+
+  try {
+    const body = await request.json();
+    const source = String(body?.text || "").trim().slice(0, 2000);
+    const locale = localeFromBody(body);
+    if (!source) return json({ ok: false, error: "Texte manquant" }, 400);
+    if (!env.AI) return json({ ok: false, error: "Traducteur indisponible" }, 503);
+
+    const outputLanguage = LOCALE_NAMES[locale] || LOCALE_NAMES.fr;
+    const result = await env.AI.run("@cf/google/gemma-4-26b-a4b-it", {
+      messages: [
+        {
+          role: "system",
+          content:
+            `Traduis fidèlement le texte fourni en ${outputLanguage}. Réponds uniquement avec la traduction. ` +
+            "Conserve exactement les noms de joueurs, nombres, horaires, liens, émojis et termes Last War. N'ajoute aucune explication."
+        },
+        { role: "user", content: source }
+      ],
+      max_completion_tokens: 500,
+      temperature: 0.1
+    });
+
+    const translation = cleanMarkdown(extractModelText(result));
+    if (!translation) return json({ ok: false, error: "Traduction vide" }, 502);
+    return json({ ok: true, translation });
+  } catch (error) {
+    return json({ ok: false, error: error?.message || "Erreur de traduction" }, 500);
+  }
+}
+
+async function analyzeImage(request, env) {
+  const invalid = validateJsonApiRequest(request, 12_500_000);
+  if (invalid) return invalid;
+
   try {
     const body = await request.json();
     const image = body?.image;
-    const requestedLocale = typeof body?.locale === "string" ? body.locale : "fr";
-    const locale = SUPPORTED_LOCALES.has(requestedLocale) ? requestedLocale : "fr";
+    const locale = localeFromBody(body);
 
     if (!image || typeof image !== "string" || !image.startsWith("data:image/")) {
       return json({ ok: false, error: "Image manquante ou invalide" }, 400);
@@ -1184,6 +1306,14 @@ export default {
 
     if (url.pathname === "/api/analyze") {
       return analyzeImage(request, env);
+    }
+
+    if (url.pathname === "/api/ask") {
+      return askGoMo(request, env);
+    }
+
+    if (url.pathname === "/api/translate") {
+      return translateGoMo(request, env);
     }
 
     if (url.pathname === "/assets/app-v1.5.js") {

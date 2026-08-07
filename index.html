@@ -10,7 +10,7 @@
 <link href="manifest.webmanifest" rel="manifest"/>
 <link href="icons/icon-192.png" rel="apple-touch-icon"/>
 <link href="icons/icon-192.png" rel="icon"/>
-<link href="assets/styles-v1.5.css?v=1.5" rel="stylesheet"/>
+<link href="assets/styles-v1.5.css?v=18.14" rel="stylesheet"/>
 <style id="gomo-v189-r5fapper-home-style">
 /* GoMo Central v18.9 — accueil R5Fapper validé + boutons séparés */
 .royal-home-emblem{margin:0 auto 28px;max-width:1080px}
@@ -27,7 +27,7 @@
 .gomo-quick-icon{width:100px;height:100px;border-radius:50%;object-fit:cover;display:block}
 .gomo-quick-copy{min-width:0}.gomo-quick-copy strong{display:block;font-size:22px;line-height:1.08;margin-bottom:6px}.gomo-quick-copy small{display:block;color:#b7c4d6;font-size:16px;line-height:1.25}
 .gomo-quick-arrow{font-size:42px;line-height:1;color:#fff;font-weight:300;text-align:center}
-@media(max-width:520px){.gomo-quick-card{grid-template-columns:92px minmax(0,1fr) 28px;min-height:108px;padding:7px 10px 7px 8px;gap:10px}.gomo-quick-icon{width:84px;height:84px}.gomo-quick-copy strong{font-size:18px}.gomo-quick-copy small{font-size:14px}.gomo-quick-arrow{font-size:34px}}
+@media(max-width:520px){.gomo-quick-card{grid-template-columns:82px minmax(0,1fr) 24px;min-height:98px;padding:7px 9px 7px 7px;gap:9px}.gomo-quick-icon{width:76px;height:76px}.gomo-quick-copy strong{font-size:16px}.gomo-quick-copy small{font-size:13px}.gomo-quick-arrow{font-size:30px}}
 .gomo-train-page{max-width:980px;margin:0 auto}.gomo-subnav{display:flex;justify-content:flex-start;margin:0 0 14px}.gomo-back-button,.gomo-home-button{border:1px solid rgba(230,166,39,.78);background:linear-gradient(180deg,#102033,#08121f);color:#f2c767;border-radius:999px;font-weight:850;font-size:18px;padding:11px 18px;box-shadow:0 8px 22px rgba(0,0,0,.25)}
 .gomo-train-visual{display:block;width:100%;height:auto;border-radius:24px;box-shadow:0 18px 52px rgba(0,0,0,.36)}
 .gomo-train-home-wrap{display:flex;justify-content:center;margin:24px 0 8px}.gomo-home-button{min-width:min(420px,90%);font-size:20px;padding:15px 22px}
@@ -59,7 +59,7 @@
 <button class="nav-item active" data-page="home" type="button">🏠 <span data-i18n="nav.home">Accueil</span></button>
 <button class="nav-item" data-page="ask" type="button">✨ <span data-i18n="nav.ask">Demander à GoMo</span></button>
 <button class="nav-item" data-page="capture" type="button">📸 <span data-i18n="nav.capture">Analyser une capture</span></button>
-<button class="nav-item" data-page="communication" type="button">💬 <span data-i18n="nav.communication">Communication</span></button>
+<button class="nav-item" data-page="communication" type="button">💬 <span data-i18n="nav.communication">Traducteur</span></button>
 <button class="nav-item" data-page="news" type="button">📢 <span data-i18n="nav.news">Actualités</span></button>
 <button class="nav-item" data-page="tools" type="button">🧰 <span data-i18n="nav.tools">Outils GoMo</span></button>
 <button class="nav-item" data-page="guides" type="button">🎓 <span data-i18n="nav.guides">Conseils Last War</span></button>
@@ -152,9 +152,9 @@
               Traduis une consigne
             </button>
 <div class="notice">
-<strong data-i18n="ask.demoTitle">Base de démonstration</strong>
+<strong data-i18n="ask.demoTitle">Assistant GoMo actif</strong>
 <p data-i18n="ask.demoText">
-                L’interface est prête. La véritable IA gratuite sera branchée à l’étape suivante.
+                Les réponses utilisent les informations GoMo et Last War déjà vérifiées.
               </p>
 </div>
 </aside>
@@ -211,7 +211,7 @@
 <div class="validation-note" data-i18n="capture.validation">
                 Aucune donnée ne sera enregistrée sans validation humaine.
               </div>
-<button class="primary-button" data-i18n="capture.analyze" disabled="" type="button">
+<button class="primary-button" data-i18n="capture.analyze" disabled="" id="analyzeButton" type="button">
                 Analyser avec l’IA
               </button>
 </div>
@@ -222,25 +222,25 @@
 <section class="page" id="communication">
 <div class="page-header page-header--with-action">
 <div>
-<span class="eyebrow" data-i18n="communication.eyebrow">ENTRAIDE</span>
-<h1 data-i18n="communication.title">Communication GoMo</h1>
+<span class="eyebrow" data-i18n="communication.eyebrow">TRADUCTION</span>
+<h1 data-i18n="communication.title">Traducteur GoMo</h1>
 </div>
 <button class="primary-button" data-i18n="communication.new" id="newMessageButton" type="button">
-            Nouveau message
+            Nouveau texte
           </button>
 </div>
 <div class="message-list" id="messageList"></div>
 <div class="empty-state" id="communicationEmpty">
 <span>💬</span>
-<h3 data-i18n="communication.emptyTitle">Commence la discussion</h3>
+<h3 data-i18n="communication.emptyTitle">Ajoute un texte à traduire</h3>
 <p data-i18n="communication.emptyText">
-            Dans cette base, les messages sont sauvegardés sur l’appareil pour les tests.
+            Le texte est enregistré sur cet appareil et transmis à l’IA seulement pour la traduction demandée.
           </p>
 </div>
 <div class="notice notice--wide">
-<strong data-i18n="communication.nextTitle">Prochaine étape</strong>
+<strong data-i18n="communication.nextTitle">Mode privé</strong>
 <p data-i18n="communication.nextText">
-            Les comptes et messages partagés entre tous les membres seront reliés ensuite à une base gratuite.
+            Rien n’est publié ni partagé avec les autres membres.
           </p>
 </div>
 </section>
@@ -257,14 +257,11 @@
 <span>📌</span>
 <strong data-i18n="news.pinned">Information épinglée</strong>
 </div>
-<h2 data-i18n="news.demoTitle">Bienvenue sur la nouvelle base GoMo Central</h2>
+<h2 data-i18n="news.demoTitle">GoMo Central est prêt</h2>
 <p data-i18n="news.demoText">
-            Le site est organisé autour de quelques fonctions simples :
-            comprendre, communiquer, analyser et accéder aux outils.
+            Train, classements, VS Planner, Shiny Radar, analyse IA, traduction et guides
+            sont accessibles depuis un seul endroit.
           </p>
-<button class="text-link" data-i18n="actions.original" type="button">
-            Voir le texte original
-          </button>
 </article>
 <div class="empty-state">
 <span>📢</span>
@@ -289,7 +286,7 @@
 <h2>GoMo Assistant</h2>
 <p data-i18n="tools.assistant">Classements, train, VIP et organisation de l’alliance.</p>
 </div>
-<button onclick="window.location.href='https://chic-sopapillas-82fbc8.netlify.app'" type="button">Ouvrir</button>
+<button data-i18n="tools.open" onclick="window.location.href='https://chic-sopapillas-82fbc8.netlify.app'" type="button">Ouvrir</button>
 </article>
 <article class="tool-card">
 <img alt="" class="tool-card__image" src="icons/shiny-radar.png"/>
@@ -297,7 +294,7 @@
 <h2>Shiny Radar</h2>
 <p data-i18n="tools.radar">Serveurs confirmés, prévisions et historique des missions.</p>
 </div>
-<button data-gomo-shiny-open type="button">Ouvrir</button>
+<button data-gomo-shiny-open data-i18n="tools.open" type="button">Ouvrir</button>
 </article>
 <article class="tool-card">
 <img alt="" class="tool-card__image" src="icons/vs-planner.png"/>
@@ -305,15 +302,15 @@
 <h2>VS Planner</h2>
 <p data-i18n="tools.planner">Préparer les ressources et atteindre l’objectif de 7,2 M.</p>
 </div>
-<button data-i18n="tools.link" disabled="" type="button">Lien à connecter</button>
+<button data-i18n="tools.open" onclick="window.location.href='https://2nhgp6bksm-hue.github.io/-GoMo-VS-Planner-/'" type="button">Ouvrir</button>
 </article>
 <article class="tool-card">
-<img alt="" class="tool-card__image" src="icons/gomo-coach.png"/>
+<img alt="" class="tool-card__image" src="icons/gomo-assistant.png"/>
 <div>
-<h2>GoMo Coach</h2>
-<p data-i18n="tools.coach">Héros, armes, équipes, événements et priorités.</p>
+<h2 data-i18n="tools.rankingsTitle">Classements</h2>
+<p data-i18n="tools.rankings">Podiums VS, donations et Tempête du désert.</p>
 </div>
-<button data-i18n="tools.link" disabled="" type="button">Lien à connecter</button>
+<button data-i18n="tools.open" onclick="window.location.href='https://chic-sopapillas-82fbc8.netlify.app/?goto=weeklyChampionsCard'" type="button">Ouvrir</button>
 </article>
 <article class="tool-card tool-card--internal" data-go-card="capture">
 <img alt="" class="tool-card__image" src="icons/analyse-ia.png"/>
@@ -323,13 +320,13 @@
 </div>
 <button data-go="capture" data-i18n="tools.open" type="button">Ouvrir</button>
 </article>
-<article class="tool-card tool-card--internal" data-go-card="ask">
+<article class="tool-card tool-card--internal" data-go-card="communication">
 <img alt="" class="tool-card__image" src="icons/traducteur-gomo.png"/>
 <div>
-<h2>Traducteur GoMo</h2>
+<h2 data-i18n="communication.title">Traducteur GoMo</h2>
 <p data-i18n="tools.translate">Traduction simple pour les langues de l’alliance.</p>
 </div>
-<button data-go="ask" data-i18n="tools.open" type="button">Ouvrir</button>
+<button data-go="communication" data-i18n="tools.open" type="button">Ouvrir</button>
 </article>
 <article class="tool-card tool-card--internal" data-go-card="news">
 <img alt="" class="tool-card__image" src="icons/actualites-gomo.png"/>
@@ -358,31 +355,37 @@
 <span>📊</span>
 <h3 data-i18n="guides.vsTitle">Atteindre 7,2 M au VS</h3>
 <p data-i18n="guides.vsText">Planifier les ressources sans gaspiller celles des jours suivants.</p>
+<div class="guide-details" data-guide-details="vs"></div>
 </article>
 <article class="guide-card" data-search="héros héros armes tank kimberly stetmann murphy williams">
 <span>🦸</span>
 <h3 data-i18n="guides.heroesTitle">Héros et armes</h3>
 <p data-i18n="guides.heroesText">Choisir les améliorations prioritaires selon l’équipe utilisée.</p>
+<div class="guide-details" data-guide-details="heroes"></div>
 </article>
 <article class="guide-card" data-search="shiny serveur missions capture radar">
 <span>✨</span>
 <h3 data-i18n="guides.shinyTitle">Missions Shiny</h3>
 <p data-i18n="guides.shinyText">Reconnaître une mission Shiny et consulter les serveurs confirmés.</p>
+<div class="guide-details" data-guide-details="shiny"></div>
 </article>
 <article class="guide-card" data-search="train vip conducteur récompense">
 <span>🚂</span>
 <h3 data-i18n="guides.trainTitle">Train et VIP</h3>
 <p data-i18n="guides.trainText">Comprendre la rotation et les récompenses de la semaine.</p>
+<div class="guide-details" data-guide-details="train"></div>
 </article>
 <article class="guide-card" data-search="tempête désert equipes équipes horaires inscriptions">
 <span>🌪️</span>
 <h3 data-i18n="guides.desertTitle">Tempête du désert</h3>
 <p data-i18n="guides.desertText">Préparer les équipes, horaires et inscriptions.</p>
+<div class="guide-details" data-guide-details="desert"></div>
 </article>
 <article class="guide-card" data-search="zombie général maréchal capitole événement évènements">
 <span>📅</span>
 <h3 data-i18n="guides.eventsTitle">Événements</h3>
 <p data-i18n="guides.eventsText">Consignes simples pour les événements importants.</p>
+<div class="guide-details" data-guide-details="events"></div>
 </article>
 </div>
 <div class="empty-state hidden" id="guideEmpty">
@@ -406,13 +409,13 @@
 <div class="language-list" id="languageList"></div>
 </form>
 </dialog>
-<!-- Nouveau message -->
+<!-- Nouveau texte -->
 <dialog class="dialog" id="messageDialog">
 <form id="messageForm" method="dialog">
 <div class="dialog-header">
 <div>
 <span class="eyebrow">GOMO</span>
-<h2 data-i18n="communication.new">Nouveau message</h2>
+<h2 data-i18n="communication.new">Nouveau texte</h2>
 </div>
 <button class="icon-button" type="submit" value="cancel">✕</button>
 </div>
@@ -429,7 +432,7 @@
 <button class="primary-button" data-i18n="actions.publish" id="publishMessageButton" type="button">Publier</button>
 </div>
 <p class="small-note" data-i18n="communication.demoNotice">
-        Pour cette première base, les messages restent seulement sur cet appareil.
+        Rien n’est publié ni partagé avec les autres membres.
       </p>
 </form>
 </dialog>
@@ -473,7 +476,7 @@
     };
     const lang=()=>{ try { return (typeof currentLanguage!=="undefined"&&currentLanguage)||localStorage.getItem("gomo-central-language")||"fr"; } catch { return "fr"; } };
     const tx=()=>TX[lang()]||TX.fr;
-    const extImg=(state)=>"/r5fapper/images/r5fapper-"+state+".webp?v=18.2";
+    const extImg=(state)=>"/r5fapper/images/r5fapper-"+state+".png?v=18.14";
     const safeImage=(img,state)=>{ if(!img)return; img.onerror=()=>{img.onerror=null;img.src=R5_FALLBACK;}; img.src=extImg(state); };
     const setState=(state)=>{ safeImage(document.getElementById("gomo-r5fapper-face"),state); safeImage(document.querySelector("#gomo-r5fapper-launcher img"),state); };
     const say=(text,state)=>{ const box=document.getElementById("gomo-r5fapper-message"); if(box)box.textContent=text; setState(state||"explication"); };
@@ -481,12 +484,12 @@
     function reply(target){const t=tx();return target==="vs-planner"?t.vs:target==="shiny-radar"?t.shiny:target==="train"?t.train:target==="classements"?t.ranking:target==="gomo-assistant"?t.assistant:target==="traduction"?t.translate:t.fallback;}
     const R5_LINKS = {
       "vs-planner":"https://2nhgp6bksm-hue.github.io/-GoMo-VS-Planner-/",
-      "shiny-radar":"https://timely-meringue-812f51.netlify.app/",
+      "shiny-radar":"https://gomo-shiny-central.gjp86wh7p2.workers.dev/",
+      "train":"https://chic-sopapillas-82fbc8.netlify.app/?goto=weeklyTrainPlanCard",
       "classements":"https://chic-sopapillas-82fbc8.netlify.app/?goto=weeklyChampionsCard",
       "gomo-assistant":"https://chic-sopapillas-82fbc8.netlify.app/"
     };
     function clickMatching(target){
-      if(target==="train"){ if(typeof openPage==="function"){openPage("train");return true;} const b=document.querySelector('[data-go="train"]'); if(b){b.click();return true;} }
       if(target==="traduction"){
         const communication=document.querySelector('[data-go="communication"],[data-page="communication"]');
         if(communication){communication.click();return true;}
@@ -498,7 +501,7 @@
       const found=els.find(el=>{const s=(el.textContent||"").trim().toLowerCase();return words.some(w=>s.includes(w));}); if(found){found.click();return true;}
       const external=window.GOMO_R5FAPPER_CONFIG?.links?.[target]; if(external){location.href=external;return true;} return false;
     }
-    function go(target){say(reply(target),"explication");if(clickMatching(target))return;const tools=document.querySelector('[data-go="tools"],[data-page="tools"]');if(tools){tools.click();setTimeout(()=>clickMatching(target),180);}}
+    function go(target){say(reply(target),"explication");document.getElementById("gomo-r5fapper-panel")?.classList.remove("open");if(clickMatching(target))return;const tools=document.querySelector('[data-go="tools"],[data-page="tools"]');if(tools){tools.click();setTimeout(()=>clickMatching(target),180);}}
     function build(){
       try {
         if(!document.body||document.getElementById("gomo-r5fapper-launcher"))return;
@@ -517,7 +520,7 @@
 })();
 
   </script>
-<script src="assets/app-v1.5.js?v=18.9"></script><script>
+<script src="assets/app-v1.5.js?v=18.14"></script><script>
 ;(() => {
   const EXTRA={
     fr:{ranking:"Classement",train:"Train",vs:"VS",shiny:"Shiny",guide:"Guide",settings:"Paramètres",translator:"Traducteur",back:"Retour",homeBack:"Retour à l’accueil"},

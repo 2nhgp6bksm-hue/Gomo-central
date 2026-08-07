@@ -1,6 +1,6 @@
-# GoMo Central — Base v1
+# GoMo Central — v18.14
 
-Cette archive contient la première base complète et testable de GoMo Central.
+Portail central de l’alliance GoMo sur le serveur 1591.
 
 ## Principes respectés
 
@@ -10,45 +10,30 @@ Cette archive contient la première base complète et testable de GoMo Central.
   français, allemand, anglais, roumain, ukrainien, coréen et croate.
 - Adapté à l’iPhone, Android et ordinateur.
 - Installable sur l’écran d’accueil comme une application web.
-- Hébergeable gratuitement sur Netlify, Cloudflare Pages ou GitHub Pages.
+- Déployé sur Cloudflare Workers avec des ressources statiques.
 
 ## Fonctions incluses
 
 - Accueil central
-- Assistant « Demander à GoMo » en mode démonstration
-- Import et aperçu d’une capture Last War
-- Espace de communication local pour tester les messages
+- Assistant « Demander à GoMo » relié à Workers AI et au catalogue Last War
+- Analyse de captures Last War avec résultat, type, langue et confiance
+- Traducteur privé dans les 7 langues de l’alliance
 - Actualités GoMo
-- Accès central à GoMo Assistant, VS Planner, Shiny Radar et GoMo Coach
-- Recherche dans les conseils Last War
-- Sauvegarde locale de la langue et des messages
-- Fonctionnement hors connexion après la première ouverture
+- Accès direct à GoMo Assistant, Train/VIP, Classements, VS Planner et Shiny Radar
+- Guides complets pour le VS, les héros, Shiny, le Train, la Tempête du désert et les événements
+- Sauvegarde locale de la langue et des textes du traducteur
+- Consultation du portail et des guides hors connexion après la première ouverture
 
-## Limites actuelles
+## Données et sécurité
 
-Cette base ne contient pas encore :
+- Les textes sont sauvegardés localement. Ils sont transmis à Workers AI uniquement
+  lorsqu’une traduction ou une explication est demandée, sans être publiés aux membres.
+- Les captures sont transmises pour l’analyse puis ne sont pas enregistrées par GoMo Central.
+- L’assistant, la traduction et l’analyse nécessitent une connexion internet.
+- Les réponses doivent distinguer ce qui est confirmé de ce qui reste à confirmer.
+- Les appels IA refusent les requêtes provenant d’un autre site.
 
-- la vraie intelligence artificielle ;
-- la traduction automatique des nouveaux messages ;
-- les comptes partagés ;
-- la communication entre plusieurs téléphones ;
-- la sauvegarde en ligne des captures ;
-- les liens définitifs des autres outils GoMo.
+## Développement
 
-Les boutons concernés affichent donc une démonstration ou restent désactivés.
-
-## Mise en ligne
-
-### Netlify
-Décompresser le ZIP, puis déposer le dossier complet dans Netlify Drop.
-
-### Cloudflare Pages
-Créer un projet Pages en téléchargement direct, puis déposer le dossier complet.
-
-### GitHub Pages
-Ajouter tous les fichiers à la racine d’un dépôt, puis activer Pages.
-
-## Prochaine étape recommandée
-
-Relier une base gratuite afin que 10 à 15 membres puissent communiquer et retrouver
-leurs données sur plusieurs appareils, avant d’ajouter progressivement l’IA gratuite.
+Le Worker principal est défini dans `wrangler.jsonc`. Toute nouvelle version doit être
+testée sur une branche séparée avant de remplacer la version publique.
