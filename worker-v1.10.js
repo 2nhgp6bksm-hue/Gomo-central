@@ -1074,7 +1074,8 @@ async function askGoMo(request, env) {
             `FAITS GOMO CONFIRMÉS :\n${GOMO_ALLIANCE_FACTS}\n\nCATALOGUE LAST WAR :\n${compactKnowledge(knowledge)}\n\nQUESTION :\n${question}`
         }
       ],
-      max_completion_tokens: 420,
+      max_tokens: 600,
+      chat_template_kwargs: { enable_thinking: false },
       temperature: 0.1
     });
 
@@ -1108,7 +1109,8 @@ async function translateGoMo(request, env) {
         },
         { role: "user", content: source }
       ],
-      max_completion_tokens: 500,
+      max_tokens: 600,
+      chat_template_kwargs: { enable_thinking: false },
       temperature: 0.1
     });
 
@@ -1230,7 +1232,8 @@ async function analyzeImage(request, env) {
               `Si une information n'est pas certaine, omets-la.`
           }
         ],
-        max_completion_tokens: 360,
+        max_tokens: 500,
+        chat_template_kwargs: { enable_thinking: false },
         temperature: 0.1
       }
     );
