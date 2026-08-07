@@ -1,9 +1,9 @@
-// GoMo Central v20.3 — langues synchronisées, classements internes et mascottes dédiées.
+// GoMo Central v20.4 — langues synchronisées, classements internes et mascottes dédiées.
 // Les routes transformées passent par le Worker avant les ressources statiques.
 import baseWorker from "./worker-v1.10.js";
 import legacyRankingsWorker from "./worker-v1.6.js";
 
-const VERSION = "20.3";
+const VERSION = "20.4";
 const SHINY_ORIGIN = "https://gomo-shiny-central.gjp86wh7p2.workers.dev";
 const SHINY_PREFIX = "/shiny-radar";
 const SHINY_FORWARDED_HEADERS = [
@@ -192,13 +192,13 @@ function centralUpgrade() {
     if (coach) {
       const image = coach.querySelector("img");
       if (image) {
-        image.src = "/mascots/gomo-coach-mascot.webp?v=20.3";
+        image.src = "/mascots/gomo-coach-mascot.webp?v=20.4";
         image.alt = "GoMo Coach";
       }
       if (planner && planner.nextElementSibling !== coach) planner.after(coach);
     }
     if (plannerImage) {
-      plannerImage.src = "/mascots/gomo-vs-planner-mascot.webp?v=20.3";
+      plannerImage.src = "/mascots/gomo-vs-planner-mascot.webp?v=20.4";
       plannerImage.alt = "GoMo VS Planner";
       planner?.setAttribute("data-gomo-planner-card", "1");
     }
@@ -226,7 +226,7 @@ function centralUpgrade() {
     intro.classList.add("gomo-coach-with-mascot");
     const image = document.createElement("img");
     image.className = "gomo-coach-mascot";
-    image.src = "/mascots/gomo-coach-mascot.webp?v=20.3";
+    image.src = "/mascots/gomo-coach-mascot.webp?v=20.4";
     image.alt = "GoMo Coach";
     intro.prepend(image);
   }
@@ -490,6 +490,29 @@ class ShinyCopyButton {
   element(element) { element.removeAttribute("onclick"); }
 }
 
+function upgradeRankingsPatch(source) {
+  const copy = {
+    fr: { note: "Consultation en lecture seule.", missing: "La connexion aux classements n'est pas encore enregistrée sur cet appareil. Ouvre une fois le lien membre partagé." },
+    de: { note: "Nur-Leseansicht.", missing: "Die Verbindung zu den Ranglisten ist auf diesem Gerät noch nicht gespeichert. Öffne einmal den geteilten Mitgliederlink." },
+    en: { note: "Read-only view.", missing: "The rankings connection has not been saved on this device yet. Open the shared member link once." },
+    ro: { note: "Vizualizare doar în citire.", missing: "Conexiunea la clasamente nu este încă salvată pe acest dispozitiv. Deschide o dată linkul de membru distribuit." },
+    uk: { note: "Перегляд лише для читання.", missing: "Підключення до рейтингів ще не збережене на цьому пристрої. Один раз відкрийте спільне посилання для учасників." },
+    ko: { note: "읽기 전용 보기입니다.", missing: "이 기기에 순위 연결 정보가 아직 저장되지 않았습니다. 공유된 멤버 링크를 한 번 열어 주세요." },
+    hr: { note: "Pregled samo za čitanje.", missing: "Veza s poretkom još nije spremljena na ovom uređaju. Jednom otvori podijeljenu poveznicu za članove." },
+    pt: { note: "Vista apenas de leitura.", missing: "A ligação às classificações ainda não está guardada neste dispositivo. Abre uma vez a ligação de membro partilhada." }
+  };
+  let patch = source.replaceAll('eyebrow:"GOMO ASSISTANT"', 'eyebrow:"GOMO CENTRAL"');
+  for (const [language, values] of Object.entries(copy)) {
+    for (const field of ["note", "missing"]) {
+      const pattern = new RegExp(`(${language}:\\{[^\\n]*?${field}:)"[^"]*"`);
+      patch = patch.replace(pattern, (_match, prefix) => `${prefix}${JSON.stringify(values[field])}`);
+    }
+    const assistantPattern = new RegExp(`(${language}:\\{[^\\n]*?assistant:)"[^"]*"`);
+    patch = patch.replace(assistantPattern, '$1""');
+  }
+  return patch.replace(/\s*<button id="rankingsAssistant"[^>]*><\/button>/, "");
+}
+
 async function getRankingsPatch(request, env, ctx) {
   if (cachedRankingsPatch) return cachedRankingsPatch;
   const legacy = await legacyRankingsWorker.fetch(request, env, ctx);
@@ -497,7 +520,7 @@ async function getRankingsPatch(request, env, ctx) {
   const anchor = 'const CONFIG = {\n    url: "gomo-central-rankings-url"';
   const anchorIndex = source.indexOf(anchor);
   const start = anchorIndex < 0 ? -1 : source.lastIndexOf("\n;(() =>", anchorIndex);
-  if (start >= 0) cachedRankingsPatch = source.slice(start);
+  if (start >= 0) cachedRankingsPatch = upgradeRankingsPatch(source.slice(start));
   return cachedRankingsPatch;
 }
 
