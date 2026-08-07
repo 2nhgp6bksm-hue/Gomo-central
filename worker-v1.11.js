@@ -1,9 +1,9 @@
-// GoMo Central v20.2 — langues synchronisées, classements internes et mascottes dédiées.
+// GoMo Central v20.3 — langues synchronisées, classements internes et mascottes dédiées.
 // Les routes transformées passent par le Worker avant les ressources statiques.
 import baseWorker from "./worker-v1.10.js";
 import legacyRankingsWorker from "./worker-v1.6.js";
 
-const VERSION = "20.2";
+const VERSION = "20.3";
 const SHINY_ORIGIN = "https://gomo-shiny-central.gjp86wh7p2.workers.dev";
 const SHINY_PREFIX = "/shiny-radar";
 const SHINY_FORWARDED_HEADERS = [
@@ -18,6 +18,10 @@ const SHINY_FORWARDED_HEADERS = [
 ];
 
 let cachedRankingsPatch = "";
+
+function clientFunctionCall(fn) {
+  return `(() => { const __name = (target) => target; (${fn.toString()})(); })()`;
+}
 
 function centralUpgrade() {
   if (window.__GOMO_CENTRAL_V20__) return;
@@ -188,13 +192,13 @@ function centralUpgrade() {
     if (coach) {
       const image = coach.querySelector("img");
       if (image) {
-        image.src = "/mascots/gomo-coach-mascot.webp?v=20.2";
+        image.src = "/mascots/gomo-coach-mascot.webp?v=20.3";
         image.alt = "GoMo Coach";
       }
       if (planner && planner.nextElementSibling !== coach) planner.after(coach);
     }
     if (plannerImage) {
-      plannerImage.src = "/mascots/gomo-vs-planner-mascot.webp?v=20.2";
+      plannerImage.src = "/mascots/gomo-vs-planner-mascot.webp?v=20.3";
       plannerImage.alt = "GoMo VS Planner";
       planner?.setAttribute("data-gomo-planner-card", "1");
     }
@@ -222,7 +226,7 @@ function centralUpgrade() {
     intro.classList.add("gomo-coach-with-mascot");
     const image = document.createElement("img");
     image.className = "gomo-coach-mascot";
-    image.src = "/mascots/gomo-coach-mascot.webp?v=20.2";
+    image.src = "/mascots/gomo-coach-mascot.webp?v=20.3";
     image.alt = "GoMo Coach";
     intro.prepend(image);
   }
@@ -478,7 +482,7 @@ class ShinyAssetPrefix {
 
 class ShinyHeadBoot {
   element(element) {
-    element.append(`<script>(${shinyBootstrap.toString()})();</script>`, { html: true });
+    element.append(`<script>;${clientFunctionCall(shinyBootstrap)};</script>`, { html: true });
   }
 }
 
@@ -518,7 +522,7 @@ async function serveCentralApp(request, env, ctx) {
     .replace('  shiny: "https://gomo-shiny-central.gjp86wh7p2.workers.dev/",', '  shiny: "/shiny-radar/",')
     .replace('  "shiny-radar": "https://gomo-shiny-central.gjp86wh7p2.workers.dev/",', '  "shiny-radar": "/shiny-radar/",');
   const rankings = await getRankingsPatch(request, env, ctx);
-  const upgrade = `\n;(${centralUpgrade.toString()})();\n`;
+  const upgrade = `\n;${clientFunctionCall(centralUpgrade)};\n`;
   return javascriptResponse(source + rankings + upgrade, response);
 }
 
@@ -526,7 +530,7 @@ async function servePlannerApp(request, env, ctx) {
   const response = await baseWorker.fetch(request, env, ctx);
   if (!response.ok) return response;
   let source = await response.text();
-  const dictionaryCall = `  (${plannerDictionaryUpgrade.toString()})();\n\n  const LABELS = {`;
+  const dictionaryCall = `  ${clientFunctionCall(plannerDictionaryUpgrade)};\n\n  const LABELS = {`;
   source = source.replace("  const LABELS = {", dictionaryCall);
   source = source.replace(
     "  let state = loadState();",
@@ -549,7 +553,7 @@ async function serveCoachApp(request, env, ctx) {
   );
   source = source.replace(
     '  let activeCategory = "all";',
-    `  (${coachDictionaryUpgrade.toString()})();\n\n  let activeCategory = "all";`
+    `  ${clientFunctionCall(coachDictionaryUpgrade)};\n\n  let activeCategory = "all";`
   );
   const headers = new Headers(response.headers);
   headers.delete("content-length");
