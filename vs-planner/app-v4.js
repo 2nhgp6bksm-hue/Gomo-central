@@ -109,7 +109,7 @@
   }
 
   function detectLanguage() {
-    const saved = localStorage.getItem("gomo-vs-language");
+    const saved = localStorage.getItem("gomo-vs-language") || localStorage.getItem("gomo-central-language");
     if (saved && LANGS[saved]) return saved;
     const code = (navigator.language || "fr").toLowerCase().split("-")[0];
     return LANGS[code] ? code : "fr";

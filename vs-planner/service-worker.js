@@ -1,11 +1,11 @@
-const CACHE='gomo-vs-planner-v4.0.0';
+const CACHE='gomo-vs-planner-v4.0.1';
 
 const ASSETS=[
   './',
   './index.html',
-  './styles-v4.css?v=4.0.0',
-  './planner-core.js?v=4.0.0',
-  './app-v4.js?v=4.0.0',
+  './styles-v4.css?v=4.0.1',
+  './planner-core.js?v=4.0.1',
+  './app-v4.js?v=4.0.1',
   './manifest.webmanifest',
   '../icons/vs-planner.png'
 ];
