@@ -1,9 +1,9 @@
-// GoMo Central v20.7 — classement royal et accès directs depuis GoMo Central.
+// GoMo Central v20.8 — accès GoMo Assistant adapté aux appareils R4/R5.
 // Les routes transformées passent par le Worker avant les ressources statiques.
 import baseWorker from "./worker-v1.10.js";
 import legacyRankingsWorker from "./worker-v1.6.js";
 
-const VERSION = "20.7";
+const VERSION = "20.8";
 const SHINY_ORIGIN = "https://gomo-shiny-central.gjp86wh7p2.workers.dev";
 const SHINY_PREFIX = "/shiny-radar";
 const SHINY_FORWARDED_HEADERS = [
@@ -24,8 +24,11 @@ function clientFunctionCall(fn) {
 }
 
 function centralUpgrade() {
-  if (window.__GOMO_CENTRAL_V207__) return;
-  window.__GOMO_CENTRAL_V207__ = true;
+  if (window.__GOMO_CENTRAL_V208__) return;
+  window.__GOMO_CENTRAL_V208__ = true;
+
+  const REAL_ASSISTANT_URL = "https://chic-sopapillas-82fbc8.netlify.app/";
+  const ACCESS_MODE_KEY = "gomo-central-access-mode";
 
   const LOCALES = {
     fr: "fr-BE", de: "de-DE", en: "en-GB", ro: "ro-RO",
@@ -81,16 +84,61 @@ function centralUpgrade() {
     return LOCALES[value] ? value : "fr";
   };
   const copyText = () => COPY[language()] || COPY.fr;
-  const requestedLanguage = new URLSearchParams(location.search).get("lang");
+  const query = new URLSearchParams(location.search);
+  const requestedLanguage = query.get("lang");
+  const requestedAccess = query.get("access");
+  if (requestedAccess === "r4r5" || requestedAccess === "member") {
+    try {
+      localStorage.setItem(ACCESS_MODE_KEY, requestedAccess);
+    } catch {}
+    const cleanUrl = new URL(location.href);
+    cleanUrl.searchParams.delete("access");
+    history.replaceState(null, "", `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`);
+  }
   if (requestedLanguage && LOCALES[requestedLanguage] && typeof currentLanguage !== "undefined") {
     currentLanguage = requestedLanguage;
     localStorage.setItem("gomo-central-language", requestedLanguage);
   }
 
+  function isLeaderAccess() {
+    try {
+      return localStorage.getItem(ACCESS_MODE_KEY) === "r4r5";
+    } catch {
+      return false;
+    }
+  }
+
+  function realAssistantUrl() {
+    let cloudUrl = "";
+    let cloudKey = "";
+    let alliance = "gomo-1591";
+    try {
+      cloudUrl = String(localStorage.getItem("gomo-central-rankings-url") || "").replace(/\/+$/, "");
+      cloudKey = String(localStorage.getItem("gomo-central-rankings-key") || "");
+      alliance = String(localStorage.getItem("gomo-central-rankings-alliance") || alliance);
+    } catch {}
+    if (/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(cloudUrl) && cloudKey.length >= 20) {
+      const params = new URLSearchParams({ mode: "editor", url: cloudUrl, key: cloudKey, alliance });
+      return `${REAL_ASSISTANT_URL}#${params.toString()}`;
+    }
+    return REAL_ASSISTANT_URL;
+  }
+
+  function openAssistantForAccess() {
+    document.getElementById("gomo-r5fapper-panel")?.classList.remove("open");
+    if (isLeaderAccess()) {
+      location.assign(realAssistantUrl());
+      return;
+    }
+    if (typeof EXTERNAL_LINKS !== "undefined") delete EXTERNAL_LINKS["gomo-assistant"];
+    if (typeof openPage === "function") openPage("ask");
+    else location.hash = "ask";
+  }
+
   function addStyles() {
-    if (document.getElementById("gomo-central-v207-style")) return;
+    if (document.getElementById("gomo-central-v208-style")) return;
     const style = document.createElement("style");
-    style.id = "gomo-central-v207-style";
+    style.id = "gomo-central-v208-style";
     style.textContent = `
       .gomo-copy-link{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px}
       .gomo-v20-toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));z-index:2147483600;transform:translate(-50%,18px);max-width:calc(100vw - 32px);padding:11px 15px;border:1px solid rgba(242,193,78,.46);border-radius:999px;background:#0a1c2d;color:#fff4cf;box-shadow:0 14px 38px rgba(0,0,0,.45);font-weight:800;opacity:0;pointer-events:none;transition:.2s ease;text-align:center}
@@ -320,8 +368,9 @@ function centralUpgrade() {
       const button = assistant.querySelector("button");
       if (button) {
         button.removeAttribute("onclick");
-        button.dataset.go = "ask";
         button.dataset.gomoAssistantOpen = "1";
+        if (isLeaderAccess()) delete button.dataset.go;
+        else button.dataset.go = "ask";
       }
     }
     const coach = grid.querySelector("[data-gomo-coach-card]");
@@ -371,13 +420,15 @@ function centralUpgrade() {
 
   function syncLinks() {
     const lang = language();
+    const leaderAccess = isLeaderAccess();
     if (typeof EXTERNAL_LINKS !== "undefined") {
       EXTERNAL_LINKS.shiny = `/shiny-radar/?lang=${encodeURIComponent(lang)}`;
       EXTERNAL_LINKS["shiny-radar"] = `/shiny-radar/?lang=${encodeURIComponent(lang)}`;
       EXTERNAL_LINKS["vs-planner"] = `/vs-planner/?lang=${encodeURIComponent(lang)}`;
       delete EXTERNAL_LINKS.rankings;
       delete EXTERNAL_LINKS.classements;
-      delete EXTERNAL_LINKS["gomo-assistant"];
+      if (leaderAccess) EXTERNAL_LINKS["gomo-assistant"] = realAssistantUrl();
+      else delete EXTERNAL_LINKS["gomo-assistant"];
     }
 
     document.querySelectorAll('a[href*="weeklyChampionsCard"]').forEach((link) => {
@@ -388,10 +439,11 @@ function centralUpgrade() {
     });
 
     [...document.querySelectorAll("a")]
-      .filter((link) => /^GoMo Assistant/i.test((link.textContent || "").trim()))
+      .filter((link) => link.dataset.gomoAssistantOpen === "1" || link.dataset.go === "gomo-assistant" || /^GoMo Assistant/i.test((link.textContent || "").trim()))
       .forEach((link) => {
-        link.setAttribute("href", `/?lang=${encodeURIComponent(lang)}#ask`);
-        link.dataset.go = "ask";
+        link.setAttribute("href", leaderAccess ? realAssistantUrl() : `/?lang=${encodeURIComponent(lang)}#ask`);
+        if (leaderAccess) delete link.dataset.go;
+        else link.dataset.go = "ask";
         link.dataset.gomoAssistantOpen = "1";
         link.removeAttribute("target");
       });
@@ -451,10 +503,7 @@ function centralUpgrade() {
     if (assistant) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (typeof EXTERNAL_LINKS !== "undefined") delete EXTERNAL_LINKS["gomo-assistant"];
-      document.getElementById("gomo-r5fapper-panel")?.classList.remove("open");
-      if (typeof openPage === "function") openPage("ask");
-      else location.hash = "ask";
+      openAssistantForAccess();
       return;
     }
     const planner = event.target.closest('[data-gomo-planner-card] button,[data-r5-go="vs-planner"]');
