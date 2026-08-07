@@ -1,9 +1,9 @@
-// GoMo Central v20.6 — navigation compacte, GoMo Coach complet et train royal multilingue.
+// GoMo Central v20.7 — classement royal et accès directs depuis GoMo Central.
 // Les routes transformées passent par le Worker avant les ressources statiques.
 import baseWorker from "./worker-v1.10.js";
 import legacyRankingsWorker from "./worker-v1.6.js";
 
-const VERSION = "20.6";
+const VERSION = "20.7";
 const SHINY_ORIGIN = "https://gomo-shiny-central.gjp86wh7p2.workers.dev";
 const SHINY_PREFIX = "/shiny-radar";
 const SHINY_FORWARDED_HEADERS = [
@@ -24,8 +24,8 @@ function clientFunctionCall(fn) {
 }
 
 function centralUpgrade() {
-  if (window.__GOMO_CENTRAL_V206__) return;
-  window.__GOMO_CENTRAL_V206__ = true;
+  if (window.__GOMO_CENTRAL_V207__) return;
+  window.__GOMO_CENTRAL_V207__ = true;
 
   const LOCALES = {
     fr: "fr-BE", de: "de-DE", en: "en-GB", ro: "ro-RO",
@@ -88,9 +88,9 @@ function centralUpgrade() {
   }
 
   function addStyles() {
-    if (document.getElementById("gomo-central-v206-style")) return;
+    if (document.getElementById("gomo-central-v207-style")) return;
     const style = document.createElement("style");
-    style.id = "gomo-central-v206-style";
+    style.id = "gomo-central-v207-style";
     style.textContent = `
       .gomo-copy-link{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px}
       .gomo-v20-toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));z-index:2147483600;transform:translate(-50%,18px);max-width:calc(100vw - 32px);padding:11px 15px;border:1px solid rgba(242,193,78,.46);border-radius:999px;background:#0a1c2d;color:#fff4cf;box-shadow:0 14px 38px rgba(0,0,0,.45);font-weight:800;opacity:0;pointer-events:none;transition:.2s ease;text-align:center}
@@ -107,9 +107,12 @@ function centralUpgrade() {
       .translated-train__hero-copy{position:relative;z-index:2;grid-column:2;display:flex;min-width:0;min-height:0;overflow:hidden;flex-direction:column;align-items:center;justify-content:center;padding:22px 20px 20px 0;text-align:center}.translated-train__hero-copy .eyebrow{margin:0 0 7px;color:#f2c14e;font-size:.72rem;letter-spacing:.18em}.translated-train__hero-copy h1{max-width:430px;margin:0;color:#f6cf70;font-family:Georgia,"Times New Roman",serif;font-size:clamp(1.75rem,4.5vw,2.8rem);line-height:.98;text-wrap:balance;text-shadow:0 2px 0 #5c3304,0 0 16px rgba(244,184,53,.26)}.translated-train__hero-copy p{margin:10px 0 0;color:#e4e9ef;font-size:clamp(.82rem,2vw,1.05rem);line-height:1.2}.translated-train__dates{display:inline-flex;margin-top:12px;padding:6px 12px;border-block:1px solid rgba(242,193,78,.56);color:#f5c75d;font-weight:900;white-space:nowrap}
       .translated-train__scroll{padding:12px 14px 15px;overflow:visible}.translated-train__table-frame{overflow:hidden;border:1px solid rgba(225,161,34,.72);border-radius:18px;background:linear-gradient(180deg,rgba(8,25,41,.98),rgba(5,16,28,.98))}.translated-train table{width:100%;min-width:0;border-collapse:collapse;table-layout:fixed}.translated-train th,.translated-train td{padding:10px 12px;border-bottom:1px solid rgba(225,161,34,.48);text-align:left;vertical-align:middle}.translated-train th{color:#f4c55d;font-size:.82rem;letter-spacing:.035em;text-transform:uppercase;background:rgba(255,255,255,.015)}.translated-train th:nth-child(1),.translated-train td:nth-child(1){width:29%}.translated-train th:nth-child(2),.translated-train td:nth-child(2){width:35.5%}.translated-train th:nth-child(3),.translated-train td:nth-child(3){width:35.5%}.translated-train tbody tr:last-child td{border-bottom:0}.translated-train__day{display:grid;gap:2px;font-weight:900;text-transform:capitalize}.translated-train__day small{color:#aebdcc;font-size:.76rem;font-weight:600}.translated-train__person{display:flex;min-width:0;align-items:center;gap:9px;font-weight:800}.translated-train__name{min-width:0;overflow-wrap:anywhere;line-height:1.14}.translated-train__avatar{display:grid;place-items:center;flex:0 0 46px;width:46px;height:46px;border-radius:50%;border:1px solid rgba(242,193,78,.76);background:radial-gradient(circle at 35% 28%,#22577b,#0a2034 68%);color:#ffe29b;box-shadow:inset 0 0 0 2px rgba(4,13,23,.84),0 5px 13px rgba(0,0,0,.28);font-size:.72rem}.translated-train__avatar--pending{font-size:1.35rem}.translated-train__pending{color:#b7c5d2;font-size:.88rem;font-style:normal}
       .tool-card__symbol{display:grid;place-items:center;width:56px;height:56px;border:1px solid rgba(242,193,78,.34);border-radius:14px;background:linear-gradient(145deg,#173754,#091c2e);font-size:31px;box-shadow:0 7px 18px rgba(0,0,0,.28)}
+      #rankings{max-width:1220px}#rankings .rankings-hero{padding:18px 20px;border:1px solid rgba(225,161,34,.68);border-radius:24px;background:radial-gradient(circle at 92% 0,rgba(242,193,78,.13),transparent 38%),linear-gradient(145deg,#0d2034,#071320);box-shadow:0 18px 44px rgba(0,0,0,.32)}#rankings .rankings-hero h1{color:#f8d778;text-shadow:0 2px 0 #5a3607}#rankings .rankings-status{border-color:rgba(225,161,34,.35);background:rgba(8,27,45,.78)}#rankings .rankings-pill{border-color:rgba(242,193,78,.42);background:rgba(242,193,78,.1);color:#ffe6a1}#rankings .rankings-grid{gap:18px}#rankings .ranking-card{border-color:rgba(225,161,34,.68);border-radius:24px;background:linear-gradient(180deg,#0b2033,#071522);box-shadow:0 18px 42px rgba(0,0,0,.34),inset 0 0 0 1px rgba(255,226,148,.035)}#rankings .ranking-card__head{border-bottom-color:rgba(225,161,34,.43);background:linear-gradient(90deg,rgba(242,193,78,.11),transparent)}#rankings .ranking-card__head h2{color:#f8d778}#rankings .ranking-card__head small{color:#bdc9d6;opacity:1}
+      .ranking-podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:7px;padding:17px 9px 15px;background:radial-gradient(circle at 50% 0,rgba(242,193,78,.15),transparent 58%)}.ranking-podium__item{display:flex;min-width:0;min-height:174px;flex-direction:column;align-items:center;justify-content:flex-end;padding:10px 5px 12px;border:1px solid rgba(242,193,78,.4);border-radius:17px 17px 9px 9px;background:linear-gradient(180deg,rgba(28,65,94,.82),rgba(7,23,37,.98));text-align:center;box-shadow:0 10px 24px rgba(0,0,0,.29)}.ranking-podium__item--first{min-height:204px;border-color:#f3c752;background:linear-gradient(180deg,rgba(121,82,12,.5),rgba(12,36,54,.98));box-shadow:0 0 0 1px rgba(255,226,142,.14),0 12px 30px rgba(0,0,0,.38),0 0 24px rgba(242,193,78,.13)}.ranking-podium__item--second{min-height:184px}.ranking-podium__place{font-size:1.5rem;line-height:1}.ranking-avatar{display:grid;place-items:center;overflow:hidden;border-radius:50%;border:2px solid rgba(242,193,78,.82);background:radial-gradient(circle at 35% 25%,#356c91,#0b2438 68%);color:#ffe7a8;object-fit:cover;box-shadow:0 7px 18px rgba(0,0,0,.36);font-weight:900}.ranking-podium__avatar{width:58px;height:58px;margin:7px 0 6px}.ranking-podium__item--first .ranking-podium__avatar{width:70px;height:70px;border-color:#ffd76b}.ranking-podium__name{width:100%;color:#fff7dd;font-size:.78rem;line-height:1.08;overflow-wrap:anywhere}.ranking-podium__role{margin-top:3px;color:#aebdca;font-size:.66rem}.ranking-podium__score{margin-top:7px;color:#f7cc67;font-size:.76rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.ranking-list{padding:0 10px 12px!important}.ranking-row{grid-template-columns:31px 42px minmax(0,1fr) auto!important;gap:8px!important;padding:10px 7px!important;border-top:1px solid rgba(225,161,34,.16);border-radius:12px!important}.ranking-row:first-child{border-top:0}.ranking-row:nth-child(odd){background:rgba(255,255,255,.028)!important}.ranking-row__avatar{width:42px;height:42px;font-size:.7rem}.ranking-name strong{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere;line-height:1.13}.ranking-name small{display:block;margin-top:3px}.ranking-score{max-width:108px;overflow-wrap:anywhere;font-size:.87rem;color:#fff1c5}.ranking-row--empty{grid-template-columns:1fr!important;text-align:center;color:#bdc9d6}
       .coach-intro.gomo-coach-with-mascot{grid-template-columns:112px minmax(0,1.35fr) minmax(220px,.65fr)}.gomo-coach-mascot{width:112px;aspect-ratio:1;object-fit:cover;border-radius:22px;border:1px solid rgba(242,199,103,.55);box-shadow:0 12px 30px rgba(0,0,0,.32)}
       @media(max-width:760px){.coach-intro.gomo-coach-with-mascot{grid-template-columns:84px minmax(0,1fr)}.gomo-coach-mascot{width:84px}.coach-intro.gomo-coach-with-mascot .coach-safety{grid-column:1/-1}}
       @media(max-width:620px){.royal-nav-grid{grid-auto-columns:82px;padding:9px 8px!important;gap:6px!important}.royal-nav-button{min-width:82px!important;min-height:108px;font-size:.72rem!important}.royal-nav-button img{width:68px!important;height:68px!important;flex-basis:68px}.translated-train__hero{grid-template-columns:45% 55%;height:218px}.translated-train__hero-copy{padding:16px 12px 16px 0}.translated-train__hero-copy h1{font-size:clamp(1.35rem,7vw,2rem)}.translated-train__hero-copy p{font-size:.73rem}.translated-train__dates{margin-top:9px;padding:5px 6px;font-size:.75rem}.translated-train__scroll{padding:8px}.translated-train__table-frame{border-radius:14px}.translated-train th,.translated-train td{padding:8px 5px}.translated-train th{font-size:.68rem}.translated-train__person{gap:5px;font-size:.77rem}.translated-train__avatar{flex-basis:36px;width:36px;height:36px;font-size:.58rem}.translated-train__avatar--pending{font-size:1.05rem}.translated-train__day{font-size:.82rem}.translated-train__day small{font-size:.65rem}.translated-train__pending{font-size:.7rem}.translated-train th:nth-child(1),.translated-train td:nth-child(1){width:30%}.translated-train th:nth-child(2),.translated-train td:nth-child(2){width:35%}.translated-train th:nth-child(3),.translated-train td:nth-child(3){width:35%}}
+      @media(max-width:480px){#rankings .rankings-hero{padding:15px}.ranking-podium{gap:5px;padding-inline:6px}.ranking-podium__item{min-height:164px;padding-inline:3px}.ranking-podium__item--second{min-height:174px}.ranking-podium__item--first{min-height:194px}.ranking-podium__avatar{width:50px;height:50px}.ranking-podium__item--first .ranking-podium__avatar{width:62px;height:62px}.ranking-podium__name{font-size:.69rem}.ranking-podium__role{font-size:.6rem}.ranking-podium__score{font-size:.67rem}.ranking-row{grid-template-columns:27px 38px minmax(0,1fr) auto!important;padding-inline:4px!important}.ranking-row__avatar{width:38px;height:38px}.ranking-score{max-width:88px;font-size:.76rem}}
       @media(max-width:390px){.translated-train__hero{grid-template-columns:43% 57%;height:202px}.translated-train__hero-copy .eyebrow{font-size:.58rem}.translated-train__hero-copy h1{font-size:1.28rem}.translated-train__hero-copy p{font-size:.66rem}.translated-train__dates{font-size:.66rem}.translated-train th,.translated-train td{padding-inline:4px}.translated-train__avatar{flex-basis:32px;width:32px;height:32px}.translated-train__person{font-size:.7rem}.translated-train__day{font-size:.76rem}.coach-intro.gomo-coach-with-mascot{grid-template-columns:72px minmax(0,1fr)}.gomo-coach-mascot{width:72px}}
     `;
     document.head.appendChild(style);
@@ -308,6 +311,19 @@ function centralUpgrade() {
   function syncTools() {
     const grid = document.querySelector("#tools .tool-grid");
     if (!grid) return;
+    const assistantTitle = [...grid.querySelectorAll("h2")].find((title) =>
+      /^GoMo Assistant$/i.test((title.textContent || "").trim())
+    );
+    const assistant = assistantTitle?.closest(".tool-card");
+    if (assistant) {
+      assistant.dataset.gomoAssistantCard = "1";
+      const button = assistant.querySelector("button");
+      if (button) {
+        button.removeAttribute("onclick");
+        button.dataset.go = "ask";
+        button.dataset.gomoAssistantOpen = "1";
+      }
+    }
     const coach = grid.querySelector("[data-gomo-coach-card]");
     const plannerImage = [...grid.querySelectorAll("img")].find((image) => (image.getAttribute("src") || "").includes("vs-planner"));
     const planner = plannerImage?.closest(".tool-card");
@@ -361,7 +377,38 @@ function centralUpgrade() {
       EXTERNAL_LINKS["vs-planner"] = `/vs-planner/?lang=${encodeURIComponent(lang)}`;
       delete EXTERNAL_LINKS.rankings;
       delete EXTERNAL_LINKS.classements;
+      delete EXTERNAL_LINKS["gomo-assistant"];
     }
+
+    document.querySelectorAll('a[href*="weeklyChampionsCard"]').forEach((link) => {
+      link.setAttribute("href", `/?lang=${encodeURIComponent(lang)}#rankings`);
+      link.dataset.go = "rankings";
+      link.dataset.gomoRankingsOpen = "1";
+      link.removeAttribute("target");
+    });
+
+    [...document.querySelectorAll("a")]
+      .filter((link) => /^GoMo Assistant/i.test((link.textContent || "").trim()))
+      .forEach((link) => {
+        link.setAttribute("href", `/?lang=${encodeURIComponent(lang)}#ask`);
+        link.dataset.go = "ask";
+        link.dataset.gomoAssistantOpen = "1";
+        link.removeAttribute("target");
+      });
+  }
+
+  function loadRankingsDirectly() {
+    const section = document.getElementById("rankings");
+    if (!section?.classList.contains("active")) return;
+    const status = document.getElementById("rankingsStatus");
+    if (status?.textContent.trim()) return;
+    const refresh = document.getElementById("rankingsRefresh");
+    if (!refresh || refresh.dataset.gomoAutoLoad === "1") return;
+    refresh.dataset.gomoAutoLoad = "1";
+    setTimeout(() => {
+      refresh.click();
+      delete refresh.dataset.gomoAutoLoad;
+    }, 0);
   }
 
   function syncAll() {
@@ -373,6 +420,7 @@ function centralUpgrade() {
     syncTools();
     syncCoachMascot();
     syncLinks();
+    loadRankingsDirectly();
   }
 
   document.addEventListener("click", (event) => {
@@ -385,7 +433,7 @@ function centralUpgrade() {
       else location.hash = "guides";
       return;
     }
-    const rankings = event.target.closest('[data-gomo-rankings-card] button,[data-r5-go="classements"]');
+    const rankings = event.target.closest('[data-page="rankings"],[data-go="rankings"],[data-gomo-rankings-open],[data-gomo-rankings-card] button,[data-r5-go="classements"],a[href*="weeklyChampionsCard"]');
     if (rankings) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -396,6 +444,17 @@ function centralUpgrade() {
       document.getElementById("gomo-r5fapper-panel")?.classList.remove("open");
       if (typeof openPage === "function") openPage("rankings");
       else location.hash = "rankings";
+      setTimeout(() => document.getElementById("rankingsRefresh")?.click(), 0);
+      return;
+    }
+    const assistant = event.target.closest('[data-gomo-assistant-open],[data-r5-go="gomo-assistant"],[data-go="gomo-assistant"]');
+    if (assistant) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (typeof EXTERNAL_LINKS !== "undefined") delete EXTERNAL_LINKS["gomo-assistant"];
+      document.getElementById("gomo-r5fapper-panel")?.classList.remove("open");
+      if (typeof openPage === "function") openPage("ask");
+      else location.hash = "ask";
       return;
     }
     const planner = event.target.closest('[data-gomo-planner-card] button,[data-r5-go="vs-planner"]');
@@ -638,6 +697,64 @@ class ShinyCopyButton {
   element(element) { element.removeAttribute("onclick"); }
 }
 
+function rankingsRendererUpgrade() {
+  return String.raw`
+  function safeRankingPhoto(value) {
+    const photo = String(value || "");
+    return /^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(photo) ? photo : "";
+  }
+
+  function rankingInitials(value) {
+    return String(value || "").trim().split(/\s+/).filter(Boolean).slice(0, 2).map(part => part.charAt(0)).join("").toUpperCase() || "G";
+  }
+
+  function rankingAvatar(row, modifier) {
+    const classes = "ranking-avatar " + String(modifier || "");
+    const photo = safeRankingPhoto(row?.photo);
+    if (photo) return '<img class="' + classes + '" src="' + esc(photo) + '" alt="' + esc(row?.name || "") + '">';
+    return '<span class="' + classes + '" aria-hidden="true">' + esc(rankingInitials(row?.name)) + '</span>';
+  }
+
+  function renderRankingPodium(rows) {
+    if (!rows.length) return "";
+    const medals = ["🥇", "🥈", "🥉"];
+    const variants = ["first", "second", "third"];
+    const order = [1, 0, 2].filter(index => index < rows.length);
+    const cards = order.map(index => {
+      const row = rows[index];
+      return '<div class="ranking-podium__item ranking-podium__item--' + variants[index] + '">' +
+        '<span class="ranking-podium__place">' + medals[index] + '</span>' +
+        rankingAvatar(row, "ranking-podium__avatar") +
+        '<strong class="ranking-podium__name" title="' + esc(row.name) + '">' + esc(row.name) + '</strong>' +
+        '<small class="ranking-podium__role">' + esc(row.role || "—") + '</small>' +
+        '<strong class="ranking-podium__score">' + esc(formatNumber(row.value)) + '</strong>' +
+      '</div>';
+    }).join("");
+    return '<div class="ranking-podium">' + cards + '</div>';
+  }
+
+  function renderRankingRow(row, place) {
+    return '<li class="ranking-row">' +
+      '<span class="ranking-place">' + esc(place) + '</span>' +
+      rankingAvatar(row, "ranking-row__avatar") +
+      '<span class="ranking-name"><strong title="' + esc(row.name) + '">' + esc(row.name) + '</strong><small>' + esc(row.role || "—") + '</small></span>' +
+      '<span class="ranking-score">' + esc(formatNumber(row.value)) + '</span>' +
+    '</li>';
+  }
+
+  function renderCategory(icon, title, rows) {
+    const x = t();
+    const podium = renderRankingPodium(rows.slice(0, 3));
+    const remaining = rows.slice(3);
+    const list = remaining.length
+      ? remaining.map((row, index) => renderRankingRow(row, index + 4)).join("")
+      : (!rows.length ? '<li class="ranking-row ranking-row--empty"><strong>' + esc(x.noRows) + '</strong></li>' : "");
+    const listMarkup = list ? '<ol class="ranking-list">' + list + '</ol>' : "";
+    return '<article class="ranking-card"><div class="ranking-card__head"><h2>' + icon + ' ' + esc(title) + '</h2><small>' + esc(x.full) + ' · ' + esc(x.readOnly) + '</small></div>' + podium + listMarkup + '</article>';
+  }
+`;
+}
+
 function upgradeRankingsPatch(source) {
   const copy = {
     fr: { note: "Consultation en lecture seule.", missing: "La connexion aux classements n'est pas encore enregistrée sur cet appareil. Ouvre une fois le lien membre partagé." },
@@ -658,6 +775,26 @@ function upgradeRankingsPatch(source) {
     const assistantPattern = new RegExp(`(${language}:\\{[^\\n]*?assistant:)"[^"]*"`);
     patch = patch.replace(assistantPattern, '$1""');
   }
+  patch = patch
+    .replace(
+      'const prev = totals.get(id) || {name:String(row.name || known?.name || ""),role:String(known?.role || row.role || ""),value:0};',
+      'const prev = totals.get(id) || {name:String(row.name || known?.name || ""),role:String(known?.role || row.role || ""),photo:String(known?.photo || row.photo || ""),value:0};'
+    )
+    .replace(
+      'if (!prev.role) prev.role = String(known?.role || "");',
+      'if (!prev.role) prev.role = String(known?.role || "");\n        if (!prev.photo) prev.photo = String(known?.photo || row.photo || "");'
+    )
+    .replace(
+      'return [...totals.values()].filter(row => row.value > 0).sort((a,b) => b.value - a.value || a.name.localeCompare(b.name, lang())).slice(0, 10);',
+      'return [...totals.values()].filter(row => row.value > 0).sort((a,b) => b.value - a.value || a.name.localeCompare(b.name, lang()));'
+    );
+
+  const rendererStart = patch.indexOf("  function renderCategory(icon, title, rows) {");
+  const rendererEnd = patch.indexOf("  async function loadRankings() {", rendererStart);
+  if (rendererStart >= 0 && rendererEnd > rendererStart) {
+    patch = patch.slice(0, rendererStart) + rankingsRendererUpgrade() + "\n" + patch.slice(rendererEnd);
+  }
+
   return patch.replace(/\s*<button id="rankingsAssistant"[^>]*><\/button>/, "");
 }
 
