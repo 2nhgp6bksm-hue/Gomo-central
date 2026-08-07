@@ -1,4 +1,4 @@
-# GoMo Central — v19.1
+# GoMo Central — v19.2
 
 Portail central de l’alliance GoMo sur le serveur 1591.
 

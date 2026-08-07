@@ -1,12 +1,12 @@
-const CACHE_NAME = "gomo-central-v19-1";
+const CACHE_NAME = "gomo-central-v19-2";
 const OFFLINE_URL = "/index.html";
 const APP_SHELL = [
   "/",
   OFFLINE_URL,
-  "/assets/styles-v1.5.css?v=19.1",
-  "/assets/gomo-v19.css?v=19.1",
-  "/assets/app-v1.5.js?v=19.1",
-  "/assets/gomo-v19.js?v=19.1",
+  "/assets/styles-v1.5.css?v=19.2",
+  "/assets/gomo-v19.css?v=19.2",
+  "/assets/app-v1.5.js?v=19.2",
+  "/assets/gomo-v19.js?v=19.2",
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",

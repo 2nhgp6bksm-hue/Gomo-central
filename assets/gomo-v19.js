@@ -316,6 +316,39 @@
     if (button) button.textContent = translations?.[lang()]?.["tools.open"] || ui.source;
   }
 
+  const compactLabels = {
+    fr:{ranking:"Classement",train:"Train",guide:"Coach",settings:"Paramètres",back:"Retour",homeBack:"Accueil",analysis:"Analyse IA",translator:"Traducteur GoMo"},
+    de:{ranking:"Ranglisten",train:"Zug",guide:"Coach",settings:"Einstellungen",back:"Zurück",homeBack:"Start",analysis:"KI-Analyse",translator:"GoMo Übersetzer"},
+    en:{ranking:"Rankings",train:"Train",guide:"Coach",settings:"Settings",back:"Back",homeBack:"Home",analysis:"AI Analysis",translator:"GoMo Translator"},
+    ro:{ranking:"Clasamente",train:"Tren",guide:"Coach",settings:"Setări",back:"Înapoi",homeBack:"Acasă",analysis:"Analiză IA",translator:"Traducător GoMo"},
+    uk:{ranking:"Рейтинги",train:"Потяг",guide:"Coach",settings:"Налаштування",back:"Назад",homeBack:"Головна",analysis:"Аналіз ШІ",translator:"Перекладач GoMo"},
+    ko:{ranking:"순위",train:"열차",guide:"Coach",settings:"설정",back:"뒤로",homeBack:"홈",analysis:"AI 분석",translator:"GoMo 번역기"},
+    hr:{ranking:"Poredak",train:"Vlak",guide:"Coach",settings:"Postavke",back:"Natrag",homeBack:"Početna",analysis:"AI analiza",translator:"GoMo prevoditelj"},
+    pt:{ranking:"Classificação",train:"Comboio",guide:"Coach",settings:"Definições",back:"Voltar",homeBack:"Início",analysis:"Análise IA",translator:"Tradutor GoMo"}
+  };
+
+  function syncCompactLabels() {
+    const labels = compactLabels[lang()] || compactLabels.fr;
+    document.querySelectorAll("[data-gomo-extra]").forEach((node) => {
+      const value = labels[node.dataset.gomoExtra];
+      if (!value) return;
+      node.textContent = value;
+      node.closest("a,button")?.setAttribute("aria-label", value);
+    });
+    const namedCards = [
+      ["analyse-ia.png", labels.analysis],
+      ["traducteur-gomo.png", labels.translator]
+    ];
+    document.querySelectorAll(".gomo-quick-card,.tool-card").forEach((card) => {
+      const source = card.querySelector("img")?.getAttribute("src") || "";
+      const match = namedCards.find(([file]) => source.includes(file));
+      if (!match) return;
+      const title = card.querySelector("strong,h2");
+      if (title) title.textContent = match[1];
+      card.setAttribute("aria-label", match[1]);
+    });
+  }
+
   function repairLinks() {
     if (typeof EXTERNAL_LINKS !== "undefined") {
       delete EXTERNAL_LINKS.train;
@@ -358,6 +391,7 @@
       baseTranslatePage();
       renderCoach();
       syncCoachTool();
+      syncCompactLabels();
       repairLinks();
     };
   }
@@ -365,6 +399,7 @@
   repairLinks();
   renderCoach();
   syncCoachTool();
+  syncCompactLabels();
   if (typeof renderLanguageList === "function") renderLanguageList();
   if (typeof translatePage === "function") translatePage();
 })();

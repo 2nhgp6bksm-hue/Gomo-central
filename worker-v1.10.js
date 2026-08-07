@@ -608,7 +608,7 @@ async function servePatchedApp(request, env) {
   const headers = new Headers(asset.headers);
   headers.set("content-type", "application/javascript; charset=utf-8");
   headers.set("cache-control", "no-store, max-age=0");
-  headers.set("x-gomo-central-version", "19.1");
+  headers.set("x-gomo-central-version", "19.2");
 
   return new Response(asset.body, {
     status: asset.status,
