@@ -1,11 +1,21 @@
-// GoMo Central v20 — langues synchronisées, classements internes et mascottes dédiées.
-// La configuration Cloudflare reste volontairement inchangée.
+// GoMo Central v20.1 — langues synchronisées, classements internes et mascottes dédiées.
+// Les routes transformées passent par le Worker avant les ressources statiques.
 import baseWorker from "./worker-v1.10.js";
 import legacyRankingsWorker from "./worker-v1.6.js";
 
-const VERSION = "20.0";
+const VERSION = "20.1";
 const SHINY_ORIGIN = "https://gomo-shiny-central.gjp86wh7p2.workers.dev";
 const SHINY_PREFIX = "/shiny-radar";
+const SHINY_FORWARDED_HEADERS = [
+  "accept",
+  "accept-language",
+  "content-type",
+  "if-match",
+  "if-modified-since",
+  "if-none-match",
+  "if-range",
+  "range"
+];
 
 let cachedRankingsPatch = "";
 
@@ -178,13 +188,13 @@ function centralUpgrade() {
     if (coach) {
       const image = coach.querySelector("img");
       if (image) {
-        image.src = "/mascots/gomo-coach-mascot.webp?v=20.0";
+        image.src = "/mascots/gomo-coach-mascot.webp?v=20.1";
         image.alt = "GoMo Coach";
       }
       if (planner && planner.nextElementSibling !== coach) planner.after(coach);
     }
     if (plannerImage) {
-      plannerImage.src = "/mascots/gomo-vs-planner-mascot.webp?v=20.0";
+      plannerImage.src = "/mascots/gomo-vs-planner-mascot.webp?v=20.1";
       plannerImage.alt = "GoMo VS Planner";
       planner?.setAttribute("data-gomo-planner-card", "1");
     }
@@ -212,7 +222,7 @@ function centralUpgrade() {
     intro.classList.add("gomo-coach-with-mascot");
     const image = document.createElement("img");
     image.className = "gomo-coach-mascot";
-    image.src = "/mascots/gomo-coach-mascot.webp?v=20.0";
+    image.src = "/mascots/gomo-coach-mascot.webp?v=20.1";
     image.alt = "GoMo Coach";
     intro.prepend(image);
   }
@@ -567,11 +577,27 @@ async function serveCentralServiceWorker(request, env, ctx) {
   return new Response(source, { status: response.status, statusText: response.statusText, headers });
 }
 
+function createShinyRequest(target, request) {
+  const headers = new Headers();
+  for (const name of SHINY_FORWARDED_HEADERS) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  const init = {
+    method: request.method,
+    headers,
+    redirect: "follow",
+    signal: request.signal
+  };
+  if (request.method !== "GET" && request.method !== "HEAD") init.body = request.body;
+  return new Request(target, init);
+}
+
 async function proxyShiny(request) {
   const incoming = new URL(request.url);
   const suffix = incoming.pathname.slice(SHINY_PREFIX.length) || "/";
   const target = new URL(suffix + incoming.search, SHINY_ORIGIN);
-  const upstream = await fetch(new Request(target.toString(), request));
+  const upstream = await fetch(createShinyRequest(target, request));
   const contentType = upstream.headers.get("content-type") || "";
   if (!contentType.includes("text/html")) return upstream;
 
@@ -627,7 +653,7 @@ export default {
     if (url.pathname.startsWith(`${SHINY_PREFIX}/`)) return proxyShiny(request);
     if (url.pathname === "/api/shiny-data" || url.pathname === "/fallback.json") {
       const target = new URL(url.pathname + url.search, SHINY_ORIGIN);
-      return fetch(new Request(target.toString(), request));
+      return fetch(createShinyRequest(target, request));
     }
     if (url.pathname === "/assets/app-v1.5.js") return serveCentralApp(request, env, ctx);
     if (url.pathname === "/assets/gomo-v19.js") return serveCoachApp(request, env, ctx);
