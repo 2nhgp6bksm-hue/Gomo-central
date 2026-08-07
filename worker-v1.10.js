@@ -608,7 +608,7 @@ async function servePatchedApp(request, env) {
   const headers = new Headers(asset.headers);
   headers.set("content-type", "application/javascript; charset=utf-8");
   headers.set("cache-control", "no-store, max-age=0");
-  headers.set("x-gomo-central-version", "18.14");
+  headers.set("x-gomo-central-version", "19.0");
 
   return new Response(asset.body, {
     status: asset.status,
@@ -1041,7 +1041,8 @@ function compactKnowledge(knowledge) {
     resources: knowledge.resources,
     event_groups: knowledge.event_groups,
     overlord_suzerain: knowledge.overlord_suzerain,
-    vs_groups: knowledge.vs_groups
+    vs_groups: knowledge.vs_groups,
+    coach_events: knowledge.coach_events
   });
 }
 

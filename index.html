@@ -10,7 +10,8 @@
 <link href="manifest.webmanifest" rel="manifest"/>
 <link href="icons/icon-192.png" rel="apple-touch-icon"/>
 <link href="icons/icon-192.png" rel="icon"/>
-<link href="assets/styles-v1.5.css?v=18.14" rel="stylesheet"/>
+<link href="assets/styles-v1.5.css?v=19.0" rel="stylesheet"/>
+<link href="assets/gomo-v19.css?v=19.0" rel="stylesheet"/>
 <style id="gomo-v189-r5fapper-home-style">
 /* GoMo Central v18.9 — accueil R5Fapper validé + boutons séparés */
 .royal-home-emblem{margin:0 auto 28px;max-width:1080px}
@@ -520,16 +521,17 @@
 })();
 
   </script>
-<script src="assets/app-v1.5.js?v=18.14"></script><script>
+<script src="assets/app-v1.5.js?v=19.0"></script><script src="assets/gomo-v19.js?v=19.0"></script><script>
 ;(() => {
   const EXTRA={
-    fr:{ranking:"Classement",train:"Train",vs:"VS",shiny:"Shiny",guide:"Guide",settings:"Paramètres",translator:"Traducteur",back:"Retour",homeBack:"Retour à l’accueil"},
-    de:{ranking:"Rangliste",train:"Zug",vs:"VS",shiny:"Shiny",guide:"Guide",settings:"Einstellungen",translator:"Übersetzer",back:"Zurück",homeBack:"Zur Startseite"},
-    en:{ranking:"Ranking",train:"Train",vs:"VS",shiny:"Shiny",guide:"Guide",settings:"Settings",translator:"Translator",back:"Back",homeBack:"Back to home"},
-    ro:{ranking:"Clasament",train:"Tren",vs:"VS",shiny:"Shiny",guide:"Ghid",settings:"Setări",translator:"Traducător",back:"Înapoi",homeBack:"Înapoi la pagina principală"},
-    uk:{ranking:"Рейтинг",train:"Потяг",vs:"VS",shiny:"Shiny",guide:"Гід",settings:"Налаштування",translator:"Перекладач",back:"Назад",homeBack:"На головну"},
-    ko:{ranking:"순위",train:"열차",vs:"VS",shiny:"Shiny",guide:"가이드",settings:"설정",translator:"번역기",back:"뒤로",homeBack:"홈으로"},
-    hr:{ranking:"Poredak",train:"Vlak",vs:"VS",shiny:"Shiny",guide:"Vodič",settings:"Postavke",translator:"Prevoditelj",back:"Natrag",homeBack:"Povratak na početnu"}
+    fr:{ranking:"Classement",train:"Train",vs:"VS",shiny:"Shiny",guide:"Coach",settings:"Paramètres",translator:"Traducteur",back:"Retour",homeBack:"Retour à l’accueil"},
+    de:{ranking:"Rangliste",train:"Zug",vs:"VS",shiny:"Shiny",guide:"Coach",settings:"Einstellungen",translator:"Übersetzer",back:"Zurück",homeBack:"Zur Startseite"},
+    en:{ranking:"Ranking",train:"Train",vs:"VS",shiny:"Shiny",guide:"Coach",settings:"Settings",translator:"Translator",back:"Back",homeBack:"Back to home"},
+    ro:{ranking:"Clasament",train:"Tren",vs:"VS",shiny:"Shiny",guide:"Coach",settings:"Setări",translator:"Traducător",back:"Înapoi",homeBack:"Înapoi la pagina principală"},
+    uk:{ranking:"Рейтинг",train:"Потяг",vs:"VS",shiny:"Shiny",guide:"Coach",settings:"Налаштування",translator:"Перекладач",back:"Назад",homeBack:"На головну"},
+    ko:{ranking:"순위",train:"열차",vs:"VS",shiny:"Shiny",guide:"Coach",settings:"설정",translator:"번역기",back:"뒤로",homeBack:"홈으로"},
+    hr:{ranking:"Poredak",train:"Vlak",vs:"VS",shiny:"Shiny",guide:"Coach",settings:"Postavke",translator:"Prevoditelj",back:"Natrag",homeBack:"Povratak na početnu"},
+    pt:{ranking:"Classificação",train:"Comboio",vs:"VS",shiny:"Shiny",guide:"Coach",settings:"Definições",translator:"Tradutor",back:"Voltar",homeBack:"Voltar ao início"}
   };
   function syncExtra(){
     const code=(typeof currentLanguage!=="undefined"&&currentLanguage)||localStorage.getItem("gomo-central-language")||"fr";

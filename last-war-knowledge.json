@@ -1,6 +1,6 @@
 {
-  "version": "12.0",
-  "updated": "2026-08-03",
+  "version": "13.0",
+  "updated": "2026-08-07",
   "purpose": "Catalogue de reconnaissance pour l'analyse de captures Last War dans GoMo Central.",
   "safety_rules": [
     "N'affirmer que ce qui est réellement visible sur la capture.",
@@ -1543,5 +1543,79 @@
       "Soins",
       "Pertes et éliminations"
     ]
-  }
+  },
+  "coach_events": [
+    {
+      "id": "alliance_duel_vs",
+      "aliases": ["VS", "duel d'alliance", "alliance duel", "7,2 M", "VS Planner"],
+      "confirmed_strategy": [
+        "Vérifier le jour et les valeurs de points visibles dans le jeu avant toute dépense.",
+        "Utiliser les ressources correspondant au jour et arrêter les dépenses dès le palier conseillé atteint.",
+        "Conserver les ressources prévues pour les jours suivants."
+      ]
+    },
+    {
+      "id": "marshals_guard_worm",
+      "aliases": ["Garde du Maréchal", "Garde du ver", "ver géant", "Marshal's Guard", "Alliance Exercise"],
+      "confirmed_strategy": [
+        "Événement coopératif de 30 minutes avec des rallyes de 3 minutes.",
+        "Rappeler les escouades et choisir une difficulté que l'alliance peut terminer.",
+        "Lancer un rallye avec une équipe plus faible et rejoindre les autres rallyes avec la meilleure équipe."
+      ]
+    },
+    {
+      "id": "zombie_siege",
+      "aliases": ["Siège de zombies", "vagues zombies", "Zombie Siege", "20 vagues"],
+      "confirmed_strategy": [
+        "L'événement comporte 20 vagues et les boucliers n'arrêtent pas les attaques.",
+        "Rappeler et soigner les troupes, puis placer les meilleures unités en défense du mur.",
+        "Renforcer les membres fragiles à partir des vagues avancées; deux défenses ratées éliminent le joueur de la suite."
+      ]
+    },
+    {
+      "id": "enemy_buster",
+      "aliases": ["Enemy Buster", "bustier day", "buster day", "jour 6", "samedi PvP"],
+      "confirmed_strategy": [
+        "Préparer bouclier, soins et téléportations, et activer le bouclier dès que le joueur est hors ligne.",
+        "Repérer les cibles rivales non protégées et coordonner les attaques.",
+        "Ne pas attaquer une base vide et ne pas rester sans protection hors ligne."
+      ]
+    },
+    {
+      "id": "alliance_train",
+      "aliases": ["Train d'alliance", "VIP", "Gold Express", "conducteur", "wagon"],
+      "confirmed_strategy": [
+        "La préparation dure 4 heures; cinq rafraîchissements correspondent à 25 contrats pour chercher le Gold Express.",
+        "Choisir un conducteur solide et respecter la rotation GoMo.",
+        "Chaque wagon accepte au maximum cinq passagers."
+      ]
+    },
+    {
+      "id": "sky_predator",
+      "aliases": ["Prédateur céleste", "Sky Predator"],
+      "confirmed_strategy": [
+        "Les dons se font du lundi au jeudi, les combats le vendredi et le samedi, puis le calcul le dimanche.",
+        "Utiliser la meilleure équipe et ne gaspiller aucune attaque.",
+        "Collecter les jetons dans les activités de l'événement."
+      ]
+    },
+    {
+      "id": "capital_conquest",
+      "aliases": ["Conquête de la capitale", "Capital Conquest", "terrain contaminé"],
+      "confirmed_strategy": [
+        "Les R4/R5 déclarent les objectifs et coordonnent la progression de villes.",
+        "Le terrain contaminé désactive les boucliers et le radar et ralentit les marches.",
+        "Suivre les marqueurs et ne pas entrer seul en zone contaminée."
+      ]
+    },
+    {
+      "id": "arms_race",
+      "aliases": ["Course à l'armement", "Arms Race", "phases de 4 heures"],
+      "confirmed_strategy": [
+        "L'événement quotidien comporte six phases de quatre heures.",
+        "Vérifier la phase active et son minuteur avant de dépenser.",
+        "L'ordre des phases peut varier selon le serveur; l'écran du jeu est la référence."
+      ]
+    }
+  ]
 }

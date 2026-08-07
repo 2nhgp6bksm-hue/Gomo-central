@@ -1,4 +1,4 @@
-# GoMo Central — v18.14
+# GoMo Central — v19.0
 
 Portail central de l’alliance GoMo sur le serveur 1591.
 
@@ -6,8 +6,8 @@ Portail central de l’alliance GoMo sur le serveur 1591.
 
 - Aucun grade visible : chaque membre est présenté à la même hauteur.
 - Interface simple, sans salons ou fonctions inutiles.
-- Choix parmi 7 langues :
-  français, allemand, anglais, roumain, ukrainien, coréen et croate.
+- Choix parmi 8 langues :
+  français, allemand, anglais, roumain, ukrainien, coréen, croate et portugais.
 - Adapté à l’iPhone, Android et ordinateur.
 - Installable sur l’écran d’accueil comme une application web.
 - Déployé sur Cloudflare Workers avec des ressources statiques.
@@ -17,10 +17,11 @@ Portail central de l’alliance GoMo sur le serveur 1591.
 - Accueil central
 - Assistant « Demander à GoMo » relié à Workers AI et au catalogue Last War
 - Analyse de captures Last War avec résultat, type, langue et confiance
-- Traducteur privé dans les 7 langues de l’alliance
+- Traducteur privé dans les 8 langues de l’alliance
 - Actualités GoMo
 - Accès direct à GoMo Assistant, Train/VIP, Classements, VS Planner et Shiny Radar
-- Guides complets pour le VS, les héros, Shiny, le Train, la Tempête du désert et les événements
+- GoMo Coach structuré pour le VS, le ver géant, les zombies, Enemy Buster,
+  le Train, la Tempête du désert et les principaux événements
 - Sauvegarde locale de la langue et des textes du traducteur
 - Consultation du portail et des guides hors connexion après la première ouverture
 

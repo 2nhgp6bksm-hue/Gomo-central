@@ -1,0 +1,83 @@
+/* GoMo Central v19 — navigation lisible et GoMo Coach */
+.coach-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, .6fr);
+  gap: 16px;
+  align-items: center;
+  margin: 0 0 18px;
+  padding: 20px;
+  border: 1px solid rgba(89, 212, 255, .42);
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(13, 55, 82, .96), rgba(7, 25, 42, .98));
+}
+.coach-intro h2 { margin: 0 0 8px; font-size: clamp(1.35rem, 4vw, 2rem); }
+.coach-intro p { margin: 0; color: #c7d8e7; line-height: 1.55; }
+.coach-safety {
+  padding: 14px 16px;
+  border: 1px solid rgba(242, 199, 103, .55);
+  border-radius: 17px;
+  background: rgba(72, 53, 20, .55);
+  color: #ffe8aa;
+  line-height: 1.4;
+}
+.coach-controls { display: grid; gap: 12px; margin-bottom: 18px; }
+.coach-filters { display: flex; gap: 8px; overflow-x: auto; padding: 2px 1px 5px; scrollbar-width: thin; }
+.coach-filter {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid rgba(89, 212, 255, .34);
+  border-radius: 999px;
+  background: #0b2940;
+  color: #dff7ff;
+  font: inherit;
+  font-weight: 800;
+}
+.coach-filter.active { border-color: #f2c767; background: #4b3d23; color: #fff0bd; }
+.coach-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.coach-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(89, 212, 255, .28);
+  border-radius: 21px;
+  background: linear-gradient(180deg, rgba(13, 43, 65, .98), rgba(7, 25, 40, .98));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+}
+.coach-card[open] { border-color: rgba(242, 199, 103, .65); }
+.coach-card summary { display: grid; grid-template-columns: 48px minmax(0, 1fr) 28px; gap: 12px; align-items: center; padding: 16px; cursor: pointer; list-style: none; }
+.coach-card summary::-webkit-details-marker { display: none; }
+.coach-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 15px; background: rgba(89, 212, 255, .12); font-size: 1.65rem; }
+.coach-heading { min-width: 0; }
+.coach-heading h3 { margin: 0 0 4px; color: #fff; font-size: 1.05rem; line-height: 1.2; }
+.coach-heading p { margin: 0; color: #b9cbda; font-size: .87rem; line-height: 1.35; }
+.coach-chevron { color: #f2c767; font-size: 1.5rem; transition: transform .18s ease; }
+.coach-card[open] .coach-chevron { transform: rotate(90deg); }
+.coach-body { display: grid; gap: 10px; padding: 0 16px 16px; }
+.coach-step { padding: 12px 13px; border-radius: 15px; background: rgba(255, 255, 255, .055); }
+.coach-step strong { display: block; margin-bottom: 5px; color: #79e5ff; font-size: .82rem; letter-spacing: .035em; text-transform: uppercase; }
+.coach-step p { margin: 0; color: #edf7ff; line-height: 1.48; }
+.coach-step--avoid { border-left: 3px solid #ff9ba3; }
+.coach-step--resource { border-left: 3px solid #f2c767; }
+.coach-source { display: inline-flex; align-items: center; gap: 7px; justify-self: start; color: #8ee7ff; font-weight: 800; text-decoration: none; }
+.coach-source:focus-visible, .coach-source:hover { text-decoration: underline; }
+.coach-card.hidden { display: none; }
+
+@media (max-width: 760px) {
+  .coach-intro { grid-template-columns: 1fr; padding: 17px; }
+  .coach-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 680px) {
+  .royal-nav-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 9px !important; padding: 10px !important; }
+  .royal-nav-button { min-height: 122px; padding: 7px 5px 10px !important; gap: 7px !important; font-size: 15px !important; line-height: 1.15 !important; }
+  .royal-nav-button img { width: 78px !important; max-width: 100% !important; }
+  .royal-nav-button span { white-space: normal !important; overflow-wrap: anywhere; letter-spacing: 0 !important; }
+}
+
+@media (max-width: 390px) {
+  .royal-nav-button { min-height: 112px; font-size: 14px !important; }
+  .royal-nav-button img { width: 68px !important; }
+  .coach-card summary { grid-template-columns: 44px minmax(0, 1fr) 22px; gap: 9px; padding: 14px; }
+  .coach-icon { width: 44px; height: 44px; }
+  .coach-body { padding: 0 14px 14px; }
+}
