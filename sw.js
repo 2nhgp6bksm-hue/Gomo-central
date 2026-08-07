@@ -1,12 +1,12 @@
-const CACHE_NAME = "gomo-central-v19-0";
+const CACHE_NAME = "gomo-central-v19-1";
 const OFFLINE_URL = "/index.html";
 const APP_SHELL = [
   "/",
   OFFLINE_URL,
-  "/assets/styles-v1.5.css?v=19.0",
-  "/assets/gomo-v19.css?v=19.0",
-  "/assets/app-v1.5.js?v=19.0",
-  "/assets/gomo-v19.js?v=19.0",
+  "/assets/styles-v1.5.css?v=19.1",
+  "/assets/gomo-v19.css?v=19.1",
+  "/assets/app-v1.5.js?v=19.1",
+  "/assets/gomo-v19.js?v=19.1",
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
@@ -31,6 +31,7 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  if (url.pathname.startsWith("/vs-planner/")) return;
 
   if (event.request.mode === "navigate") {
     event.respondWith(

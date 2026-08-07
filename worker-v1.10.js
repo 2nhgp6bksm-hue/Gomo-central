@@ -9,7 +9,7 @@ function json(data, status = 200) {
   });
 }
 
-const SUPPORTED_LOCALES = new Set(["fr", "de", "en", "ro", "uk", "ko", "hr"]);
+const SUPPORTED_LOCALES = new Set(["fr", "de", "en", "ro", "uk", "ko", "hr", "pt"]);
 
 const LOCALE_NAMES = {
   fr: "français",
@@ -608,7 +608,7 @@ async function servePatchedApp(request, env) {
   const headers = new Headers(asset.headers);
   headers.set("content-type", "application/javascript; charset=utf-8");
   headers.set("cache-control", "no-store, max-age=0");
-  headers.set("x-gomo-central-version", "19.0");
+  headers.set("x-gomo-central-version", "19.1");
 
   return new Response(asset.body, {
     status: asset.status,

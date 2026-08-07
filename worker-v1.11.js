@@ -1,4 +1,4 @@
-// GoMo Central v19.0 — portugais, GoMo Coach et navigation corrigée.
+// GoMo Central v19.1 — portugais, GoMo Coach et VS Planner intégré.
 // Le Radar Netlify n'est pas modifié.
 import baseWorker from "./worker-v1.10.js";
 
@@ -52,7 +52,7 @@ export default {
     headers.delete("content-length");
     headers.delete("etag");
     headers.set("cache-control", "no-store, no-cache, must-revalidate");
-    headers.set("x-gomo-central-version", "19.0");
+    headers.set("x-gomo-central-version", "19.1");
 
     return new Response(rewritten.body, {
       status: rewritten.status,

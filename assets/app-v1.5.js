@@ -8,7 +8,8 @@ const languages = {
   ro:{flag:"🇷🇴",label:"Română",short:"RO"},
   uk:{flag:"🇺🇦",label:"Українська",short:"UA"},
   ko:{flag:"🇰🇷",label:"한국어",short:"KO"},
-  hr:{flag:"🇭🇷",label:"Hrvatski",short:"HR"}
+  hr:{flag:"🇭🇷",label:"Hrvatski",short:"HR"},
+  pt:{flag:"🇵🇹",label:"Português",short:"PT"}
 };
 
 const LIVE_TRANSLATIONS = {
@@ -345,7 +346,7 @@ const EXTERNAL_LINKS = {
   classements: "https://chic-sopapillas-82fbc8.netlify.app/?goto=weeklyChampionsCard",
   shiny: "https://gomo-shiny-central.gjp86wh7p2.workers.dev/",
   "shiny-radar": "https://gomo-shiny-central.gjp86wh7p2.workers.dev/",
-  "vs-planner": "https://2nhgp6bksm-hue.github.io/-GoMo-VS-Planner-/",
+  "vs-planner": "/vs-planner/",
   "gomo-assistant": "https://chic-sopapillas-82fbc8.netlify.app/"
 };
 

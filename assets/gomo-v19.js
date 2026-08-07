@@ -3,6 +3,7 @@
 (() => {
   const RANKINGS_URL = "https://chic-sopapillas-82fbc8.netlify.app/#weeklyChampionsCard";
   const CENTRAL_URL = "https://gomo-central-site.gjp86wh7p2.workers.dev/";
+  const PLANNER_URL = "/vs-planner/";
 
   if (typeof languages !== "undefined") {
     languages.pt = { flag: "🇵🇹", label: "Português", short: "PT" };
@@ -137,6 +138,12 @@
     };
     Object.entries(languageUpdates).forEach(([code, values]) => Object.assign(translations[code], values));
   }
+
+  try {
+    if (localStorage.getItem("gomo-central-language") === "pt" && typeof currentLanguage !== "undefined") {
+      currentLanguage = "pt";
+    }
+  } catch {}
 
   const UI = {
     fr:{eyebrow:"STRATÉGIES LAST WAR",title:"GoMo Coach",intro:"Choisis un événement et suis les étapes dans l’ordre. Les consignes sont courtes, vérifiables et pensées pour être lues facilement sur téléphone.",safety:"Le jeu reste la référence : vérifie toujours le jour, le minuteur, le nombre d’attaques et les valeurs affichées sur ton serveur.",search:"Rechercher un événement, une stratégie ou une ressource…",all:"Tous",alliance:"Alliance",combat:"Combat",planning:"Planification",daily:"Quotidien",prepare:"Préparer",during:"Pendant",avoid:"À éviter",resources:"Ressources utiles",source:"Voir le guide source",noneTitle:"Aucune stratégie trouvée",noneText:"Essaie “ver”, “zombie”, “buster”, “train”, “VS” ou demande à GoMo."},
@@ -312,9 +319,15 @@
   function repairLinks() {
     if (typeof EXTERNAL_LINKS !== "undefined") {
       delete EXTERNAL_LINKS.train;
+      EXTERNAL_LINKS["vs-planner"] = PLANNER_URL;
       EXTERNAL_LINKS.rankings = RANKINGS_URL;
       EXTERNAL_LINKS.classements = RANKINGS_URL;
     }
+    document.querySelectorAll('a[href*="-GoMo-VS-Planner-"]').forEach((anchor) => { anchor.href = PLANNER_URL; });
+    document.querySelectorAll('[onclick*="-GoMo-VS-Planner-"]').forEach((button) => {
+      button.removeAttribute("onclick");
+      button.addEventListener("click", () => window.location.assign(PLANNER_URL));
+    });
     document.querySelectorAll('a[href*="goto=weeklyChampionsCard"]').forEach((anchor) => { anchor.href = RANKINGS_URL; });
     document.querySelectorAll('[onclick*="goto=weeklyChampionsCard"]').forEach((button) => {
       button.removeAttribute("onclick");
