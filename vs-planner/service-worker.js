@@ -1,4 +1,4 @@
-const CACHE='gomo-vs-planner-v4.0.1';
+const CACHE='gomo-vs-planner-v4.0.2';
 
 const ASSETS=[
   './',

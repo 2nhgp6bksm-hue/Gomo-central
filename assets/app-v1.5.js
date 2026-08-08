@@ -286,7 +286,7 @@ const GUIDE_DETAILS = {
     vs:["Utilise VS Planner avant de dépenser : l’objectif est 7,2 M, pas le maximum.","Active « semaine d’économie » pour garder les ressources des jours suivants.","Vérifie le jour VS et désactive toute ressource que tu ne veux pas utiliser."],
     heroes:["Améliore d’abord l’équipe réellement utilisée.","Avant une dépense rare, vérifie le héros, le niveau, la puissance et l’objet visibles.","Si la capture ne suffit pas, le résultat doit rester « À confirmer »."],
     shiny:["Les jours Shiny du serveur 1591 sont mardi et samedi.","Le serveur 1591 n’apparaît jamais dans la liste des serveurs extérieurs.","Utilise Shiny Radar pour les confirmations du Bot et l’historique."],
-    train:["Le planning de la semaine va du dimanche au samedi.","Rotation prévue : 4 conducteurs R4/R5 et 3 conducteurs R3, plus les VIP R3.","Un R3 déjà premier attend son prochain tour avant de reprendre le train."],
+    train:["Le planning de la semaine va du dimanche au samedi.","Le planning comporte 4 Conducteurs R4/R5 et 3 Conducteurs R3.","Les trois R3 sont choisis principalement selon les meilleurs classements de la semaine, sans rotation forcée. Un même R3 peut être repris la semaine suivante s’il reste parmi les meilleurs, tout en évitant les doublons dans le même planning."],
     desert:["Deux créneaux sont suivis : environ 13 h 30 et 22 h 30.","Une saisie oubliée peut être ajoutée le lendemain.","Les résultats comptent dans le classement hebdomadaire."],
     events:["Épreuve du général : choisir au maximum 4★ si l’équipe n’est pas certaine.","Prédateur céleste : quota limité, meilleure équipe et aucune attaque gaspillée.","Avant de dormir le vendredi : activer le bouclier pour protéger les troupes."]
   },
@@ -294,7 +294,7 @@ const GUIDE_DETAILS = {
     vs:["Nutze den VS Planner vor dem Ausgeben: Das Ziel sind 7,2 Mio., nicht das Maximum.","Aktiviere die Sparwoche, um Ressourcen für die nächsten Tage zu behalten.","Prüfe den VS-Tag und deaktiviere jede Ressource, die du nicht einsetzen willst."],
     heroes:["Verbessere zuerst das Team, das du wirklich benutzt.","Prüfe vor seltenen Ausgaben den sichtbaren Helden, das Level, die Stärke und den Gegenstand.","Reicht der Screenshot nicht aus, bleibt das Ergebnis „Zu bestätigen“."],
     shiny:["Shiny-Tage auf Server 1591 sind Dienstag und Samstag.","Server 1591 erscheint nie in der Liste externer Server.","Nutze Shiny Radar für Bot-Bestätigungen und den Verlauf."],
-    train:["Die Wochenplanung läuft von Sonntag bis Samstag.","Geplante Rotation: 4 R4/R5-Fahrer und 3 R3-Fahrer sowie R3-VIP.","Ein R3 auf Platz eins wartet bis zu seiner nächsten Rotation."],
+    train:["Die Wochenplanung läuft von Sonntag bis Samstag.","Der Plan umfasst 4 R4/R5-Zugführer und 3 R3-Zugführer.","Die drei R3 werden hauptsächlich nach den besten Wochenranglisten ausgewählt, ohne erzwungene Rotation. Ein R3 kann in der folgenden Woche erneut gewählt werden, wenn er weiterhin zu den Besten gehört; doppelte Einträge im selben Plan werden vermieden."],
     desert:["Zwei Zeiten werden verfolgt: ungefähr 13:30 und 22:30 Uhr.","Ein vergessener Eintrag kann am Folgetag ergänzt werden.","Die Ergebnisse zählen für die Wochenrangliste."],
     events:["Generalprüfung: höchstens 4★ wählen, wenn das Team nicht sicher ist.","Himmlischer Jäger: begrenztes Kontingent, bestes Team, keine Angriffe verschwenden.","Vor dem Schlafen am Freitag den Schild aktivieren, um die Truppen zu schützen."]
   },
@@ -302,7 +302,7 @@ const GUIDE_DETAILS = {
     vs:["Use VS Planner before spending: the target is 7.2M, not the maximum.","Enable Economy Week to save resources for the following days.","Check the VS day and disable any resource you do not want to use."],
     heroes:["Upgrade the team you actually use first.","Before spending rare items, check the visible hero, level, power and item.","If the screenshot is insufficient, the result must remain ‘To confirm’."],
     shiny:["Server 1591 Shiny days are Tuesday and Saturday.","Server 1591 never appears in the outside-server list.","Use Shiny Radar for Bot confirmations and history."],
-    train:["The weekly plan runs from Sunday to Saturday.","Planned rotation: 4 R4/R5 drivers and 3 R3 drivers, plus R3 VIPs.","An R3 already in first place waits for their next turn before driving again."],
+    train:["The weekly plan runs from Sunday to Saturday.","The plan includes 4 R4/R5 Conductors and 3 R3 Conductors.","The three R3s are selected mainly from the best weekly rankings, with no forced rotation. The same R3 may be selected again the following week while remaining among the best, with duplicates prevented within the same plan."],
     desert:["Two time slots are tracked: around 13:30 and 22:30.","A missed entry can be added the next day.","Results count toward the weekly ranking."],
     events:["General Trial: choose no more than 4★ when the team is uncertain.","Celestial Predator: limited quota, strongest team and no wasted attacks.","Before sleeping on Friday, activate the shield to protect troops."]
   },
@@ -310,7 +310,7 @@ const GUIDE_DETAILS = {
     vs:["Folosește VS Planner înainte de a cheltui: ținta este 7,2 M, nu maximul.","Activează Săptămâna de economie pentru a păstra resursele zilelor următoare.","Verifică ziua VS și dezactivează resursele pe care nu vrei să le folosești."],
     heroes:["Îmbunătățește mai întâi echipa pe care o folosești cu adevărat.","Înainte de o cheltuială rară, verifică eroul, nivelul, puterea și obiectul vizibile.","Dacă captura nu este suficientă, rezultatul rămâne „De confirmat”."],
     shiny:["Zilele Shiny ale serverului 1591 sunt marți și sâmbătă.","Serverul 1591 nu apare niciodată în lista serverelor exterioare.","Folosește Shiny Radar pentru confirmările Botului și istoric."],
-    train:["Planificarea săptămânii este de duminică până sâmbătă.","Rotație: 4 conductori R4/R5 și 3 conductori R3, plus VIP R3.","Un R3 deja pe primul loc așteaptă următoarea rotație."],
+    train:["Planificarea săptămânii este de duminică până sâmbătă.","Planul include 4 Conductori R4/R5 și 3 Conductori R3.","Cei trei R3 sunt aleși în principal după cele mai bune clasamente săptămânale, fără rotație forțată. Același R3 poate fi ales din nou săptămâna următoare dacă rămâne printre cei mai buni, evitând dublurile în același plan."],
     desert:["Sunt urmărite două intervale: aproximativ 13:30 și 22:30.","O înregistrare uitată poate fi adăugată a doua zi.","Rezultatele intră în clasamentul săptămânal."],
     events:["Proba generalului: alege cel mult 4★ dacă echipa nu este sigură.","Prădător celest: cotă limitată, cea mai bună echipă, fără atacuri irosite.","Vineri, înainte de somn, activează scutul pentru a proteja trupele."]
   },
@@ -318,7 +318,7 @@ const GUIDE_DETAILS = {
     vs:["Перед витратами використовуйте VS Planner: мета — 7,2 млн, а не максимум.","Увімкніть Тиждень економії, щоб зберегти ресурси на наступні дні.","Перевірте день VS і вимкніть ресурси, які не хочете використовувати."],
     heroes:["Спочатку покращуйте команду, якою справді користуєтеся.","Перед витратою рідкісних предметів перевірте видимі героя, рівень, силу й предмет.","Якщо знімка недостатньо, результат має залишатися «Потрібне підтвердження»."],
     shiny:["Дні Shiny сервера 1591 — вівторок і субота.","Сервер 1591 ніколи не входить до списку зовнішніх серверів.","Використовуйте Shiny Radar для підтверджень бота та історії."],
-    train:["Тижневий план триває з неділі до суботи.","Ротація: 4 водії R4/R5 і 3 водії R3, а також VIP R3.","R3, який уже був першим, чекає наступної ротації."],
+    train:["Тижневий план триває з неділі до суботи.","План містить 4 провідників R4/R5 і 3 провідників R3.","Трьох R3 обирають насамперед за найкращими тижневими рейтингами, без примусової ротації. Того самого R3 можна обрати знову наступного тижня, якщо він залишається серед найкращих; дублювання в одному плані не допускається."],
     desert:["Відстежуються два часи: приблизно 13:30 та 22:30.","Пропущений запис можна додати наступного дня.","Результати входять до тижневого рейтингу."],
     events:["Випробування генерала: обирайте не більше 4★, якщо команда не впевнена.","Небесний хижак: ліміт атак, найсильніша команда, без марних атак.","У п’ятницю перед сном активуйте щит для захисту військ."]
   },
@@ -326,7 +326,7 @@ const GUIDE_DETAILS = {
     vs:["소비 전에 VS Planner를 사용하세요. 목표는 최대치가 아니라 7.2M입니다.","절약 주간을 켜 다음 날의 자원을 보존하세요.","VS 요일을 확인하고 사용하지 않을 자원은 비활성화하세요."],
     heroes:["실제로 사용하는 팀부터 강화하세요.","희귀 자원을 쓰기 전에 화면에 보이는 영웅, 레벨, 전투력과 아이템을 확인하세요.","스크린샷이 충분하지 않으면 결과는 ‘확인 필요’로 남겨야 합니다."],
     shiny:["1591 서버의 Shiny 요일은 화요일과 토요일입니다.","1591 서버는 외부 서버 목록에 포함되지 않습니다.","Bot 확인과 기록은 Shiny Radar에서 확인하세요."],
-    train:["주간 계획은 일요일부터 토요일까지입니다.","예정 로테이션: R4/R5 운전수 4명, R3 운전수 3명과 R3 VIP.","이미 1위를 한 R3는 다음 순서까지 기다립니다."],
+    train:["주간 계획은 일요일부터 토요일까지입니다.","계획에는 R4/R5 차장 4명과 R3 차장 3명이 포함됩니다.","세 R3는 강제 순환 없이 주간 순위를 우선으로 선정합니다. 계속 상위권이면 같은 R3가 다음 주에도 다시 선정될 수 있으며, 한 계획 안의 중복은 방지합니다."],
     desert:["약 13:30과 22:30의 두 시간대를 기록합니다.","누락된 입력은 다음 날 추가할 수 있습니다.","결과는 주간 순위에 반영됩니다."],
     events:["장군의 시험: 팀이 확실하지 않으면 최대 4★를 선택하세요.","천상의 포식자: 제한된 횟수, 최강 팀 사용, 공격 낭비 금지.","금요일 잠들기 전에 병력 보호를 위해 보호막을 켜세요."]
   },
@@ -334,7 +334,7 @@ const GUIDE_DETAILS = {
     vs:["Prije trošenja koristi VS Planner: cilj je 7,2 M, a ne maksimum.","Uključi Tjedan štednje kako bi sačuvao resurse za sljedeće dane.","Provjeri VS dan i isključi svaki resurs koji ne želiš koristiti."],
     heroes:["Najprije poboljšaj tim koji stvarno koristiš.","Prije rijetkog troška provjeri vidljivog heroja, razinu, snagu i predmet.","Ako snimka nije dovoljna, rezultat ostaje „Za potvrdu“."],
     shiny:["Shiny dani servera 1591 su utorak i subota.","Server 1591 nikad se ne pojavljuje na popisu vanjskih servera.","Koristi Shiny Radar za potvrde Bota i povijest."],
-    train:["Tjedni plan traje od nedjelje do subote.","Planirana rotacija: 4 R4/R5 vozača i 3 R3 vozača, plus R3 VIP.","R3 koji je već bio prvi čeka svoj sljedeći red."],
+    train:["Tjedni plan traje od nedjelje do subote.","Plan uključuje 4 R4/R5 voditelja i 3 R3 voditelja.","Tri R3 biraju se prvenstveno prema najboljim tjednim rezultatima, bez prisilne rotacije. Isti R3 može biti ponovno izabran sljedeći tjedan dok je među najboljima, uz sprječavanje duplikata u istom planu."],
     desert:["Prate se dva termina: oko 13:30 i 22:30.","Propušteni unos može se dodati sljedeći dan.","Rezultati ulaze u tjedni poredak."],
     events:["Generalova kušnja: odaberi najviše 4★ ako tim nije siguran.","Nebeski predator: ograničena kvota, najjači tim i bez uzaludnih napada.","Prije spavanja u petak uključi štit kako bi zaštitio trupe."]
   }

@@ -995,7 +995,7 @@ function buildCompactFallbackAnalysis(text, detectedType, locale = "fr") {
 const GOMO_ALLIANCE_FACTS = `
 - GoMo Central concerne l'alliance GoMo du serveur 1591.
 - Les jours Shiny du serveur 1591 sont mardi et samedi. Le serveur 1591 reste exclu des listes de serveurs extérieurs.
-- Le planning Train/VIP va du dimanche au samedi. Rotation prévue : 4 conducteurs R4/R5 et 3 conducteurs R3, plus les VIP R3. Un R3 déjà premier attend son prochain tour.
+- Le planning Train/VIP va du dimanche au samedi et conserve 4 conducteurs R4/R5 et 3 conducteurs R3. Les R3 sont choisis principalement selon les meilleurs classements de la semaine, sans rotation forcée : un même R3 peut être repris la semaine suivante s'il reste parmi les meilleurs. Les doublons incohérents dans un même planning restent interdits et la sélection R4/R5 ne change pas.
 - Tempête du désert : deux créneaux sont suivis, vers 13 h 30 et 22 h 30. Une saisie oubliée peut être ajoutée le lendemain et les résultats comptent dans le classement hebdomadaire.
 - VS : l'objectif du Planner est 7,2 M. Le mode « semaine d'économie » sert à préserver les ressources des jours suivants.
 - Épreuve du général : choisir au maximum 4 étoiles si l'équipe n'est pas certaine.
