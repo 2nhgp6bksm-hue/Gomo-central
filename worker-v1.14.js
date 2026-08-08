@@ -1,7 +1,7 @@
-// GoMo Central v20.14 — mission ciblée : mobile, Gestion du Train et source Assistant unique.
+// GoMo Central v20.15 — correction de l'injection navigateur de la mission ciblée.
 import baseWorker from "./worker-v1.12.js";
 
-const VERSION = "20.14";
+const VERSION = "20.15";
 const MANAGEMENT_PREFIX = "/gestion-train";
 const ASSISTANT_ORIGIN = "https://chic-sopapillas-82fbc8.netlify.app";
 const SUPABASE_ORIGIN = "https://imtfkhffwpnqdwxkwxkz.supabase.co";
@@ -9,6 +9,10 @@ const ALLIANCE_ID = "gomo-1591";
 const ASSISTANT_IMAGE_PATH = "/icons/gomo-assistant.png";
 const MAX_FORM_BYTES = 8192;
 const LANGUAGES = new Set(["fr", "de", "en", "ro", "uk", "ko", "hr", "pt"]);
+
+function clientFunctionCall(fn) {
+  return `(() => { const __name = (target) => target; (${fn.toString()})(); })()`;
+}
 
 function centralTrainManagementUpgrade() {
   if (window.__GOMO_CENTRAL_TRAIN_MANAGEMENT__) return;
@@ -126,7 +130,7 @@ async function serveCentralApp(request, env, ctx) {
   const response = await baseWorker.fetch(request, env, ctx);
   if (!response.ok) return response;
   const source = await response.text();
-  return javascriptResponse(`${source}\n;(${centralTrainManagementUpgrade.toString()})();\n`, response);
+  return javascriptResponse(`${source}\n;${clientFunctionCall(centralTrainManagementUpgrade)};\n`, response);
 }
 
 function escapeHtml(value) {
