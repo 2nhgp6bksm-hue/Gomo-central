@@ -1,6 +1,6 @@
 {
   "name": "gomo-central-site",
-  "main": "worker-v1.11.js",
+  "main": "worker-v1.12.js",
   "compatibility_date": "2026-08-07",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
@@ -13,6 +13,7 @@
       "/fallback.json",
       "/assets/app-v1.5.js",
       "/assets/gomo-v19.js",
+      "/icons/gomo-assistant.png",
       "/vs-planner",
       "/vs-planner/*",
       "/sw.js",
