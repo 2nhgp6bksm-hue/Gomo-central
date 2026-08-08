@@ -105,7 +105,7 @@
   let toastTimer = null;
 
   function defaultState() {
-    return { version:Core.VERSION, language:detectLanguage(), view:"planner", day:automaticDay(), currentPoints:{}, safetyMargin:Core.DEFAULT_MARGIN, economy:false, stocks:{}, overrides:{}, enabled:{}, lastPlan:null };
+    return { version:Core.VERSION, language:detectLanguage(), view:"planner", day:automaticDay(), currentPoints:{}, safetyMargin:Core.DEFAULT_MARGIN, economy:false, stocks:{}, overrides:{}, enabled:{}, collapsedResources:{}, lastPlan:null };
   }
 
   function detectLanguage() {
@@ -191,6 +191,10 @@
     return state.enabled[enabledKey(item, dayId)] !== false;
   }
 
+  function isResourceCollapsed(item, dayId = state.day) {
+    return Boolean(state.collapsedResources?.[enabledKey(item, dayId)]);
+  }
+
   function renderLanguage() {
     document.documentElement.lang = state.language;
     document.querySelectorAll("[data-i18n]").forEach((node) => { node.textContent = tx(node.dataset.i18n); });
@@ -236,16 +240,18 @@
     const groups = groupResources(day.resources);
     document.getElementById("resourceGroups").innerHTML = [...groups.entries()].map(([group, items], groupIndex) => `
       <details class="resource-group"${groupIndex === 0 || items.length <= 13 ? " open" : ""}>
-        <summary><span>${escapeHtml(tx(group))}</span><small>${items.length} ${escapeHtml(tx("items"))}</small></summary>
+        <summary><span>${escapeHtml(tx(group))}</span><span class="resource-group-meta"><small>${items.length} ${escapeHtml(tx("items"))}</small><span class="resource-group-arrow" aria-hidden="true"></span></span></summary>
         <div class="resource-list">
           ${items.map((item) => {
             const key = enabledKey(item);
             const override = state.overrides[key];
-            return `<article class="resource-row${isEnabled(item) ? "" : " disabled"}" data-resource="${item.id}">
+            const collapsed = isResourceCollapsed(item);
+            return `<article class="resource-row${isEnabled(item) ? "" : " disabled"}${collapsed ? " collapsed" : ""}" data-resource="${item.id}">
               <div class="resource-name"><span class="resource-icon" aria-hidden="true">${item.icon}</span><span><strong>${escapeHtml(label(item))}</strong><small>${escapeHtml(pointDescription(day.id, item))} · ${override ? escapeHtml(tx("custom")) : escapeHtml(tx("verified"))}</small></span></div>
               <label class="resource-field"><span>${escapeHtml(tx("stock"))} · ${escapeHtml(unit(item))}</span><input class="stock-input" data-item="${item.id}" type="number" inputmode="numeric" min="0" step="${item.bundle || 1}" value="${Number(stocks[item.id] || 0)}"></label>
               <label class="resource-field resource-field--points"><span>${escapeHtml(tx("pointValue"))} / ${item.bundle > 1 ? `${fmt(item.bundle)} ${escapeHtml(unit(item))}` : escapeHtml(unit(item))}</span><input class="points-input" data-item="${item.id}" type="number" inputmode="decimal" min="0.0001" step="any" value="${Core.getPointValue(day.id, item, state.overrides)}"></label>
               <label class="use-check" title="${escapeHtml(tx("use"))}"><input class="enabled-input" data-item="${item.id}" type="checkbox"${isEnabled(item) ? " checked" : ""}></label>
+              <button class="resource-collapse-toggle" data-item="${item.id}" type="button" aria-expanded="${collapsed ? "false" : "true"}" aria-label="${escapeHtml(label(item))}">${collapsed ? "▼" : "▲"}</button>
               ${item.warningKey ? `<p class="resource-warning">⚠️ ${escapeHtml(tx(item.warningKey))}</p>` : ""}
             </article>`;
           }).join("")}
@@ -406,6 +412,21 @@
   }
 
   document.addEventListener("click", (event) => {
+    const collapseButton = event.target.closest(".resource-collapse-toggle");
+    if (collapseButton) {
+      const item = Core.getDay(state.day).resources.find((candidate) => candidate.id === collapseButton.dataset.item);
+      if (!item) return;
+      const key = enabledKey(item);
+      const collapsed = !isResourceCollapsed(item);
+      if (!state.collapsedResources) state.collapsedResources = {};
+      if (collapsed) state.collapsedResources[key] = true;
+      else delete state.collapsedResources[key];
+      saveState();
+      collapseButton.textContent = collapsed ? "▼" : "▲";
+      collapseButton.setAttribute("aria-expanded", String(!collapsed));
+      collapseButton.closest(".resource-row")?.classList.toggle("collapsed", collapsed);
+      return;
+    }
     const viewButton = event.target.closest("[data-view]");
     if (viewButton) {
       state.view = viewButton.dataset.view;
@@ -494,6 +515,28 @@
     showToast(tx("resetDone"));
   });
 
+  function setupScrollAwareControls() {
+    const controls = [...document.querySelectorAll(".main-nav, .sticky-calculate")];
+    if (!controls.length) return;
+    let frame = 0;
+    let revealTimer = 0;
+    const hideControls = () => {
+      controls.forEach((control) => control.classList.add("scroll-controls-hidden"));
+      clearTimeout(revealTimer);
+      revealTimer = window.setTimeout(() => {
+        controls.forEach((control) => control.classList.remove("scroll-controls-hidden"));
+      }, 260);
+    };
+    window.addEventListener("scroll", () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        hideControls();
+      });
+    }, { passive:true });
+  }
+
   if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(() => {}));
+  setupScrollAwareControls();
   renderAll();
 })();
