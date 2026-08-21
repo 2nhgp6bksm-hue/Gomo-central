@@ -1,6 +1,6 @@
 {
   "name": "gomo-central-site",
-  "main": "worker-v1.15-test-no-vs-planner.js",
+  "main": "worker-v1.16-test-cleanup.js",
   "compatibility_date": "2026-08-07",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
