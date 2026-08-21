@@ -1,31 +1,24 @@
-# GoMo Central — structure active
+# GoMo Central — structure active de la branche test
 
-Ce document décrit la structure à considérer comme active avant toute nouvelle modification.
+Ce document décrit la structure de `test/central-cleanup-review` après le retrait du planificateur VS intégré.
 
 ## Point d’entrée Cloudflare
 
 `wrangler.jsonc` définit :
 
 - Worker : `gomo-central-site`
-- fichier principal : `worker-v1.14.js`
+- fichier principal de la branche test : `worker-v1.15-test-no-vs-planner.js`
 - ressources statiques : racine du dépôt via le binding `ASSETS`
 - service Shiny : `gomo-shiny-central`
 - binding IA : `AI`
 
 ## Chaîne Worker actuelle
 
-`worker-v1.14.js` importe `worker-v1.12.js`.
+`worker-v1.15-test-no-vs-planner.js` importe `worker-v1.14.js`, qui importe `worker-v1.12.js`.
 
-Conséquence : les anciens fichiers Worker ne doivent pas être considérés comme inutiles uniquement parce qu’un numéro plus récent existe.
+Cette couche de test retire le planificateur VS sans modifier les anciennes dépendances qui font encore fonctionner GoMo Central.
 
-Avant toute suppression ou déplacement :
-
-1. rechercher les imports directs et indirects ;
-2. vérifier `wrangler.jsonc` ;
-3. vérifier les routes servies ;
-4. tester le site complet sur une preview séparée.
-
-## Routes explicitement traitées par le Worker
+## Routes actives conservées
 
 - `/`
 - `/index.html`
@@ -36,45 +29,46 @@ Avant toute suppression ou déplacement :
 - `/icons/gomo-assistant.png`
 - `/gestion-train`
 - `/gestion-train/*`
-- `/vs-planner`
-- `/vs-planner/*`
 - `/sw.js`
 - `/shiny-radar`
 - `/shiny-radar/*`
 
-## Modules spécialisés
+Les anciennes routes du planificateur VS ne sont plus exposées sur cette branche et répondent désormais `404`.
+
+## Modules spécialisés conservés
 
 ### GoMo Assistant
 
-GoMo Central doit servir de passerelle vers GoMo Assistant et réutiliser ses données lorsqu’une fonction l’exige, sans créer une seconde source indépendante de vérité.
+GoMo Central sert de passerelle vers GoMo Assistant et réutilise ses données lorsqu’une fonction l’exige.
 
 ### Train
 
-La gestion intégrée actuelle est sensible car elle dépend du Worker principal et des données de GoMo Assistant. Toute évolution de règles de sélection devra être faite séparément après validation du rangement.
-
-### VS Planner
-
-Présent dans `vs-planner/`. Ne pas fusionner son code dans le Worker principal sans nécessité.
+La gestion intégrée actuelle reste inchangée pendant cette première étape.
 
 ### Shiny Radar
 
-Relié comme service Cloudflare séparé via le binding `SHINY`. Conserver cette séparation.
+Relié comme service Cloudflare séparé via le binding `SHINY`.
 
 ### Workers AI
 
-Utilisé pour l’assistant, la traduction et l’analyse. Les changements IA doivent rester séparés des changements de navigation ou de données.
+Utilisé pour l’assistant, la traduction et l’analyse.
+
+## Retrait effectué
+
+Sur cette branche uniquement :
+
+- suppression du dossier intégré du planificateur VS ;
+- suppression de son icône locale ;
+- suppression de ses routes de `wrangler.jsonc` ;
+- suppression de sa règle dans le service worker ;
+- masquage/retrait des boutons, cartes, liens et mentions visibles correspondants dans l’interface.
+
+Le dépôt autonome du planificateur n’a pas été modifié.
 
 ## Fichiers historiques
 
-Le dépôt contient plusieurs versions de Workers et de scripts. Pour l’instant :
-
-- aucune suppression ;
-- aucun renommage ;
-- aucun déplacement ;
-- uniquement documentation et identification progressive de leur rôle.
-
-Une suppression ne pourra être envisagée qu’après preuve qu’aucune route, import, asset, service worker ou ancienne compatibilité n’en dépend.
+Les anciens Workers restent présents car ils appartiennent à la chaîne de dépendances actuelle. Ils ne doivent pas être supprimés uniquement parce qu’ils contiennent d’anciennes références internes.
 
 ## Principe pour la suite
 
-GoMo Central doit devenir le portail central, tandis que les fonctions spécialisées restent dans leurs projets ou modules dédiés. Une règle métier ne doit idéalement avoir qu’une seule source de vérité.
+GoMo Central doit rester le portail central. Une seule version du planificateur VS sera choisie, remise au propre puis réintégrée ultérieurement après validation.
