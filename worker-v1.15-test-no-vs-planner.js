@@ -27,11 +27,11 @@ function clientVsPlannerCleanup() {
     document.querySelectorAll(
       'a[href*="vs-planner"],img[src*="vs-planner"],[data-go*="vs-planner"],[data-url*="vs-planner"],[data-tool*="vs-planner"],[data-page*="vs-planner"],[data-open*="vs-planner"]'
     ).forEach((element) => {
-      const owner = element.closest("a,button,.royal-nav-button,.gomo-quick-card,.tool-card,article,li") || element;
+      const owner = element.closest("a,button,.royal-nav-button,.gomo-quick-card,.tool-card,li") || element;
       owner.remove();
     });
 
-    document.querySelectorAll("a,button,.royal-nav-button,.gomo-quick-card,.tool-card,article,li").forEach((element) => {
+    document.querySelectorAll("a,button,.royal-nav-button,.gomo-quick-card,.tool-card,li").forEach((element) => {
       if (isPlannerReference(element)) element.remove();
     });
 
@@ -39,11 +39,16 @@ function clientVsPlannerCleanup() {
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
     nodes.forEach((node) => {
-      if (!/VS Planner/i.test(node.nodeValue || "")) return;
-      node.nodeValue = (node.nodeValue || "")
-        .replace(/\s*,?\s*VS Planner\s*,?/gi, (match) => match.includes(",") ? ", " : "")
+      const value = node.nodeValue || "";
+      if (!/VS Planner/i.test(value)) return;
+      node.nodeValue = value
+        .replace(/\s*,\s*VS Planner\s*,\s*/gi, ", ")
+        .replace(/\s*VS Planner\s*,\s*/gi, " ")
+        .replace(/\s*,\s*VS Planner\s*/gi, " ")
+        .replace(/\bVS Planner\b/gi, "")
         .replace(/\s{2,}/g, " ")
-        .replace(/^,\s*|,\s*$/g, "");
+        .replace(/\s+,/g, ",")
+        .trim();
     });
   };
 
