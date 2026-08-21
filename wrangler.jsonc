@@ -1,6 +1,6 @@
 {
   "name": "gomo-central-site",
-  "main": "worker-v1.14.js",
+  "main": "worker-v1.15-test-no-vs-planner.js",
   "compatibility_date": "2026-08-07",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
@@ -16,8 +16,6 @@
       "/icons/gomo-assistant.png",
       "/gestion-train",
       "/gestion-train/*",
-      "/vs-planner",
-      "/vs-planner/*",
       "/sw.js",
       "/shiny-radar",
       "/shiny-radar/*"
