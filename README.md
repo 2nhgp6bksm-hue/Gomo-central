@@ -7,7 +7,7 @@ Portail central de l’alliance GoMo sur le serveur 1591.
 - Version de production actuelle : **20.15**.
 - Worker de production (`main`) : `worker-v1.14.js`.
 - Branche de test : `test/central-cleanup-review`.
-- Worker utilisé uniquement sur la branche de test : `worker-v1.15-test-no-vs-planner.js`.
+- Worker utilisé uniquement sur la branche de test : `worker-v1.16-test-cleanup.js`.
 - Le Worker de test s’appuie sur `worker-v1.14.js`, qui s’appuie lui-même sur `worker-v1.12.js`.
 - Ne pas supprimer ou déplacer les anciens Workers sans audit des imports.
 
@@ -22,17 +22,22 @@ GoMo Central est le portail d’entrée de l’écosystème GoMo. Il doit centra
 - Analyse de captures Last War.
 - Traducteur privé dans les 8 langues de l’alliance.
 - Actualités GoMo.
-- GoMo Coach.
 - Accès aux classements et à GoMo Assistant.
 - Shiny Radar relié au service `gomo-shiny-central`.
 - Gestion du Train protégée et reliée aux données existantes.
 - PWA et consultation partielle hors connexion.
 
-## Retrait en cours sur la branche test
+## Retraits effectués sur la branche test
 
-Le planificateur VS précédemment intégré à GoMo Central a été retiré de cette branche afin de repartir d’une base neutre avant de choisir la version qui sera conservée plus tard.
+Les deux modules suivants ont été retirés de GoMo Central afin de repartir d’une base neutre :
 
-Le dépôt autonome du planificateur n’est pas modifié par cette opération.
+- VS Planner intégré ;
+- GoMo Coach.
+
+Le retrait concerne les boutons, cartes, icônes/images, pages/sections, liens et routes correspondants dans GoMo Central.
+
+Le dépôt autonome du VS Planner n’est pas modifié par cette opération.
+Les données Last War partagées nécessaires à « Demander à GoMo » restent conservées afin de ne pas casser l’assistant général.
 
 ## Langues
 
