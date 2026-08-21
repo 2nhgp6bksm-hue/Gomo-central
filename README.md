@@ -4,17 +4,18 @@ Portail central de l’alliance GoMo sur le serveur 1591.
 
 ## Version de référence
 
-- Version applicative actuelle : **20.15**.
-- Worker Cloudflare actif défini par `wrangler.jsonc` : `worker-v1.14.js`.
-- `worker-v1.14.js` s’appuie actuellement sur `worker-v1.12.js` : ne pas supprimer ou déplacer les anciens Workers sans audit des imports.
-- Branche de production : `main`.
-- Branche de rangement et de futurs essais : `test/central-cleanup-review`.
+- Version de production actuelle : **20.15**.
+- Worker de production (`main`) : `worker-v1.14.js`.
+- Branche de test : `test/central-cleanup-review`.
+- Worker utilisé uniquement sur la branche de test : `worker-v1.15-test-no-vs-planner.js`.
+- Le Worker de test s’appuie sur `worker-v1.14.js`, qui s’appuie lui-même sur `worker-v1.12.js`.
+- Ne pas supprimer ou déplacer les anciens Workers sans audit des imports.
 
 ## Rôle de GoMo Central
 
 GoMo Central est le portail d’entrée de l’écosystème GoMo. Il doit centraliser l’accès aux outils sans dupliquer inutilement leur logique métier.
 
-## Fonctions actuellement incluses
+## Fonctions conservées sur la branche test
 
 - Accueil central.
 - Assistant « Demander à GoMo » via Cloudflare Workers AI.
@@ -23,10 +24,15 @@ GoMo Central est le portail d’entrée de l’écosystème GoMo. Il doit centra
 - Actualités GoMo.
 - GoMo Coach.
 - Accès aux classements et à GoMo Assistant.
-- VS Planner intégré.
 - Shiny Radar relié au service `gomo-shiny-central`.
 - Gestion du Train protégée et reliée aux données existantes.
 - PWA et consultation partielle hors connexion.
+
+## Retrait en cours sur la branche test
+
+Le planificateur VS précédemment intégré à GoMo Central a été retiré de cette branche afin de repartir d’une base neutre avant de choisir la version qui sera conservée plus tard.
+
+Le dépôt autonome du planificateur n’est pas modifié par cette opération.
 
 ## Langues
 
@@ -43,8 +49,8 @@ Français, allemand, anglais, roumain, ukrainien, coréen, croate et portugais.
 
 1. Ne jamais travailler directement sur `main` pour une nouvelle modification.
 2. Ne jamais remplacer le déploiement de production pour tester une fonction.
-3. Tester chaque changement sur une branche séparée et, lorsque nécessaire, une URL de preview distincte.
-4. Ne supprimer aucun Worker, fichier historique, image, route ou donnée avant d’avoir confirmé qu’il n’est plus utilisé.
+3. Tester chaque changement sur une branche séparée et une URL de preview distincte.
+4. Ne supprimer aucun Worker historique utilisé comme dépendance sans audit.
 5. Conserver les fonctions qui marchent déjà et modifier le minimum de fichiers nécessaire.
 6. Ne jamais mettre de secret, mot de passe ou jeton privé dans GitHub.
 
