@@ -11,57 +11,76 @@ Cette branche ne doit pas modifier les autres sites GoMo ni leurs bases.
 - ne pas utiliser la base D1 de GoMo Power ;
 - ne pas utiliser la base du Train Planner ;
 - ne pas supprimer automatiquement un membre ;
-- ne pas fusionner vers `main` tant que les lectures LastIntel / LastRank et la base dédiée ne sont pas validées ;
-- toute future base D1 doit être une base dédiée nommée `gomo-core-db`.
+- ne pas fusionner vers `main` tant que les lectures des sources et la base dédiée ne sont pas validées ;
+- la base D1 dédiée reste `gomo-core-db`.
 
-## État v0.1
+## État v0.2 — comparaison 3 sources
 
-Le Core fonctionne d'abord en lecture seule, même sans D1.
+GoMo Core compare maintenant :
+
+1. LastIntel ;
+2. LastRank ;
+3. LastWarRank.
+
+LastWarRank est une source complémentaire : son indisponibilité ne doit pas empêcher GoMo Core de continuer avec LastIntel / LastRank.
 
 ### Routes
 
-- `/core/` : tableau de contrôle GoMo Core ;
+- `/core/` : tableau de contrôle 3 sources ;
 - `/api/core/status` : état du Core et du stockage ;
-- `/api/core/live` : lecture et comparaison LastIntel + LastRank ;
-- `/api/core/members` : dernière vue stockée si D1 existe, sinon vue live ;
-- `POST /api/core/refresh` : future synchronisation D1, protégée par `GOMO_CORE_ADMIN_KEY`.
+- `/api/core/live` : vue live avec arbitrage 3 sources ;
+- `/api/core/compare-3` : diagnostic détaillé des 3 sources sans écriture ;
+- `/api/core/lastwarrank-test` : sonde LastWarRank en lecture seule ;
+- `/api/core/members` : dernière vue stockée dans D1 ;
+- `POST /api/core/refresh` : synchronisation 3 sources protégée par `GOMO_CORE_ADMIN_KEY`.
 
 ## Politique de données
 
 ### QG
 
-LastIntel est prioritaire lorsque la valeur existe. LastRank sert de secours. Toute différence est conservée comme conflit visible.
+- si 3 sources sont disponibles et 3/3 concordent : QG confirmé 3/3 ;
+- si 3 sources sont disponibles et 2/3 concordent : la majorité devient la valeur canonique ;
+- si seulement 2 sources sont disponibles et concordent : QG confirmé par 2 sources ;
+- sans majorité : le membre reste à vérifier ;
+- les valeurs originales de chaque source sont toujours conservées.
 
-### Puissance et Hero Power
+Le test du 22/08/2026 a montré 46 conflits QG comparables sur les 3 sources : LastIntel et LastWarRank concordaient dans les 46 cas, LastRank dans 0 cas.
 
-La source dont l'observation d'alliance est la plus fraîche est utilisée. Une différence entre sources reste visible.
+### Puissance
+
+Pas de vote 2/3. La valeur canonique vient de la source dont l'observation horodatée est la plus fraîche. Les écarts restent visibles et toutes les observations restent conservées.
+
+### Hero Power
+
+Même logique que la puissance : priorité à la donnée horodatée la plus fraîche, avec conservation de toutes les valeurs source.
 
 ### Rang
 
-L'accord des sources est privilégié. En cas de différence, la valeur LastIntel peut être affichée mais le membre est marqué à vérifier.
+Le rang reste comparé entre LastIntel et LastRank. Les désaccords restent visibles et ne sont pas masqués par LastWarRank.
 
 ### Membres
 
-Aucune absence dans une source ne provoque une suppression automatique. Les départs devront passer par une règle de confirmation séparée.
+Aucune absence dans une source ne provoque une suppression automatique. Les départs doivent passer par une règle de confirmation séparée.
 
 ## Identité permanente
 
-Quand D1 sera activé, chaque membre recevra un `gomo_id` indépendant du pseudo.
+Chaque membre reçoit un `gomo_id` indépendant du pseudo.
 
-La résolution utilisera dans cet ordre :
+La résolution utilise en priorité :
 
 1. identifiant source LastIntel connu ;
 2. identifiant source LastRank connu ;
-3. alias/pseudo normalisé unique déjà connu ;
-4. nouvel identifiant GoMo.
+3. identifiant / alias LastWarRank connu ;
+4. alias/pseudo normalisé unique déjà connu ;
+5. nouvel identifiant GoMo.
 
-Les anciens pseudos seront conservés dans `core_member_aliases`.
+Les anciens pseudos sont conservés dans `core_member_aliases`.
 
 ## D1 dédié
 
-Migration préparée : `migrations/0001_gomo_core.sql`.
+Migration : `migrations/0001_gomo_core.sql`.
 
-La migration crée uniquement des tables préfixées `core_` :
+La base contient uniquement des tables préfixées `core_` :
 
 - `core_members` ;
 - `core_member_aliases` ;
@@ -71,8 +90,25 @@ La migration crée uniquement des tables préfixées `core_` :
 - `core_canonical_snapshots` ;
 - `core_audit_log`.
 
-Tant que le binding `CORE_DB` n'existe pas, GoMo Core reste automatiquement en lecture seule.
+La synchronisation horaire du Worker stocke maintenant :
+
+- la vue canonique ;
+- l'observation LastIntel ;
+- l'observation LastRank ;
+- l'observation LastWarRank lorsqu'elle est disponible ;
+- les dates d'observation ;
+- les sources choisies par champ ;
+- les drapeaux de conflit / consensus ;
+- un audit `sync_completed_3_source`.
+
+## Sécurité
+
+- aucune écriture vers les autres sites GoMo ;
+- aucune écriture vers leurs bases ;
+- aucune modification automatique de `main` ;
+- LastWarRank ne doit jamais bloquer une synchronisation si LastIntel / LastRank restent utilisables ;
+- les valeurs source ne sont pas écrasées par la valeur canonique.
 
 ## Étape suivante
 
-Créer une base D1 séparée `gomo-core-db`, appliquer `migrations/0001_gomo_core.sql`, ajouter le binding `CORE_DB` uniquement au Worker `gomo-core-test`, puis effectuer plusieurs synchronisations de contrôle avant de connecter GoMo Power.
+Laisser plusieurs synchronisations horaires s'accumuler dans `gomo-core-db`, vérifier la stabilité des QG / rangs / puissances et la couverture LastWarRank, puis seulement préparer la connexion de GoMo Power à l'API Core sur une branche de test séparée.
