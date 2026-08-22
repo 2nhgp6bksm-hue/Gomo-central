@@ -22,6 +22,8 @@ jobs:
         run: |
           node --check gomo-core-worker.js
           node --check gomo-core-entry.js
+          node --check gomo-core-entry-lastwarrank.js
+          node --check lastwarrank-test.js
 
       - name: Validate D1 migration is isolated
         shell: bash
