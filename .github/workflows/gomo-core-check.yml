@@ -19,7 +19,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check JavaScript syntax
-        run: node --check gomo-core-worker.js
+        run: |
+          node --check gomo-core-worker.js
+          node --check gomo-core-entry.js
 
       - name: Validate D1 migration is isolated
         shell: bash
