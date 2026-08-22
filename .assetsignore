@@ -11,3 +11,9 @@ lastwarrank-test.js
 worker*.js
 last-war-knowledge.json
 r5fapper/**
+assets/app.js
+assets/app-v1.5.js
+assets/gomo-v19.js
+assets/gomo-v19.css
+assets/styles.css
+assets/styles-v1.5.css
