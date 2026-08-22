@@ -1,8 +1,19 @@
 {
-  "name": "gomo-central-site",
-  "main": "worker-v1.14.js",
+  "name": "gomo-core-test",
+  "main": "gomo-core-worker.js",
   "compatibility_date": "2026-08-07",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "GOMO_CORE_MODE": "test",
+    "ALLIANCE_ABBR": "GoMo",
+    "ALLIANCE_NAME": "God venoM",
+    "ALLIANCE_ID": "26227dc9fb2945edaee8c7675c8fed5d",
+    "SERVER_ID": "1591",
+    "LASTRANK_URL": "https://www.lastrank.fun/a/26227dc9fb2945edaee8c7675c8fed5d",
+    "LASTINTEL_MCP_URL": "https://mcp.lastintel.io/",
+    "LASTINTEL_WEB_BASE": "https://lastintel.io/",
+    "LASTINTEL_ALLIANCE_ID": "jzpvMwRRgPkPWtOgEraW9g"
+  },
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
@@ -10,6 +21,8 @@
       "/",
       "/index.html",
       "/api/*",
+      "/core",
+      "/core/*",
       "/fallback.json",
       "/assets/app-v1.5.js",
       "/assets/gomo-v19.js",
