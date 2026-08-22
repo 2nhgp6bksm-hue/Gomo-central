@@ -26,6 +26,7 @@ jobs:
           node --check gomo-core-dashboard-3.js
           node --check gomo-core-entry-v03.js
           node --check gomo-core-dashboard-v03.js
+          node --check gomo-core-entry-v04.js
           node --check lastwarrank-test.js
 
       - name: Validate D1 migration is isolated
