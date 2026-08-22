@@ -1,0 +1,35 @@
+name: GoMo Core checks
+
+on:
+  push:
+    branches:
+      - test/gomo-core
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check JavaScript syntax
+        run: node --check gomo-core-worker.js
+
+      - name: Validate D1 migration is isolated
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f migrations/0001_gomo_core.sql
+          if grep -Eiv '(^[[:space:]]*$|^--|core_|PRAGMA|sqlite_)' migrations/0001_gomo_core.sql | grep -Ei '(CREATE TABLE|DROP TABLE|ALTER TABLE|DELETE FROM|UPDATE )'; then
+            echo "Migration contains a non-Core table mutation"
+            exit 1
+          fi
+
+      - name: Wrangler dry run only
+        run: npx --yes wrangler@latest deploy --dry-run --outdir .wrangler-dry-run
