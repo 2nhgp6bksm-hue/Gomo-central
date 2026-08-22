@@ -1,6 +1,13 @@
 .git
-.wrangler
-worker-v1.10.js
+.github/**
+.wrangler/**
 wrangler.jsonc
 README.md
+GOMO_CORE.md
 project-notes/**
+migrations/**
+gomo-core-*.js
+lastwarrank-test.js
+worker*.js
+last-war-knowledge.json
+r5fapper/**
