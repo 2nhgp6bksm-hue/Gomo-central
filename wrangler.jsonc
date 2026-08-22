@@ -1,6 +1,6 @@
 {
   "name": "gomo-core-test",
-  "main": "gomo-core-entry-v04.js",
+  "main": "gomo-core-entry-v05.js",
   "compatibility_date": "2026-08-07",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
@@ -35,9 +35,6 @@
       "/core",
       "/core/*",
       "/fallback.json",
-      "/assets/app-v1.5.js",
-      "/assets/gomo-v19.js",
-      "/icons/gomo-assistant.png",
       "/gestion-train",
       "/gestion-train/*",
       "/vs-planner",
