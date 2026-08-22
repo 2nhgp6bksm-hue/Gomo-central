@@ -29,7 +29,7 @@ function hqVote(lastIntel, lastRank, lastWarRank) {
     ["lastIntel", lastIntel],
     ["lastRank", lastRank],
     ["lastWarRank", lastWarRank],
-  ].filter(([, value]) => Number.isInteger(Number(value)));
+  ].filter(([, value]) => value != null && value !== "" && Number.isInteger(Number(value)));
 
   if (values.length < 2) {
     return { comparable: false, consensus: null, supporters: [], status: "insufficient_data" };
