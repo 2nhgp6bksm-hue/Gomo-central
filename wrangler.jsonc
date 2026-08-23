@@ -1,8 +1,11 @@
 {
   "name": "gomo-central-site",
-  "main": "worker-v1.14.js",
+  "main": "worker-v1.15-core-ready.js",
   "compatibility_date": "2026-08-07",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "GOMO_CORE_ENABLED": "false"
+  },
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
