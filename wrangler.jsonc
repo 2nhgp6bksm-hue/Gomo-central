@@ -1,6 +1,6 @@
 {
   "name": "gomo-core-test",
-  "main": "gomo-core-entry-v06.js",
+  "main": "gomo-core-entry-v07.js",
   "compatibility_date": "2026-08-07",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
@@ -13,7 +13,8 @@
     "LASTINTEL_MCP_URL": "https://mcp.lastintel.io/",
     "LASTINTEL_WEB_BASE": "https://lastintel.io/",
     "LASTINTEL_ALLIANCE_ID": "jzpvMwRRgPkPWtOgEraW9g",
-    "LASTWARRANK_URL": "https://www.lastwarrank.com/alliance/MRMCVY2KTB"
+    "LASTWARRANK_URL": "https://www.lastwarrank.com/alliance/MRMCVY2KTB",
+    "CORE_PUBLIC_CACHE_SECONDS": "600"
   },
   "d1_databases": [
     {
