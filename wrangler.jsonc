@@ -1,6 +1,6 @@
 {
   "name": "gomo-core-test",
-  "main": "gomo-core-entry-v05.js",
+  "main": "gomo-core-entry-v06.js",
   "compatibility_date": "2026-08-07",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
