@@ -11,6 +11,11 @@ import {
   report,
 } from "./gomo-core-v06-engine.js";
 import { persist } from "./gomo-core-v06-storage.js";
+import {
+  enrichCoreMembersWithAvatars,
+  handleCoreMemberAvatar,
+  readAvatarCatalog,
+} from "./gomo-core-avatars-v07.js";
 
 const V = "0.7.0-test";
 const DEFAULT_CACHE_SECONDS = 600;
@@ -64,7 +69,7 @@ function headify(request, response) {
 
 function cacheKey(request) {
   const url = new URL(request.url);
-  url.search = "";
+  url.search = `?coreVersion=${encodeURIComponent(V)}`;
   return new Request(url.toString(), { method: "GET" });
 }
 
@@ -139,7 +144,7 @@ function parsed(value, fallback = null) {
   try { return JSON.parse(value || ""); } catch { return fallback; }
 }
 
-async function membersPayload(env) {
+async function membersPayload(env, origin, options = {}) {
   await schemaV07(env.CORE_DB);
   const sync = await latestSuccessfulSync(env.CORE_DB);
   if (!sync) return { error: "No successful Core sync available", status: 503 };
@@ -171,6 +176,20 @@ async function membersPayload(env) {
     active: Boolean(row.active),
     membershipStatus: row.membership_status,
   }));
+  let avatarCatalog = null;
+  if (options.includeAvatars !== false) {
+    try {
+      avatarCatalog = await readAvatarCatalog(env);
+    } catch (error) {
+      console.warn(JSON.stringify({
+        event: "gomo_core_avatar_catalog_unavailable",
+        error: error instanceof Error ? error.message : String(error),
+      }));
+    }
+  }
+  const enrichedMembers = options.includeAvatars === false
+    ? members
+    : await enrichCoreMembersWithAvatars(members, env, origin, avatarCatalog);
 
   return {
     ok: true,
@@ -180,14 +199,15 @@ async function membersPayload(env) {
     syncId: sync.sync_id,
     generatedAt: sync.completed_at || sync.started_at,
     fresh: sync.completed_at ? Date.now() - Date.parse(sync.completed_at) <= 2 * 3600000 : false,
-    memberCount: members.length,
+    memberCount: enrichedMembers.length,
     metadata: parsed(sync.metadata_json, null),
-    members,
+    avatarRevision: avatarCatalog?.generated_at || null,
+    members: enrichedMembers,
   };
 }
 
-async function powerPayload(env) {
-  const data = await membersPayload(env);
+async function powerPayload(env, origin) {
+  const data = await membersPayload(env, origin, { includeAvatars: false });
   if (data.error) return data;
   return {
     ok: true,
@@ -356,15 +376,22 @@ async function adminPassthrough(request, env, ctx) {
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
-function payloadResponse(payload, env) {
+function payloadResponse(payload, env, extraHeaders = {}) {
   if (payload?.error) return json({ error: payload.error, coreVersion: V }, payload.status || 503, env, { "cache-control": "no-store" });
-  const etag = payload.syncId ? `W/\"${payload.syncId}:${payload.coreVersion || V}\"` : null;
-  return json(payload, 200, env, etag ? { etag } : {});
+  const avatarRevision = String(payload.avatarRevision || "").replace(/[^0-9A-Za-z_.:-]/g, "");
+  const etag = payload.syncId
+    ? `W/\"${payload.syncId}:${payload.coreVersion || V}${avatarRevision ? `:${avatarRevision}` : ""}\"`
+    : null;
+  return json(payload, 200, env, { ...extraHeaders, ...(etag ? { etag } : {}) });
 }
 
 export default {
   async fetch(request, env, ctx) {
-    const path = new URL(request.url).pathname;
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    const avatarMatch = path.match(/^\/api\/core\/members\/(gomo_[0-9a-f-]+)\/avatar$/i);
+    if (avatarMatch) return handleCoreMemberAvatar(request, env, url, avatarMatch[1]);
 
     if (path === "/api/core/refresh") return refresh(request, env, ctx);
     if (path === "/api/core/live") return live(request, env, ctx);
@@ -376,10 +403,14 @@ export default {
       return cached(request, env, ctx, async () => payloadResponse(await storedPrecisionPayload(env), env));
     }
     if (path === "/api/core/members") {
-      return cached(request, env, ctx, async () => payloadResponse(await membersPayload(env), env));
+      return cached(request, env, ctx, async () => payloadResponse(
+        await membersPayload(env, url.origin),
+        env,
+        { "cache-control": "public, max-age=30, s-maxage=60, stale-while-revalidate=300" },
+      ));
     }
     if (path === "/api/core/power") {
-      return cached(request, env, ctx, async () => payloadResponse(await powerPayload(env), env));
+      return cached(request, env, ctx, async () => payloadResponse(await powerPayload(env, url.origin), env));
     }
     if (path === "/api/core/status") {
       return cached(request, env, ctx, async () => payloadResponse(await statusPayload(env), env));
