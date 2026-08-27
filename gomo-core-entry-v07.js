@@ -16,9 +16,10 @@ import {
   handleCoreMemberAvatar,
 } from "./gomo-core-avatars.js";
 
-const V = "0.7.2-test";
+const V = "0.7.3-test";
 const DEFAULT_CACHE_SECONDS = 600;
 const REPORT_RETENTION_DAYS = 7;
+const MAX_PUBLIC_ALIASES_PER_MEMBER = 25;
 let schemaV07OK = false;
 
 function cacheSeconds(env) {
@@ -148,20 +149,46 @@ async function membersPayload(request, env, ctx, options = {}) {
   const sync = await latestSuccessfulSync(env.CORE_DB);
   if (!sync) return { error: "No successful Core sync available", status: 503 };
 
-  const result = await env.CORE_DB.prepare(`
+  const [result, aliasResult] = await Promise.all([
+    env.CORE_DB.prepare(`
     SELECT c.gomo_id,c.name,c.rank,c.hq,c.power,c.hero_power,c.kills,c.avatar_url,
            c.confidence,c.confidence_level,c.flags_json,c.field_sources_json,c.observed_at,
-           m.active,COALESCE(ms.status,'confirmed') membership_status
+           m.normalized_name,m.active,COALESCE(ms.status,'confirmed') membership_status
     FROM core_canonical_snapshots c
     JOIN core_members m ON m.gomo_id=c.gomo_id
     LEFT JOIN core_member_membership ms ON ms.gomo_id=c.gomo_id
     WHERE c.sync_id=?
     ORDER BY c.power DESC,c.name COLLATE NOCASE
-  `).bind(sync.sync_id).all();
+    `).bind(sync.sync_id).all(),
+    env.CORE_DB.prepare(`
+      SELECT gomo_id,alias,normalized_alias
+      FROM core_member_aliases
+      WHERE alias IS NOT NULL AND trim(alias)<>''
+      ORDER BY last_seen DESC,alias COLLATE NOCASE
+    `).all(),
+  ]);
+
+  const aliasesByGomoId = new Map();
+  for (const row of aliasResult.results || []) {
+    const gomoId = String(row.gomo_id || "");
+    const alias = String(row.alias || "").trim();
+    const normalizedAlias = String(row.normalized_alias || "").trim();
+    if (!gomoId || !alias || !normalizedAlias) continue;
+    const current = aliasesByGomoId.get(gomoId) || [];
+    if (
+      current.length >= MAX_PUBLIC_ALIASES_PER_MEMBER ||
+      current.some((entry) => entry.normalizedAlias === normalizedAlias)
+    ) continue;
+    current.push({ alias, normalizedAlias });
+    aliasesByGomoId.set(gomoId, current);
+  }
 
   const members = (result.results || []).map((row) => ({
     gomoId: row.gomo_id,
     name: row.name,
+    aliases: (aliasesByGomoId.get(String(row.gomo_id)) || [])
+      .filter((entry) => entry.normalizedAlias !== String(row.normalized_name || ""))
+      .map((entry) => entry.alias),
     rank: row.rank,
     hq: row.hq,
     power: row.power,

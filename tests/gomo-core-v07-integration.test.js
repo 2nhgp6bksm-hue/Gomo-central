@@ -42,6 +42,22 @@ class Statement {
     return null;
   }
   async all() {
+    if (this.sql.includes("FROM core_member_aliases")) {
+      return {
+        results: [
+          {
+            gomo_id: GOMO_ID,
+            alias: "AVILLAI",
+            normalized_alias: "avillai",
+          },
+          {
+            gomo_id: GOMO_ID,
+            alias: "AVILLAI OLD",
+            normalized_alias: "avillai old",
+          },
+        ],
+      };
+    }
     if (this.sql.includes("FROM core_canonical_snapshots c")) {
       return {
         results: [{
@@ -58,6 +74,7 @@ class Statement {
           flags_json: "[]",
           field_sources_json: "{}",
           observed_at: "2026-08-27T17:01:00.000Z",
+          normalized_name: "avillai",
           active: 1,
           membership_status: "confirmed",
         }],
@@ -131,11 +148,12 @@ test("la route membres v0.7 publie le contrat avatar central complet", async () 
   await ctx.flush();
 
   assert.equal(response.status, 200);
-  assert.equal(body.coreVersion, "0.7.2-test");
+  assert.equal(body.coreVersion, "0.7.3-test");
   assert.equal(body.avatarContractVersion, 1);
   assert.equal(body.avatarStats.matched, 1);
   assert.equal(body.avatarStats.ambiguous, 0);
   assert.equal(body.members[0].avatarVersion, 3);
+  assert.deepEqual(body.members[0].aliases, ["AVILLAI OLD"]);
   assert.equal(
     body.members[0].avatarUrl,
     `${CORE_ORIGIN}/api/core/members/${GOMO_ID}/avatar?v=3`,

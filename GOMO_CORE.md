@@ -9,10 +9,12 @@ Worker de test : `gomo-core-test`
 Le contrat public des photos membres est porté par GoMo Core :
 
 - l'entrypoint v0.7.1 conserve sa politique de rang et utilise le moteur Core
-  v0.7.2 pour invalider proprement l'ancien cache sans avatars ;
+  v0.7.3 pour invalider proprement l'ancien cache sans avatars et publier les alias canoniques ;
 
 - `GET /api/core/members` associe d'abord les membres par `gomoId` et publie
-  `avatarUrl`, `avatarVersion`, `avatarSource` et `avatarMatch` ;
+  `aliases`, `avatarUrl`, `avatarVersion`, `avatarSource` et `avatarMatch` ;
+- `aliases` expose au maximum 25 anciens pseudos distincts déjà conservés dans
+  `core_member_aliases`; le pseudo canonique courant n'est pas dupliqué ;
 - `GET /api/core/members/{gomoId}/avatar?v={version}` diffuse la photo
   versionnée fournie par GoMo Assistant ;
 - GoMo Core appelle Assistant par Service Binding, sans nouveau KV, R2, D1 ni
