@@ -1,0 +1,8 @@
+{
+  "name": "gomo-core-test-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/gomo-core-avatars.test.js"
+  }
+}

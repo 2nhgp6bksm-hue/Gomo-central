@@ -4,6 +4,25 @@ Branche : `test/gomo-core`
 
 Worker de test : `gomo-core-test`
 
+## Photos membres centrales
+
+Le contrat public des photos membres est porté par GoMo Core :
+
+- `GET /api/core/members` associe d'abord les membres par `gomoId` et publie
+  `avatarUrl`, `avatarVersion`, `avatarSource` et `avatarMatch` ;
+- `GET /api/core/members/{gomoId}/avatar?v={version}` diffuse la photo
+  versionnée fournie par GoMo Assistant ;
+- GoMo Core appelle Assistant par Service Binding, sans nouveau KV, R2, D1 ni
+  cron pour les photos ;
+- le catalogue connu et chaque image versionnée sont mis en cache ; en cas
+  d'indisponibilité d'Assistant, le dernier cache valide est utilisé puis la
+  photo historique LastIntel reste le dernier recours ;
+- une égalité de pseudo ne peut jamais remplacer un `gomoId` canonique
+  différent ou ambigu.
+
+La réponse membres contient aussi `avatarStats` et `avatarRevision` afin de
+contrôler les associations avant toute suppression des anciennes photos.
+
 ## Règle absolue
 
 Cette branche ne doit pas modifier les autres sites GoMo ni leurs bases.

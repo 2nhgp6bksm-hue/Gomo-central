@@ -13,7 +13,8 @@
     "LASTINTEL_MCP_URL": "https://mcp.lastintel.io/",
     "LASTINTEL_WEB_BASE": "https://lastintel.io/",
     "LASTINTEL_ALLIANCE_ID": "jzpvMwRRgPkPWtOgEraW9g",
-    "LASTWARRANK_URL": "https://www.lastwarrank.com/alliance/MRMCVY2KTB"
+    "LASTWARRANK_URL": "https://www.lastwarrank.com/alliance/MRMCVY2KTB",
+    "GOMO_ASSISTANT_PUBLIC_ORIGIN": "https://gomo-assistant-v2.gjp86wh7p2.workers.dev"
   },
   "d1_databases": [
     {
@@ -48,6 +49,10 @@
     {
       "binding": "SHINY",
       "service": "gomo-shiny-central"
+    },
+    {
+      "binding": "GOMO_ASSISTANT",
+      "service": "gomo-assistant-v2"
     }
   ],
   "ai": {

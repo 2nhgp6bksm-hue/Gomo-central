@@ -31,8 +31,12 @@ jobs:
           node --check gomo-core-entry-v05.js
           node --check gomo-core-v06-engine.js
           node --check gomo-core-v06-storage.js
+          node --check gomo-core-avatars.js
           node --check gomo-core-entry-v06.js
           node --check lastwarrank-test.js
+
+      - name: Test central avatar contract
+        run: npm test
 
       - name: Validate D1 migrations are isolated and executable
         shell: bash
