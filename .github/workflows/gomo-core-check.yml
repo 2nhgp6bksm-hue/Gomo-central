@@ -33,6 +33,8 @@ jobs:
           node --check gomo-core-v06-storage.js
           node --check gomo-core-avatars.js
           node --check gomo-core-entry-v06.js
+          node --check gomo-core-entry-v07.js
+          node --check gomo-core-entry-v071.js
           node --check lastwarrank-test.js
 
       - name: Test central avatar contract

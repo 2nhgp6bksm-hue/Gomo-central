@@ -5,6 +5,7 @@ wrangler.jsonc
 README.md
 GOMO_CORE.md
 project-notes/**
+tests/**
 migrations/**
 gomo-core-*.js
 lastwarrank-test.js

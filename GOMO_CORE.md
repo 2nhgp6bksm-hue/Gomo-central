@@ -8,6 +8,9 @@ Worker de test : `gomo-core-test`
 
 Le contrat public des photos membres est porté par GoMo Core :
 
+- l'entrypoint v0.7.1 conserve sa politique de rang et utilise le moteur Core
+  v0.7.2 pour invalider proprement l'ancien cache sans avatars ;
+
 - `GET /api/core/members` associe d'abord les membres par `gomoId` et publie
   `avatarUrl`, `avatarVersion`, `avatarSource` et `avatarMatch` ;
 - `GET /api/core/members/{gomoId}/avatar?v={version}` diffuse la photo
