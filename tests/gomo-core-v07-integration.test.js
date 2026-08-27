@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import core from "../gomo-core-entry-v071.js";
+import { VERIFIED_TRAIN_LEGACY_ALIASES } from "../gomo-core-entry-v07.js";
 
 const CORE_ORIGIN = "https://core.test";
 const ASSISTANT_ORIGIN = "https://gomo-assistant-v2.gjp86wh7p2.workers.dev";
@@ -148,7 +149,7 @@ test("la route membres v0.7 publie le contrat avatar central complet", async () 
   await ctx.flush();
 
   assert.equal(response.status, 200);
-  assert.equal(body.coreVersion, "0.7.3-test");
+  assert.equal(body.coreVersion, "0.7.4-test");
   assert.equal(body.avatarContractVersion, 1);
   assert.equal(body.avatarStats.matched, 1);
   assert.equal(body.avatarStats.ambiguous, 0);
@@ -157,6 +158,14 @@ test("la route membres v0.7 publie le contrat avatar central complet", async () 
   assert.equal(
     body.members[0].avatarUrl,
     `${CORE_ORIGIN}/api/core/members/${GOMO_ID}/avatar?v=3`,
+  );
+});
+
+test("la v0.7 ne publie que les anciens pseudos Train vérifiés", () => {
+  assert.equal(Object.keys(VERIFIED_TRAIN_LEGACY_ALIASES).length, 5);
+  assert.deepEqual(
+    VERIFIED_TRAIN_LEGACY_ALIASES["gomo_7ffe5f47-6361-4704-86fa-cfc51d997b4b"],
+    ["Was ist Bubatz"],
   );
 });
 

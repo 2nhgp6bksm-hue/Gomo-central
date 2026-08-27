@@ -16,10 +16,17 @@ import {
   handleCoreMemberAvatar,
 } from "./gomo-core-avatars.js";
 
-const V = "0.7.3-test";
+const V = "0.7.4-test";
 const DEFAULT_CACHE_SECONDS = 600;
 const REPORT_RETENTION_DAYS = 7;
 const MAX_PUBLIC_ALIASES_PER_MEMBER = 25;
+export const VERIFIED_TRAIN_LEGACY_ALIASES = Object.freeze({
+  "gomo_87495483-132e-436a-a519-cf8e87dbf078": ["1xnilxx"],
+  "gomo_1ec372fe-4a5f-4d5c-b8ec-8e47d3e586fa": ["Chelibell"],
+  "gomo_7ffe5f47-6361-4704-86fa-cfc51d997b4b": ["Was ist Bubatz"],
+  "gomo_1f89f5f4-5ce3-40f5-a06b-c283ec816a33": ["NOPEE"],
+  "gomo_182126c9-a3d3-4b11-a4e1-5ee82e1851fb": ["srvulz"],
+});
 let schemaV07OK = false;
 
 function cacheSeconds(env) {
@@ -144,6 +151,27 @@ function parsed(value, fallback = null) {
   try { return JSON.parse(value || ""); } catch { return fallback; }
 }
 
+function normalizePublicAlias(value) {
+  return String(value || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("fr")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function addPublicAlias(index, gomoId, alias, normalizedAlias) {
+  if (!gomoId || !alias || !normalizedAlias) return;
+  const current = index.get(gomoId) || [];
+  if (
+    current.length >= MAX_PUBLIC_ALIASES_PER_MEMBER ||
+    current.some((entry) => entry.normalizedAlias === normalizedAlias)
+  ) return;
+  current.push({ alias, normalizedAlias });
+  index.set(gomoId, current);
+}
+
 async function membersPayload(request, env, ctx, options = {}) {
   await schemaV07(env.CORE_DB);
   const sync = await latestSuccessfulSync(env.CORE_DB);
@@ -173,14 +201,17 @@ async function membersPayload(request, env, ctx, options = {}) {
     const gomoId = String(row.gomo_id || "");
     const alias = String(row.alias || "").trim();
     const normalizedAlias = String(row.normalized_alias || "").trim();
-    if (!gomoId || !alias || !normalizedAlias) continue;
-    const current = aliasesByGomoId.get(gomoId) || [];
-    if (
-      current.length >= MAX_PUBLIC_ALIASES_PER_MEMBER ||
-      current.some((entry) => entry.normalizedAlias === normalizedAlias)
-    ) continue;
-    current.push({ alias, normalizedAlias });
-    aliasesByGomoId.set(gomoId, current);
+    addPublicAlias(aliasesByGomoId, gomoId, alias, normalizedAlias);
+  }
+  for (const [gomoId, aliases] of Object.entries(VERIFIED_TRAIN_LEGACY_ALIASES)) {
+    for (const alias of aliases) {
+      addPublicAlias(
+        aliasesByGomoId,
+        gomoId,
+        alias,
+        normalizePublicAlias(alias),
+      );
+    }
   }
 
   const members = (result.results || []).map((row) => ({
