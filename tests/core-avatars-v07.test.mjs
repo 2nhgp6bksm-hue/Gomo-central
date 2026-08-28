@@ -14,6 +14,7 @@ const dashboardSource = fs.readFileSync(
 const assistantReturnLink = `href="https://v2-clean-private-manual-gomo-assistant-v2.gjp86wh7p2.workers.dev/#home">← GoMo Assistant</a>`;
 assert.ok(dashboardSource.includes(assistantReturnLink));
 assert.ok(!dashboardSource.includes('href="/">← GoMo Central</a>'));
+assert.match(dashboardSource, /\.back\{[^}]*min-height:44px/);
 assert.deepEqual(
   wranglerConfig.kv_namespaces.find((binding) => binding.binding === "MEMBER_AVATARS"),
   { binding: "MEMBER_AVATARS", id: "220571117de542e7883c036b34729811" },
