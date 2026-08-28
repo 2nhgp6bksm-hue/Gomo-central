@@ -14,7 +14,7 @@ export function handlePrecisionDashboard() {
 </head>
 <body>
 <main class="wrap">
-  <div class="top"><a class="back" href="/">← GoMo Central</a><span class="badge">TEST · ${VERSION}</span></div>
+  <div class="top"><a class="back" href="https://v2-clean-private-manual-gomo-assistant-v2.gjp86wh7p2.workers.dev/#home">← GoMo Assistant</a><span class="badge">TEST · ${VERSION}</span></div>
   <h1>GoMo Core</h1>
   <p class="sub">Moteur de précision multi-source · Serveur 1591</p>
   <div class="grid">

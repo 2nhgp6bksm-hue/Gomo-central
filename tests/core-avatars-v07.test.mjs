@@ -7,6 +7,13 @@ import {
 } from "../gomo-core-avatars-v07.js";
 
 const wranglerConfig = JSON.parse(fs.readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8"));
+const dashboardSource = fs.readFileSync(
+  new URL("../gomo-core-dashboard-v03.js", import.meta.url),
+  "utf8",
+);
+const assistantReturnLink = `href="https://v2-clean-private-manual-gomo-assistant-v2.gjp86wh7p2.workers.dev/#home">← GoMo Assistant</a>`;
+assert.ok(dashboardSource.includes(assistantReturnLink));
+assert.ok(!dashboardSource.includes('href="/">← GoMo Central</a>'));
 assert.deepEqual(
   wranglerConfig.kv_namespaces.find((binding) => binding.binding === "MEMBER_AVATARS"),
   { binding: "MEMBER_AVATARS", id: "220571117de542e7883c036b34729811" },
