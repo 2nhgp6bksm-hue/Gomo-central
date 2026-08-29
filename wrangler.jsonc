@@ -1,8 +1,11 @@
 {
   "name": "gomo-core-test",
-  "main": "gomo-core-entry-v06.js",
+  "main": "gomo-core-entry-v071.js",
   "compatibility_date": "2026-08-07",
   "compatibility_flags": ["nodejs_compat"],
+  "build": {
+    "command": "npm test && node --check gomo-core-entry-v07.js && node --check gomo-core-entry-v071.js"
+  },
   "vars": {
     "GOMO_CORE_MODE": "test",
     "ALLIANCE_ABBR": "GoMo",
@@ -13,7 +16,9 @@
     "LASTINTEL_MCP_URL": "https://mcp.lastintel.io/",
     "LASTINTEL_WEB_BASE": "https://lastintel.io/",
     "LASTINTEL_ALLIANCE_ID": "jzpvMwRRgPkPWtOgEraW9g",
-    "LASTWARRANK_URL": "https://www.lastwarrank.com/alliance/MRMCVY2KTB"
+    "LASTWARRANK_URL": "https://www.lastwarrank.com/alliance/MRMCVY2KTB",
+    "CORE_PUBLIC_CACHE_SECONDS": "600",
+    "GOMO_ASSISTANT_PUBLIC_ORIGIN": "https://gomo-assistant-v2.gjp86wh7p2.workers.dev"
   },
   "d1_databases": [
     {
@@ -48,6 +53,10 @@
     {
       "binding": "SHINY",
       "service": "gomo-shiny-central"
+    },
+    {
+      "binding": "GOMO_ASSISTANT",
+      "service": "gomo-assistant-v2"
     }
   ],
   "ai": {
