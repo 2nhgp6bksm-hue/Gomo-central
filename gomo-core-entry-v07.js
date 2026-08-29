@@ -14,12 +14,19 @@ import { persist } from "./gomo-core-v06-storage.js";
 import {
   enrichCoreMembersWithAvatars,
   handleCoreMemberAvatar,
-  readAvatarCatalog,
-} from "./gomo-core-avatars-v07.js";
+} from "./gomo-core-avatars.js";
 
-const V = "0.7.0-test";
+const V = "0.7.4-test";
 const DEFAULT_CACHE_SECONDS = 600;
 const REPORT_RETENTION_DAYS = 7;
+const MAX_PUBLIC_ALIASES_PER_MEMBER = 25;
+export const VERIFIED_TRAIN_LEGACY_ALIASES = Object.freeze({
+  "gomo_87495483-132e-436a-a519-cf8e87dbf078": ["1xnilxx"],
+  "gomo_1ec372fe-4a5f-4d5c-b8ec-8e47d3e586fa": ["Chelibell"],
+  "gomo_7ffe5f47-6361-4704-86fa-cfc51d997b4b": ["Was ist Bubatz"],
+  "gomo_1f89f5f4-5ce3-40f5-a06b-c283ec816a33": ["NOPEE"],
+  "gomo_182126c9-a3d3-4b11-a4e1-5ee82e1851fb": ["srvulz"],
+});
 let schemaV07OK = false;
 
 function cacheSeconds(env) {
@@ -144,25 +151,75 @@ function parsed(value, fallback = null) {
   try { return JSON.parse(value || ""); } catch { return fallback; }
 }
 
-async function membersPayload(env, origin, options = {}) {
+function normalizePublicAlias(value) {
+  return String(value || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("fr")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function addPublicAlias(index, gomoId, alias, normalizedAlias) {
+  if (!gomoId || !alias || !normalizedAlias) return;
+  const current = index.get(gomoId) || [];
+  if (
+    current.length >= MAX_PUBLIC_ALIASES_PER_MEMBER ||
+    current.some((entry) => entry.normalizedAlias === normalizedAlias)
+  ) return;
+  current.push({ alias, normalizedAlias });
+  index.set(gomoId, current);
+}
+
+async function membersPayload(request, env, ctx, options = {}) {
   await schemaV07(env.CORE_DB);
   const sync = await latestSuccessfulSync(env.CORE_DB);
   if (!sync) return { error: "No successful Core sync available", status: 503 };
 
-  const result = await env.CORE_DB.prepare(`
+  const [result, aliasResult] = await Promise.all([
+    env.CORE_DB.prepare(`
     SELECT c.gomo_id,c.name,c.rank,c.hq,c.power,c.hero_power,c.kills,c.avatar_url,
            c.confidence,c.confidence_level,c.flags_json,c.field_sources_json,c.observed_at,
-           m.active,COALESCE(ms.status,'confirmed') membership_status
+           m.normalized_name,m.active,COALESCE(ms.status,'confirmed') membership_status
     FROM core_canonical_snapshots c
     JOIN core_members m ON m.gomo_id=c.gomo_id
     LEFT JOIN core_member_membership ms ON ms.gomo_id=c.gomo_id
     WHERE c.sync_id=?
     ORDER BY c.power DESC,c.name COLLATE NOCASE
-  `).bind(sync.sync_id).all();
+    `).bind(sync.sync_id).all(),
+    env.CORE_DB.prepare(`
+      SELECT gomo_id,alias,normalized_alias
+      FROM core_member_aliases
+      WHERE alias IS NOT NULL AND trim(alias)<>''
+      ORDER BY last_seen DESC,alias COLLATE NOCASE
+    `).all(),
+  ]);
+
+  const aliasesByGomoId = new Map();
+  for (const row of aliasResult.results || []) {
+    const gomoId = String(row.gomo_id || "");
+    const alias = String(row.alias || "").trim();
+    const normalizedAlias = String(row.normalized_alias || "").trim();
+    addPublicAlias(aliasesByGomoId, gomoId, alias, normalizedAlias);
+  }
+  for (const [gomoId, aliases] of Object.entries(VERIFIED_TRAIN_LEGACY_ALIASES)) {
+    for (const alias of aliases) {
+      addPublicAlias(
+        aliasesByGomoId,
+        gomoId,
+        alias,
+        normalizePublicAlias(alias),
+      );
+    }
+  }
 
   const members = (result.results || []).map((row) => ({
     gomoId: row.gomo_id,
     name: row.name,
+    aliases: (aliasesByGomoId.get(String(row.gomo_id)) || [])
+      .filter((entry) => entry.normalizedAlias !== String(row.normalized_name || ""))
+      .map((entry) => entry.alias),
     rank: row.rank,
     hq: row.hq,
     power: row.power,
@@ -176,20 +233,10 @@ async function membersPayload(env, origin, options = {}) {
     active: Boolean(row.active),
     membershipStatus: row.membership_status,
   }));
-  let avatarCatalog = null;
-  if (options.includeAvatars !== false) {
-    try {
-      avatarCatalog = await readAvatarCatalog(env);
-    } catch (error) {
-      console.warn(JSON.stringify({
-        event: "gomo_core_avatar_catalog_unavailable",
-        error: error instanceof Error ? error.message : String(error),
-      }));
-    }
-  }
-  const enrichedMembers = options.includeAvatars === false
-    ? members
-    : await enrichCoreMembersWithAvatars(members, env, origin, avatarCatalog);
+  const avatars = options.includeAvatars === false
+    ? null
+    : await enrichCoreMembersWithAvatars(members, request, env, ctx);
+  const enrichedMembers = avatars?.members || members;
 
   return {
     ok: true,
@@ -201,13 +248,16 @@ async function membersPayload(env, origin, options = {}) {
     fresh: sync.completed_at ? Date.now() - Date.parse(sync.completed_at) <= 2 * 3600000 : false,
     memberCount: enrichedMembers.length,
     metadata: parsed(sync.metadata_json, null),
-    avatarRevision: avatarCatalog?.generated_at || null,
+    avatarContractVersion: 1,
+    avatarRevision: avatars?.avatarRevision || null,
+    avatarCatalogSource: avatars?.avatarCatalogSource || null,
+    avatarStats: avatars?.avatarStats || null,
     members: enrichedMembers,
   };
 }
 
-async function powerPayload(env, origin) {
-  const data = await membersPayload(env, origin, { includeAvatars: false });
+async function powerPayload(request, env, ctx) {
+  const data = await membersPayload(request, env, ctx, { includeAvatars: false });
   if (data.error) return data;
   return {
     ok: true,
@@ -246,6 +296,7 @@ async function statusPayload(env) {
     mode: "shared-data-test",
     dataPath: "external sources -> hourly Core sync -> D1 -> edge cache -> GoMo sites",
     upstreamOnPublicRead: false,
+    avatarCatalogPath: "GoMo Assistant -> Service Binding -> edge cache -> GoMo Core",
     cacheSeconds: cacheSeconds(env),
     schedule: "15 * * * *",
     lastSuccessfulSync: success ? {
@@ -273,6 +324,8 @@ async function statusPayload(env) {
       publicPrecisionUsesStoredReport: true,
       publicMembersUseD1: true,
       publicPowerUsesD1: true,
+      centralAvatarsUseAssistantBinding: true,
+      centralAvatarsCreateNoStorage: true,
       manualRefreshRequiresAdminKey: true,
       liveUpstreamEndpointRequiresAdminKey: true,
       hqNeverDecrease: true,
@@ -390,8 +443,12 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    const avatarMatch = path.match(/^\/api\/core\/members\/(gomo_[0-9a-f-]+)\/avatar$/i);
-    if (avatarMatch) return handleCoreMemberAvatar(request, env, url, avatarMatch[1]);
+    const avatarMatch = path.match(/^\/api\/core\/members\/([^/]+)\/avatar$/i);
+    if (avatarMatch) {
+      let gomoId;
+      try { gomoId = decodeURIComponent(avatarMatch[1]); } catch { return json({ error: "Avatar not found" }, 404, env); }
+      return handleCoreMemberAvatar(request, env, ctx, url, gomoId);
+    }
 
     if (path === "/api/core/refresh") return refresh(request, env, ctx);
     if (path === "/api/core/live") return live(request, env, ctx);
@@ -404,13 +461,13 @@ export default {
     }
     if (path === "/api/core/members") {
       return cached(request, env, ctx, async () => payloadResponse(
-        await membersPayload(env, url.origin),
+        await membersPayload(request, env, ctx),
         env,
         { "cache-control": "public, max-age=30, s-maxage=60, stale-while-revalidate=300" },
       ));
     }
     if (path === "/api/core/power") {
-      return cached(request, env, ctx, async () => payloadResponse(await powerPayload(env, url.origin), env));
+      return cached(request, env, ctx, async () => payloadResponse(await powerPayload(request, env, ctx), env));
     }
     if (path === "/api/core/status") {
       return cached(request, env, ctx, async () => payloadResponse(await statusPayload(env), env));
