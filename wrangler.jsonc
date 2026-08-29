@@ -4,7 +4,7 @@
   "compatibility_date": "2026-08-07",
   "compatibility_flags": ["nodejs_compat"],
   "build": {
-    "command": "node tests/core-avatars-v07.test.mjs && node --check gomo-core-entry-v071.js"
+    "command": "npm test && node --check gomo-core-entry-v07.js && node --check gomo-core-entry-v071.js"
   },
   "vars": {
     "GOMO_CORE_MODE": "test",
@@ -20,12 +20,6 @@
     "CORE_PUBLIC_CACHE_SECONDS": "600",
     "GOMO_ASSISTANT_PUBLIC_ORIGIN": "https://gomo-assistant-v2.gjp86wh7p2.workers.dev"
   },
-  "kv_namespaces": [
-    {
-      "binding": "MEMBER_AVATARS",
-      "id": "220571117de542e7883c036b34729811"
-    }
-  ],
   "d1_databases": [
     {
       "binding": "CORE_DB",
@@ -59,6 +53,10 @@
     {
       "binding": "SHINY",
       "service": "gomo-shiny-central"
+    },
+    {
+      "binding": "GOMO_ASSISTANT",
+      "service": "gomo-assistant-v2"
     }
   ],
   "ai": {
