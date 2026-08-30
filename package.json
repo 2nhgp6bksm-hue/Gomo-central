@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/gomo-core-avatars.test.js tests/core-avatars-v07.test.mjs tests/gomo-core-v07-integration.test.js"
+    "test": "node --test tests/gomo-core-avatars.test.js tests/core-avatars-v07.test.mjs tests/gomo-core-v07-integration.test.js",
+    "test:lastwar-tools": "node tests/lastwar-tools-probe.mjs"
   }
 }
