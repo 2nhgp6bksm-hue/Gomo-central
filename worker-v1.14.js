@@ -1,5 +1,6 @@
 // GoMo Central v20.15 — correction de l'injection navigateur de la mission ciblée.
 import baseWorker from "./worker-v1.12.js";
+import { resolveAssistantReturnUrl } from "./assistant-return.mjs";
 
 const VERSION = "20.15";
 const MANAGEMENT_PREFIX = "/gestion-train";
@@ -460,12 +461,35 @@ function versionedAssetAttribute(attribute) {
   };
 }
 
-async function versionCentralHtml(response) {
+async function versionCentralHtml(response, assistantReturnUrl = "") {
   if (!response.ok || !(response.headers.get("content-type") || "").includes("text/html")) return response;
-  const rewritten = new HTMLRewriter()
+
+  let rewriter = new HTMLRewriter()
     .on("script[src]", versionedAssetAttribute("src"))
-    .on("link[href]", versionedAssetAttribute("href"))
-    .transform(response);
+    .on("link[href]", versionedAssetAttribute("href"));
+
+  if (assistantReturnUrl) {
+    const safeReturnUrl = escapeHtml(assistantReturnUrl);
+    rewriter = rewriter
+      .on("head", {
+        element(element) {
+          element.prepend('<base href="/">', { html:true });
+          element.append(`<style>
+.gomo-assistant-return{min-width:46px;min-height:46px;border:1px solid rgba(226,168,47,.62);border-radius:12px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:#ffe49a;background:#102238;font-size:.78rem;font-weight:850;line-height:1;text-decoration:none;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.gomo-assistant-return:active{transform:scale(.98)}
+.gomo-assistant-return:focus-visible{outline:3px solid #62dcff;outline-offset:2px}
+@media(max-width:690px){.gomo-assistant-return{width:46px;padding:0;font-size:1.05rem}.gomo-assistant-return__label{display:none}}
+</style>`, { html:true });
+        }
+      })
+      .on("header.topbar", {
+        element(element) {
+          element.append(`<a class="gomo-assistant-return" href="${safeReturnUrl}" aria-label="Revenir à GoMo Assistant"><span aria-hidden="true">←</span><span class="gomo-assistant-return__label">GoMo Assistant</span></a>`, { html:true });
+        }
+      });
+  }
+
+  const rewritten = rewriter.transform(response);
   const headers = new Headers(rewritten.headers);
   headers.delete("content-length");
   headers.delete("etag");
@@ -491,6 +515,19 @@ async function serveCentralServiceWorker(request, env, ctx) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if (url.pathname === "/core") {
+      url.pathname = "/core/";
+      return Response.redirect(url.toString(), 308);
+    }
+    if (url.pathname === "/core/") {
+      const assistantReturnUrl = resolveAssistantReturnUrl(url.searchParams.get("returnUrl"));
+      const coreUrl = new URL(request.url);
+      coreUrl.pathname = "/";
+      const coreRequest = new Request(coreUrl.toString(), request);
+      const response = await baseWorker.fetch(coreRequest, env, ctx);
+      return versionCentralHtml(response, assistantReturnUrl);
+    }
 
     if (url.pathname === MANAGEMENT_PREFIX) {
       url.pathname = `${MANAGEMENT_PREFIX}/`;
