@@ -1,0 +1,67 @@
+name: GoMo Core checks
+
+on:
+  push:
+    branches:
+      - test/gomo-core
+      - test/gomo-core-v06-hardening
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check gomo-core-worker.js
+          node --check gomo-core-entry.js
+          node --check gomo-core-entry-lastwarrank.js
+          node --check gomo-core-dashboard-3.js
+          node --check gomo-core-entry-v03.js
+          node --check gomo-core-dashboard-v03.js
+          node --check gomo-core-entry-v04.js
+          node --check gomo-core-entry-v05.js
+          node --check gomo-core-v06-engine.js
+          node --check gomo-core-v06-storage.js
+          node --check gomo-core-avatars.js
+          node --check gomo-core-entry-v06.js
+          node --check gomo-core-entry-v07.js
+          node --check gomo-core-entry-v071.js
+          node --check lastwarrank-test.js
+
+      - name: Test central avatar contract
+        run: npm test
+
+      - name: Validate D1 migrations are isolated and executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f migrations/0001_gomo_core.sql
+          test -f migrations/0002_gomo_core_hardening.sql
+          for migration in migrations/*gomo_core*.sql; do
+            if grep -Eiv '(^[[:space:]]*$|^--|core_|PRAGMA|sqlite_)' "$migration" | grep -Ei '(CREATE TABLE|DROP TABLE|ALTER TABLE|DELETE FROM|UPDATE )'; then
+              echo "Migration contains a non-Core table mutation: $migration"
+              exit 1
+            fi
+          done
+          python3 - <<'PY'
+          import sqlite3
+          from pathlib import Path
+          db = sqlite3.connect(':memory:')
+          db.executescript(Path('migrations/0001_gomo_core.sql').read_text())
+          db.executescript(Path('migrations/0002_gomo_core_hardening.sql').read_text())
+          assert db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='core_sync_metadata'").fetchone()
+          assert db.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_core_canonical_observed_at'").fetchone()
+          print('D1 migrations OK')
+          PY
+
+      - name: Wrangler dry run only
+        run: npx --yes wrangler@latest deploy --dry-run --outdir .wrangler-dry-run
