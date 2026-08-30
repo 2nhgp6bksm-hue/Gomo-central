@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   upload-preview:
-    if: github.event.before == 'a817b325be328f2deaecd2b4bf27d6c36129e13f'
+    if: github.event.before == '79c4a7d597acfe40966e22c3aa3d4cbff0f4962f'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout validated Core code
@@ -38,15 +38,15 @@ jobs:
       - name: Verify preview credential exists
         shell: bash
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_PREVIEW || secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
         run: |
           if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
-            echo "::error::Missing repository or organization secret CLOUDFLARE_API_TOKEN_PREVIEW/CLOUDFLARE_API_TOKEN."
+            echo "::error::Missing repository secret CFPREVIEW."
             exit 1
           fi
 
       - name: Upload a non-promoted Core version
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_PREVIEW || secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx --yes wrangler@4.125.0 versions upload
