@@ -1,0 +1,24 @@
+name: LastWar Tools probe (manual test only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout isolated test branch
+        uses: actions/checkout@v4
+        with:
+          ref: test/lastwar-tools-comparison
+
+      - name: Run one read-only Alliance Members request
+        env:
+          LASTWAR_TOOLS_API_KEY: ${{ secrets.LASTWAR_TOOLS_API_KEY }}
+          LASTWAR_TOOLS_ALLIANCE_ID: 26227dc9fb2945edaee8c7675c8fed5d
+        run: node tests/lastwar-tools-probe.mjs
