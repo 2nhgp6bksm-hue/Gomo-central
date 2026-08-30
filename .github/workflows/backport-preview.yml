@@ -1,4 +1,4 @@
-name: One-shot Core main-backport preview
+name: One-shot verify Core main-backport preview
 
 on:
   push:
@@ -10,13 +10,9 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: gomo-core-main-backport-preview
-  cancel-in-progress: false
-
 jobs:
-  upload-preview:
-    if: github.event.before == '84028e122cf37a5972415ce4a0f40437c005cd2c'
+  verify-preview:
+    if: github.event.before == '9f413eb44ee748ab6a0fe792a3de3713c3a7996e'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Core backport
@@ -30,44 +26,16 @@ jobs:
         with:
           node-version: 24
 
-      - name: Run complete Core tests
+      - name: Re-run complete Core tests
         run: |
           node tests/assistant-return.test.mjs
           node vs-planner/tests/planner-core.test.js
           node --input-type=module --check < worker-v1.14.js
 
-      - name: Verify preview credential exists
+      - name: Verify uploaded Core version and return policy
         shell: bash
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
-        run: |
-          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
-            echo "::error::Missing repository secret CFPREVIEW."
-            exit 1
-          fi
-
-      - name: Upload one non-promoted Core version
-        id: upload
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          task_log="${RUNNER_TEMP}/core-wrangler-upload.log"
-          npx --yes wrangler@4.125.0 versions upload 2>&1 | tee "$task_log"
-          version_id="$(grep -Eo "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" "$task_log" | tail -1)"
-          test -n "$version_id"
-          preview_url="https://${version_id}-gomo-central-site.gjp86wh7p2.workers.dev"
-          echo "version_id=$version_id" >> "$GITHUB_OUTPUT"
-          echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
-          echo "Core version: $version_id" >> "$GITHUB_STEP_SUMMARY"
-          echo "Core preview: $preview_url/core/" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Verify Core preview and return policy
-        shell: bash
-        env:
-          PREVIEW_URL: ${{ steps.upload.outputs.preview_url }}
+          PREVIEW_URL: https://d2f39aa6-gomo-central-site.gjp86wh7p2.workers.dev
         run: |
           set -euo pipefail
           preview_body="${RUNNER_TEMP}/core-preview.html"
@@ -85,4 +53,4 @@ jobs:
             echo "::error::Obsolete Assistant preview is still hard-coded."
             exit 1
           fi
-          echo "Core preview HTTP 200; dynamic return accepted; external return rejected." >> "$GITHUB_STEP_SUMMARY"
+          echo "Core d2f39aa6-acc4-4d03-939a-add614222337: HTTP 200; dynamic return accepted; external return rejected." >> "$GITHUB_STEP_SUMMARY"
