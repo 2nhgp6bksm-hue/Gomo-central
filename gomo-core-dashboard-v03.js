@@ -1,6 +1,46 @@
 const VERSION = "0.3.0-test";
+export const ASSISTANT_RETURN_FALLBACK = "https://gomo-assistant-v2.gjp86wh7p2.workers.dev/";
 
-export function handlePrecisionDashboard() {
+const ASSISTANT_PRODUCTION_HOST = "gomo-assistant-v2.gjp86wh7p2.workers.dev";
+const ASSISTANT_PREVIEW_HOST =
+  /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?-gomo-assistant-v2\.gjp86wh7p2\.workers\.dev$/;
+
+export function resolveAssistantReturnUrl(value) {
+  try {
+    const candidate = new URL(value);
+    const hostnameAllowed =
+      candidate.hostname === ASSISTANT_PRODUCTION_HOST ||
+      ASSISTANT_PREVIEW_HOST.test(candidate.hostname);
+
+    if (
+      candidate.protocol !== "https:" ||
+      !hostnameAllowed ||
+      candidate.username ||
+      candidate.password ||
+      candidate.port
+    ) {
+      return ASSISTANT_RETURN_FALLBACK;
+    }
+
+    return candidate.toString();
+  } catch {
+    return ASSISTANT_RETURN_FALLBACK;
+  }
+}
+
+function escapeHtmlAttribute(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+export function handlePrecisionDashboard(request) {
+  const requestUrl = new URL(request.url);
+  const assistantReturnUrl = escapeHtmlAttribute(
+    resolveAssistantReturnUrl(requestUrl.searchParams.get("returnUrl")),
+  );
   const html = `<!doctype html>
 <html lang="fr">
 <head>
@@ -14,7 +54,7 @@ export function handlePrecisionDashboard() {
 </head>
 <body>
 <main class="wrap">
-  <div class="top"><a class="back" href="https://v2-clean-private-manual-gomo-assistant-v2.gjp86wh7p2.workers.dev/#home">← GoMo Assistant</a><span class="badge">TEST · ${VERSION}</span></div>
+  <div class="top"><a class="back" href="${assistantReturnUrl}">← GoMo Assistant</a><span class="badge">TEST · ${VERSION}</span></div>
   <h1>GoMo Core</h1>
   <p class="sub">Moteur de précision multi-source · Serveur 1591</p>
   <div class="grid">

@@ -489,7 +489,7 @@ export default {
       url.pathname = "/core/";
       return Response.redirect(url.toString(), 308);
     }
-    if (url.pathname === "/core/") return handlePrecisionDashboard();
+    if (url.pathname === "/core/") return handlePrecisionDashboard(request);
     if (url.pathname === "/api/core/live" || url.pathname === "/api/core/precision") {
       return livePrecision(request, env, ctx);
     }

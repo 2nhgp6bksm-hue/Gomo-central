@@ -5,14 +5,51 @@ import {
   handleCoreMemberAvatar,
   validGomoId,
 } from "../gomo-core-avatars-v07.js";
+import {
+  ASSISTANT_RETURN_FALLBACK,
+  handlePrecisionDashboard,
+  resolveAssistantReturnUrl,
+} from "../gomo-core-dashboard-v03.js";
 
 const wranglerConfig = JSON.parse(fs.readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8"));
 const dashboardSource = fs.readFileSync(
   new URL("../gomo-core-dashboard-v03.js", import.meta.url),
   "utf8",
 );
-const assistantReturnLink = `href="https://v2-clean-private-manual-gomo-assistant-v2.gjp86wh7p2.workers.dev/#home">← GoMo Assistant</a>`;
-assert.ok(dashboardSource.includes(assistantReturnLink));
+const productionAssistant = "https://gomo-assistant-v2.gjp86wh7p2.workers.dev/";
+const previewAssistant =
+  "https://1682395c-gomo-assistant-v2.gjp86wh7p2.workers.dev/";
+assert.equal(resolveAssistantReturnUrl(productionAssistant), productionAssistant);
+assert.equal(resolveAssistantReturnUrl(previewAssistant), previewAssistant);
+
+for (const unsafeReturnUrl of [
+  "http://gomo-assistant-v2.gjp86wh7p2.workers.dev/",
+  "https://evil.example/",
+  "https://gomo-assistant-v2.gjp86wh7p2.workers.dev.evil.example/",
+  "https://preview-gomo-assistant-v2.gjp86wh7p2.workers.dev.evil.example/",
+  "https://user@gomo-assistant-v2.gjp86wh7p2.workers.dev/",
+  "https://gomo-assistant-v2.gjp86wh7p2.workers.dev:8443/",
+  "javascript:alert(1)",
+]) {
+  assert.equal(resolveAssistantReturnUrl(unsafeReturnUrl), ASSISTANT_RETURN_FALLBACK);
+}
+
+let dashboardResponse = handlePrecisionDashboard(
+  new Request(
+    `https://core.test/core/?returnUrl=${encodeURIComponent(previewAssistant)}`,
+  ),
+);
+let dashboardHtml = await dashboardResponse.text();
+assert.ok(dashboardHtml.includes(`href="${previewAssistant}"`));
+
+dashboardResponse = handlePrecisionDashboard(new Request("https://core.test/core/"));
+dashboardHtml = await dashboardResponse.text();
+assert.ok(dashboardHtml.includes(`href="${ASSISTANT_RETURN_FALLBACK}"`));
+assert.ok(
+  !dashboardSource.includes(
+    "v2-clean-private-manual-gomo-assistant-v2.gjp86wh7p2.workers.dev",
+  ),
+);
 assert.ok(!dashboardSource.includes('href="/">← GoMo Central</a>'));
 assert.match(dashboardSource, /\.back\{[^}]*min-height:44px/);
 assert.deepEqual(
