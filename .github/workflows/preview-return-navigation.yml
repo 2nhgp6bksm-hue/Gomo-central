@@ -1,0 +1,52 @@
+name: One-shot Core return-navigation preview
+
+on:
+  push:
+    branches:
+      - test/assistant-return-navigation
+    paths:
+      - .github/workflows/preview-return-navigation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gomo-core-return-navigation-preview
+  cancel-in-progress: false
+
+jobs:
+  upload-preview:
+    if: github.event.before == 'a817b325be328f2deaecd2b4bf27d6c36129e13f'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout validated Core code
+        uses: actions/checkout@v4
+        with:
+          ref: a817b325be328f2deaecd2b4bf27d6c36129e13f
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Test Core
+        run: |
+          node tests/core-avatars-v07.test.mjs
+          node --check gomo-core-entry-v071.js
+
+      - name: Verify preview credential exists
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_PREVIEW || secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "::error::Missing repository or organization secret CLOUDFLARE_API_TOKEN_PREVIEW/CLOUDFLARE_API_TOKEN."
+            exit 1
+          fi
+
+      - name: Upload a non-promoted Core version
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_PREVIEW || secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.125.0 versions upload
