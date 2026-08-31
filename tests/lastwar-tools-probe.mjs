@@ -1,9 +1,15 @@
 const API_BASE = process.env.LASTWAR_TOOLS_API_BASE || 'https://api.lastwar.tools';
-const API_KEY = process.env.LASTWAR_TOOLS_API_KEY;
+const RAW_API_KEY = process.env.LASTWAR_TOOLS_API_KEY || '';
+const API_KEY = RAW_API_KEY.trim();
 const ALLIANCE_ID = process.env.LASTWAR_TOOLS_ALLIANCE_ID || '26227dc9fb2945edaee8c7675c8fed5d';
 
 if (!API_KEY) {
   console.error('Missing LASTWAR_TOOLS_API_KEY. No request was sent.');
+  process.exit(2);
+}
+
+if (/[\r\n]/.test(API_KEY)) {
+  console.error('LASTWAR_TOOLS_API_KEY must contain exactly one line. No request was sent.');
   process.exit(2);
 }
 
