@@ -1,0 +1,37 @@
+name: GoMo source comparison report (isolated)
+
+on:
+  push:
+    branches:
+      - test/lastwar-tools-comparison
+    paths:
+      - .github/source-compare-report.trigger
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  compare:
+    if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout isolated comparison branch
+        uses: actions/checkout@v4
+        with:
+          ref: test/lastwar-tools-comparison
+
+      - name: Reuse prior successful LastWar Tools log
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -L -fsS \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/jobs/99344680509/logs" \
+            -o /tmp/lastwar-tools-success.log
+          test -s /tmp/lastwar-tools-success.log
+
+      - name: Compare saved LastWar Tools with fresh LastIntel and LastRank
+        run: node tests/source-compare-report.mjs /tmp/lastwar-tools-success.log
