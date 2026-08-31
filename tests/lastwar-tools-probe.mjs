@@ -13,17 +13,28 @@ if (/[\r\n]/.test(API_KEY)) {
   process.exit(2);
 }
 
+const headers = {
+  Accept: 'application/json',
+  'X-API-Key': API_KEY,
+};
+
+// Free preflight: LastWar Tools documents /auth/validate as not deducting tokens.
+const validation = await fetch(new URL('/auth/validate', API_BASE), { headers });
+if (!validation.ok) {
+  const body = await validation.text();
+  console.error(`API key validation failed: ${validation.status} ${validation.statusText}`);
+  console.error(body.slice(0, 1000));
+  console.error('Alliance Members request was NOT sent.');
+  process.exit(1);
+}
+
+console.log('API key validation succeeded. Sending exactly one Alliance Members request.');
+
 const url = new URL(`/alliance/${ALLIANCE_ID}/members`, API_BASE);
 url.searchParams.set('sort_by', 'power');
 url.searchParams.set('descending', 'true');
 
-const response = await fetch(url, {
-  headers: {
-    'Accept': 'application/json',
-    'X-API-Key': API_KEY,
-  },
-});
-
+const response = await fetch(url, { headers });
 if (!response.ok) {
   const body = await response.text();
   console.error(`LastWar Tools request failed: ${response.status} ${response.statusText}`);
@@ -33,7 +44,6 @@ if (!response.ok) {
 
 const data = await response.json();
 const members = Array.isArray(data?.members) ? data.members : [];
-
 const normalized = members.map((member) => ({
   uid: member.uid ?? null,
   name: member.name ?? null,
@@ -57,21 +67,6 @@ const summary = {
   member_count_received: normalized.length,
   total_power: data?.total_power ?? null,
   members_with_positions: data?.members_with_positions ?? null,
-  fields_checked: [
-    'uid',
-    'name',
-    'hq_level',
-    'power',
-    'rank',
-    'server_id',
-    'current_server_id',
-    'online',
-    'join_time',
-    'offline_time',
-    'army_kill',
-    'career_type',
-    'career_level',
-  ],
 };
 
 console.log(JSON.stringify({ summary, members: normalized }, null, 2));
