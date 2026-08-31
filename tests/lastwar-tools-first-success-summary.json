@@ -1,0 +1,30 @@
+{
+  "captured_at_utc": "2026-08-31T00:15:40Z",
+  "source": "lastwar-tools",
+  "endpoint": "GET /alliance/{alliance_id}/members",
+  "alliance_id": "26227dc9fb2945edaee8c7675c8fed5d",
+  "validation": "succeeded via /auth/validate before paid request",
+  "member_count_reported": 96,
+  "member_count_received": 96,
+  "total_power": 15167054820,
+  "members_with_positions": 0,
+  "selected_members": [
+    {"name":"Einäugiger Hansi","hq_level":34,"power":242294431,"rank":3},
+    {"name":"Kommander 007","hq_level":34,"power":241497298,"rank":5},
+    {"name":"Durschti","hq_level":34,"power":230604652,"rank":4},
+    {"name":"Rob1922","hq_level":34,"power":221715062,"rank":4},
+    {"name":"ElFronzo","hq_level":34,"power":211265525,"rank":4},
+    {"name":"Mercenaric","hq_level":34,"power":205130262,"rank":4},
+    {"name":"R5 Fapper","hq_level":34,"power":200851769,"rank":4},
+    {"name":"EinfachKoko","hq_level":32,"power":195302664,"rank":4},
+    {"name":"Unbreakablex","hq_level":32,"power":191966151,"rank":4},
+    {"name":"Reclaimer90","hq_level":33,"power":191017349,"rank":4},
+    {"name":"Dr Jackyl443","hq_level":33,"power":138811796,"rank":4}
+  ],
+  "observations": [
+    "UID, HQ level, power and alliance rank were returned for all received members.",
+    "The shared request returned online=true and offline_time=0 throughout the observed output, so online/offline fields should not yet be treated as reliable.",
+    "members_with_positions=0 is consistent with position data not being available for a non-own-alliance/shared-session request.",
+    "No Cloudflare deployment or D1 write was performed."
+  ]
+}
