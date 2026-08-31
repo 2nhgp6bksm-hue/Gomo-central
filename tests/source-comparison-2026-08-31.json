@@ -1,0 +1,67 @@
+{
+  "generated_at_utc": "2026-08-31T07:28:11Z",
+  "lastwar_tools": {
+    "captured_at_utc": "2026-08-31T00:15:40Z",
+    "member_count": 96,
+    "total_power": 15167054820,
+    "new_paid_requests_for_report": 0
+  },
+  "lastintel": {
+    "updated_at_utc": "2026-08-31T07:00:00Z",
+    "member_count": 96,
+    "total_power": 15244497367
+  },
+  "lastrank": {
+    "updated_at_utc": "2026-08-30T06:05:31.076Z",
+    "member_count": 97,
+    "total_power": 15292338629
+  },
+  "membership": {
+    "union": 97,
+    "present_all_three": 96,
+    "only_lastrank": ["mh291st"],
+    "only_lastintel": [],
+    "only_lastwar_tools": []
+  },
+  "hq": {
+    "lastwar_tools_vs_lastintel": {"comparable":47,"agree":47,"mismatch":0},
+    "lastwar_tools_vs_lastrank": {"comparable":96,"agree":24,"mismatch":72},
+    "lastintel_vs_lastrank": {"comparable":47,"agree":1,"mismatch":46},
+    "safe_inference_on_47_lastintel_hq_values": "LastWar Tools equals LastIntel on all 47; for 46 of those 47 LastRank differs.",
+    "examples": [
+      {"name":"Kommander 007","lastwar_tools":34,"lastintel":34,"lastrank":32},
+      {"name":"Durschti","lastwar_tools":34,"lastintel":34,"lastrank":33},
+      {"name":"Rob1922","lastwar_tools":34,"lastintel":34,"lastrank":32},
+      {"name":"ElFronzo","lastwar_tools":34,"lastintel":34,"lastrank":32},
+      {"name":"Mercenaric","lastwar_tools":34,"lastintel":34,"lastrank":32},
+      {"name":"R5 Fapper","lastwar_tools":34,"lastintel":34,"lastrank":33},
+      {"name":"Reclaimer90","lastwar_tools":33,"lastintel":33,"lastrank":31},
+      {"name":"Dr Jackyl443","lastwar_tools":33,"lastintel":33,"lastrank":31}
+    ]
+  },
+  "rank": {
+    "comparable_all_three": 96,
+    "all_three_agree": 96,
+    "mismatches": 0
+  },
+  "power": {
+    "lastwar_tools_vs_lastintel": {"comparable":96,"median_percent_change":0,"mean_absolute_percent_difference":0.6663865878},
+    "lastwar_tools_vs_lastrank": {"comparable":96,"median_percent_change":-0.0131830462,"mean_absolute_percent_difference":5.3202485528},
+    "lastintel_vs_lastrank": {"comparable":96,"median_percent_change":-0.0408974199,"mean_absolute_percent_difference":5.3255423048},
+    "largest_lastrank_outliers": [
+      {"name":"SpaltenMeister69","lastwar_tools":74635679,"lastrank":36864819,"difference_percent":-50.60698},
+      {"name":"Tehflux22","lastwar_tools":109728190,"lastrank":157086653,"difference_percent":43.1598},
+      {"name":"GeneralvonAral","lastwar_tools":60350296,"lastrank":37383740,"difference_percent":-38.05542},
+      {"name":"Snajen","lastwar_tools":64001034,"lastrank":42480650,"difference_percent":-33.62506}
+    ]
+  },
+  "uid_renames": [],
+  "reliability_conclusion": {
+    "membership": "LastWar Tools + LastIntel",
+    "hq": "LastWar Tools primary; LastIntel confirmation; LastRank audit only",
+    "rank": "All three agree; prefer LastWar Tools or LastIntel because roster/freshness are better",
+    "power": "Freshest timestamp wins; currently LastIntel primary, LastWar Tools strong secondary, LastRank audit only",
+    "identity_uid": "LastWar Tools strong primary, cross-check with LastIntel",
+    "lastwar_online_offline": "Do not use from the shared request"
+  }
+}
