@@ -1,0 +1,42 @@
+name: GoMo source sync (test only)
+
+on:
+  push:
+    branches:
+      - test/lastwar-tools-comparison
+    paths:
+      - .github/source-sync.trigger
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated test branch
+        uses: actions/checkout@v4
+        with:
+          ref: test/lastwar-tools-comparison
+
+      - name: Synchronize LastIntel, LastRank and one LastWar Tools request
+        env:
+          LASTWAR_TOOLS_API_KEY: ${{ secrets.LASTWAR_TOOLS_API_KEY }}
+          LASTWAR_TOOLS_ALLIANCE_ID: 26227dc9fb2945edaee8c7675c8fed5d
+          LASTWAR_TOOLS_MAX_COST: '2'
+          LASTWAR_TOOLS_EXPECTED_COST: '2'
+        run: node tests/source-sync-report.mjs
+
+      - name: Record test synchronization result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/sync-results/latest.json tests/sync-results/history/
+          if git diff --cached --quiet; then
+            echo "No synchronization result change to commit."
+          else
+            git commit -m "test: record source synchronization"
+            git push origin HEAD:test/lastwar-tools-comparison
+          fi
