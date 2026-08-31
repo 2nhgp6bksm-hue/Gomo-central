@@ -9,6 +9,7 @@ const rankNum = (v) => { const n = Number.parseInt(String(v ?? '').replace(/^R/i
 const pct = (a,b) => Number.isFinite(Number(a)) && Number.isFinite(Number(b)) && Number(a)!==0 ? ((Number(b)-Number(a))/Math.abs(Number(a)))*100 : null;
 const median = (xs) => { const a=xs.filter(Number.isFinite).sort((x,y)=>x-y); if(!a.length)return null; const m=Math.floor(a.length/2); return a.length%2?a[m]:(a[m-1]+a[m])/2; };
 const meanAbs = (xs) => { const a=xs.filter(Number.isFinite).map(Math.abs); return a.length?a.reduce((s,x)=>s+x,0)/a.length:null; };
+const fieldValue = (source, member, field) => source==='lwt' && field==='hq' ? member?.hq_level : member?.[field];
 
 function stripLogPrefix(text) {
   return text.split(/\r?\n/).map(line => {
@@ -71,7 +72,7 @@ const missingFrom = (s) => entities.filter(e=>!presence(e,s) && ['lwt','li','lr'
 
 function pairStats(a,b,field,transform=x=>x){
   let comparable=0,mismatch=0; const diffs=[];
-  for(const e of entities){ const A=e[a],B=e[b]; if(!A||!B)continue; const x=transform(A[field]),y=transform(B[field]); if(x==null||y==null)continue; comparable++; if(x!==y){mismatch++; diffs.push({name:name(e),[a]:x,[b]:y});} }
+  for(const e of entities){ const A=e[a],B=e[b]; if(!A||!B)continue; const x=transform(fieldValue(a,A,field)),y=transform(fieldValue(b,B,field)); if(x==null||y==null)continue; comparable++; if(x!==y){mismatch++; diffs.push({name:name(e),[a]:x,[b]:y});} }
   return {comparable,mismatch,agree:comparable-mismatch,differences:diffs};
 }
 const hqLwtLi=pairStats('lwt','li','hq');
@@ -85,7 +86,7 @@ let all3Hq=0,all3AgreeHq=0,lwtLiVsLr=0,lwtLrVsLi=0,liLrVsLwt=0,all3DiffHq=0;
 let all3Rank=0,all3AgreeRank=0,lwtLiVsLrRank=0,lwtLrVsLiRank=0,liLrVsLwtRank=0,all3DiffRank=0;
 for(const e of entities){
   if(e.lwt&&e.li&&e.lr){
-    const a=Number(e.lwt.hq),b=Number(e.li.hq),c=Number(e.lr.hq);
+    const a=Number(e.lwt.hq_level),b=Number(e.li.hq),c=Number(e.lr.hq);
     if([a,b,c].every(Number.isFinite)){all3Hq++; if(a===b&&b===c)all3AgreeHq++; else if(a===b&&b!==c)lwtLiVsLr++; else if(a===c&&a!==b)lwtLrVsLi++; else if(b===c&&b!==a)liLrVsLwt++; else all3DiffHq++;}
     const ra=rankNum(e.lwt.rank),rb=rankNum(e.li.rank),rc=rankNum(e.lr.rank);
     if([ra,rb,rc].every(Number.isFinite)){all3Rank++; if(ra===rb&&rb===rc)all3AgreeRank++; else if(ra===rb&&rb!==rc)lwtLiVsLrRank++; else if(ra===rc&&ra!==rb)lwtLrVsLiRank++; else if(rb===rc&&rb!==ra)liLrVsLwtRank++; else all3DiffRank++;}
@@ -96,7 +97,7 @@ const renameByUid=[];
 for(const e of entities){
   const pairs=[['LastWar Tools','LastIntel',e.lwt,e.li],['LastWar Tools','LastRank',e.lwt,e.lr],['LastIntel','LastRank',e.li,e.lr]];
   for(const [a,b,A,B] of pairs){
-    if(!A||!B||!A.sourceId&&!A.uid||!B.sourceId&&!B.uid)continue;
+    if(!A||!B||(!A.sourceId&&!A.uid)||(!B.sourceId&&!B.uid))continue;
     const ua=String(A.uid??A.sourceId), ub=String(B.uid??B.sourceId);
     if(ua===ub && norm(A.name)!==norm(B.name)) renameByUid.push({uid:ua,sourceA:a,nameA:A.name,sourceB:b,nameB:B.name});
   }
