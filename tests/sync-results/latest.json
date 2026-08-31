@@ -1,0 +1,3439 @@
+{
+  "generatedAt": "2026-08-31T13:49:29.837Z",
+  "environment": "test-only",
+  "branch": "test/lastwar-tools-comparison",
+  "safeguards": {
+    "mainTouched": false,
+    "productionTouched": false,
+    "productionD1Touched": false,
+    "lastWarToolsValidationFree": true,
+    "lastWarToolsPaidRequests": 1,
+    "maxAllowedCost": 2,
+    "effectiveCost": 2,
+    "costSource": "configured-known-cost"
+  },
+  "sources": {
+    "lastWarTools": {
+      "capturedAt": "2026-08-31T13:49:29.834Z",
+      "memberCount": 94,
+      "reportedCount": 94,
+      "totalPowerReported": 15055064387,
+      "totalPowerSummed": 15055064387
+    },
+    "lastIntel": {
+      "updatedAt": "2026-08-31T13:00:00.000Z",
+      "memberCount": 94,
+      "totalPowerSummed": 15054976498,
+      "ok": true
+    },
+    "lastRank": {
+      "updatedAt": "2026-08-31T06:05:59.338Z",
+      "memberCount": 97,
+      "totalPowerSummed": 15249300443,
+      "ok": true
+    }
+  },
+  "membership": {
+    "union": 97,
+    "presentAll3": 94,
+    "only": {
+      "lastWarTools": [],
+      "lastIntel": [],
+      "lastRank": [
+        "Chris0911",
+        "WONDERgirl",
+        "mh291st"
+      ]
+    },
+    "missingFrom": {
+      "lastWarTools": [
+        "Chris0911",
+        "WONDERgirl",
+        "mh291st"
+      ],
+      "lastIntel": [
+        "Chris0911",
+        "WONDERgirl",
+        "mh291st"
+      ],
+      "lastRank": []
+    }
+  },
+  "hq": {
+    "lastWarTools_vs_lastIntel": {
+      "comparable": 47,
+      "mismatch": 0,
+      "agree": 47,
+      "differences": []
+    },
+    "lastWarTools_vs_lastRank": {
+      "comparable": 94,
+      "mismatch": 72,
+      "agree": 22,
+      "differences": [
+        {
+          "name": "Kommander 007",
+          "lwt": 34,
+          "lr": 32
+        },
+        {
+          "name": "Einäugiger Hansi",
+          "lwt": 34,
+          "lr": 32
+        },
+        {
+          "name": "Blabsl",
+          "lwt": 34,
+          "lr": 32
+        },
+        {
+          "name": "Durschti",
+          "lwt": 34,
+          "lr": 33
+        },
+        {
+          "name": "GVBB",
+          "lwt": 33,
+          "lr": 31
+        },
+        {
+          "name": "Rob1922",
+          "lwt": 34,
+          "lr": 32
+        },
+        {
+          "name": "Flawlesspiet",
+          "lwt": 33,
+          "lr": 31
+        },
+        {
+          "name": "Haudruffski",
+          "lwt": 32,
+          "lr": 30
+        },
+        {
+          "name": "meigl1337",
+          "lwt": 33,
+          "lr": 31
+        },
+        {
+          "name": "RL050",
+          "lwt": 33,
+          "lr": 32
+        },
+        {
+          "name": "DerMicha72",
+          "lwt": 34,
+          "lr": 32
+        },
+        {
+          "name": "lude1987",
+          "lwt": 33,
+          "lr": 31
+        },
+        {
+          "name": "ElFronzo",
+          "lwt": 34,
+          "lr": 32
+        },
+        {
+          "name": "Mercenaric",
+          "lwt": 34,
+          "lr": 32
+        },
+        {
+          "name": "Lars2209",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "Blaider187",
+          "lwt": 33,
+          "lr": 32
+        },
+        {
+          "name": "by Voty",
+          "lwt": 32,
+          "lr": 30
+        },
+        {
+          "name": "R5 Fapper",
+          "lwt": 34,
+          "lr": 33
+        },
+        {
+          "name": "MIHAI 07",
+          "lwt": 34,
+          "lr": 32
+        },
+        {
+          "name": "Reversedlearner",
+          "lwt": 32,
+          "lr": 30
+        },
+        {
+          "name": "green street elite",
+          "lwt": 33,
+          "lr": 31
+        },
+        {
+          "name": "Giano Divum Deus",
+          "lwt": 32,
+          "lr": 30
+        },
+        {
+          "name": "EinfachKoko",
+          "lwt": 32,
+          "lr": 30
+        },
+        {
+          "name": "Lasse fire",
+          "lwt": 33,
+          "lr": 31
+        },
+        {
+          "name": "TELELEU",
+          "lwt": 33,
+          "lr": 32
+        },
+        {
+          "name": "Unbreakablex",
+          "lwt": 32,
+          "lr": 30
+        },
+        {
+          "name": "Reclaimer90",
+          "lwt": 33,
+          "lr": 31
+        },
+        {
+          "name": "Don Harrison",
+          "lwt": 32,
+          "lr": 31
+        },
+        {
+          "name": "NAPOLI FOREVER",
+          "lwt": 34,
+          "lr": 32
+        },
+        {
+          "name": "Kirilein",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "tordal",
+          "lwt": 33,
+          "lr": 31
+        },
+        {
+          "name": "Raketen Willi",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "Graffio89",
+          "lwt": 32,
+          "lr": 30
+        },
+        {
+          "name": "KingESkopa1453",
+          "lwt": 32,
+          "lr": 30
+        },
+        {
+          "name": "Todesnymphe",
+          "lwt": 32,
+          "lr": 31
+        },
+        {
+          "name": "AVILLAI",
+          "lwt": 32,
+          "lr": 30
+        },
+        {
+          "name": "HighballHeld",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "DrJackykali",
+          "lwt": 33,
+          "lr": 32
+        },
+        {
+          "name": "sHutHunter",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "DaniF76",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "Helge Nug",
+          "lwt": 32,
+          "lr": 31
+        },
+        {
+          "name": "leonich",
+          "lwt": 32,
+          "lr": 30
+        },
+        {
+          "name": "Panzerrost",
+          "lwt": 34,
+          "lr": 32
+        },
+        {
+          "name": "Ninschaa",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "Bamtross",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "Jibbe1905",
+          "lwt": 33,
+          "lr": 31
+        },
+        {
+          "name": "srvrulz",
+          "lwt": 34,
+          "lr": 32
+        },
+        {
+          "name": "fettesau",
+          "lwt": 32,
+          "lr": 30
+        },
+        {
+          "name": "SM12",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "Kommandant Cartman",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "Dr Jackyl443",
+          "lwt": 33,
+          "lr": 31
+        },
+        {
+          "name": "B4RR4CVD4",
+          "lwt": 33,
+          "lr": 31
+        },
+        {
+          "name": "Wacken Bubatz",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "1xnikx",
+          "lwt": 32,
+          "lr": 31
+        },
+        {
+          "name": "NATO  BG",
+          "lwt": 32,
+          "lr": 31
+        },
+        {
+          "name": "Romsi7",
+          "lwt": 30,
+          "lr": 29
+        },
+        {
+          "name": "Longo06",
+          "lwt": 30,
+          "lr": 29
+        },
+        {
+          "name": "MirRa",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "mike 2020",
+          "lwt": 27,
+          "lr": 26
+        },
+        {
+          "name": "Wogiman",
+          "lwt": 32,
+          "lr": 31
+        },
+        {
+          "name": "Zurtoo",
+          "lwt": 30,
+          "lr": 29
+        },
+        {
+          "name": "Tehflux22",
+          "lwt": 32,
+          "lr": 30
+        },
+        {
+          "name": "MDBuzz",
+          "lwt": 31,
+          "lr": 30
+        },
+        {
+          "name": "dream0000",
+          "lwt": 30,
+          "lr": 29
+        },
+        {
+          "name": "Gabsi77",
+          "lwt": 30,
+          "lr": 29
+        },
+        {
+          "name": "xxxWANDERERXXX",
+          "lwt": 29,
+          "lr": 28
+        },
+        {
+          "name": "VITTSERR",
+          "lwt": 30,
+          "lr": 29
+        },
+        {
+          "name": "Döner1312",
+          "lwt": 29,
+          "lr": 28
+        },
+        {
+          "name": "SpaltenMeister69",
+          "lwt": 28,
+          "lr": 26
+        },
+        {
+          "name": "Jenny1439",
+          "lwt": 30,
+          "lr": 29
+        },
+        {
+          "name": "Snajen",
+          "lwt": 28,
+          "lr": 26
+        },
+        {
+          "name": "GeneralvonAral",
+          "lwt": 25,
+          "lr": 24
+        }
+      ]
+    },
+    "lastIntel_vs_lastRank": {
+      "comparable": 47,
+      "mismatch": 46,
+      "agree": 1,
+      "differences": [
+        {
+          "name": "Kommander 007",
+          "li": 34,
+          "lr": 32
+        },
+        {
+          "name": "Einäugiger Hansi",
+          "li": 34,
+          "lr": 32
+        },
+        {
+          "name": "Blabsl",
+          "li": 34,
+          "lr": 32
+        },
+        {
+          "name": "Durschti",
+          "li": 34,
+          "lr": 33
+        },
+        {
+          "name": "GVBB",
+          "li": 33,
+          "lr": 31
+        },
+        {
+          "name": "Rob1922",
+          "li": 34,
+          "lr": 32
+        },
+        {
+          "name": "Flawlesspiet",
+          "li": 33,
+          "lr": 31
+        },
+        {
+          "name": "Haudruffski",
+          "li": 32,
+          "lr": 30
+        },
+        {
+          "name": "meigl1337",
+          "li": 33,
+          "lr": 31
+        },
+        {
+          "name": "RL050",
+          "li": 33,
+          "lr": 32
+        },
+        {
+          "name": "DerMicha72",
+          "li": 34,
+          "lr": 32
+        },
+        {
+          "name": "lude1987",
+          "li": 33,
+          "lr": 31
+        },
+        {
+          "name": "ElFronzo",
+          "li": 34,
+          "lr": 32
+        },
+        {
+          "name": "Mercenaric",
+          "li": 34,
+          "lr": 32
+        },
+        {
+          "name": "Blaider187",
+          "li": 33,
+          "lr": 32
+        },
+        {
+          "name": "by Voty",
+          "li": 32,
+          "lr": 30
+        },
+        {
+          "name": "R5 Fapper",
+          "li": 34,
+          "lr": 33
+        },
+        {
+          "name": "MIHAI 07",
+          "li": 34,
+          "lr": 32
+        },
+        {
+          "name": "Reversedlearner",
+          "li": 32,
+          "lr": 30
+        },
+        {
+          "name": "green street elite",
+          "li": 33,
+          "lr": 31
+        },
+        {
+          "name": "Giano Divum Deus",
+          "li": 32,
+          "lr": 30
+        },
+        {
+          "name": "EinfachKoko",
+          "li": 32,
+          "lr": 30
+        },
+        {
+          "name": "Lasse fire",
+          "li": 33,
+          "lr": 31
+        },
+        {
+          "name": "TELELEU",
+          "li": 33,
+          "lr": 32
+        },
+        {
+          "name": "Unbreakablex",
+          "li": 32,
+          "lr": 30
+        },
+        {
+          "name": "Reclaimer90",
+          "li": 33,
+          "lr": 31
+        },
+        {
+          "name": "Don Harrison",
+          "li": 32,
+          "lr": 31
+        },
+        {
+          "name": "NAPOLI FOREVER",
+          "li": 34,
+          "lr": 32
+        },
+        {
+          "name": "tordal",
+          "li": 33,
+          "lr": 31
+        },
+        {
+          "name": "Graffio89",
+          "li": 32,
+          "lr": 30
+        },
+        {
+          "name": "KingESkopa1453",
+          "li": 32,
+          "lr": 30
+        },
+        {
+          "name": "Todesnymphe",
+          "li": 32,
+          "lr": 31
+        },
+        {
+          "name": "AVILLAI",
+          "li": 32,
+          "lr": 30
+        },
+        {
+          "name": "DrJackykali",
+          "li": 33,
+          "lr": 32
+        },
+        {
+          "name": "Helge Nug",
+          "li": 32,
+          "lr": 31
+        },
+        {
+          "name": "leonich",
+          "li": 32,
+          "lr": 30
+        },
+        {
+          "name": "Panzerrost",
+          "li": 34,
+          "lr": 32
+        },
+        {
+          "name": "Jibbe1905",
+          "li": 33,
+          "lr": 31
+        },
+        {
+          "name": "srvrulz",
+          "li": 34,
+          "lr": 32
+        },
+        {
+          "name": "fettesau",
+          "li": 32,
+          "lr": 30
+        },
+        {
+          "name": "Dr Jackyl443",
+          "li": 33,
+          "lr": 31
+        },
+        {
+          "name": "B4RR4CVD4",
+          "li": 33,
+          "lr": 31
+        },
+        {
+          "name": "1xnikx",
+          "li": 32,
+          "lr": 31
+        },
+        {
+          "name": "NATO  BG",
+          "li": 32,
+          "lr": 31
+        },
+        {
+          "name": "Wogiman",
+          "li": 32,
+          "lr": 31
+        },
+        {
+          "name": "Tehflux22",
+          "li": 32,
+          "lr": 30
+        }
+      ]
+    }
+  },
+  "rank": {
+    "lastWarTools_vs_lastIntel": {
+      "comparable": 94,
+      "mismatch": 0,
+      "agree": 94,
+      "differences": []
+    },
+    "lastWarTools_vs_lastRank": {
+      "comparable": 94,
+      "mismatch": 2,
+      "agree": 92,
+      "differences": [
+        {
+          "name": "B4RR4CVD4",
+          "lwt": 1,
+          "lr": 3
+        },
+        {
+          "name": "GeneralvonAral",
+          "lwt": 1,
+          "lr": 3
+        }
+      ]
+    },
+    "lastIntel_vs_lastRank": {
+      "comparable": 94,
+      "mismatch": 2,
+      "agree": 92,
+      "differences": [
+        {
+          "name": "B4RR4CVD4",
+          "li": 1,
+          "lr": 3
+        },
+        {
+          "name": "GeneralvonAral",
+          "li": 1,
+          "lr": 3
+        }
+      ]
+    }
+  },
+  "power": {
+    "lastWarTools_vs_lastIntel": {
+      "comparable": 94,
+      "medianPercentChange": 0,
+      "meanAbsolutePercentDifference": 0.013857616656246075,
+      "largestDifferences": [
+        {
+          "name": "Blabsl",
+          "pct": 0.30659049730530935,
+          "lwt": 238153500,
+          "li": 238883656
+        },
+        {
+          "name": "VITTSERR",
+          "pct": 0.3028323527696631,
+          "lwt": 79825685,
+          "li": 80067423
+        },
+        {
+          "name": "HighballHeld",
+          "pct": -0.24962498673792652,
+          "lwt": 175500460,
+          "li": 175062367
+        },
+        {
+          "name": "tordal",
+          "pct": -0.22114377621444054,
+          "lwt": 186935851,
+          "li": 186522454
+        },
+        {
+          "name": "SaNi36",
+          "pct": -0.13992970518216524,
+          "lwt": 73644120,
+          "li": 73541070
+        },
+        {
+          "name": "Bamtross",
+          "pct": -0.028224356903933465,
+          "lwt": 163390791,
+          "li": 163344675
+        },
+        {
+          "name": "Peterwilli",
+          "pct": -0.023197919492426805,
+          "lwt": 139818573,
+          "li": 139786138
+        },
+        {
+          "name": "Döner1312",
+          "pct": -0.011445273258151017,
+          "lwt": 76599307,
+          "li": 76590540
+        },
+        {
+          "name": "Bibienyz",
+          "pct": -0.009529551543206954,
+          "lwt": 110183569,
+          "li": 110173069
+        },
+        {
+          "name": "fettesau",
+          "pct": -0.0070484790828814585,
+          "lwt": 147648874,
+          "li": 147638467
+        },
+        {
+          "name": "Zurtoo",
+          "pct": 0.0029145442873764024,
+          "lwt": 113019384,
+          "li": 113022678
+        },
+        {
+          "name": "Durschti",
+          "pct": -0.00013452290965033938,
+          "lwt": 231930755,
+          "li": 231930443
+        },
+        {
+          "name": "Kommander 007",
+          "pct": 0,
+          "lwt": 244288350,
+          "li": 244288350
+        },
+        {
+          "name": "Einäugiger Hansi",
+          "pct": 0,
+          "lwt": 242158468,
+          "li": 242158468
+        },
+        {
+          "name": "GVBB",
+          "pct": 0,
+          "lwt": 227070221,
+          "li": 227070221
+        }
+      ]
+    },
+    "lastWarTools_vs_lastRank": {
+      "comparable": 94,
+      "medianPercentChange": -0.0022960720092608375,
+      "meanAbsolutePercentDifference": 4.5626771564684026,
+      "largestDifferences": [
+        {
+          "name": "SpaltenMeister69",
+          "pct": -50.932479139446365,
+          "lwt": 75130796,
+          "lr": 36864819
+        },
+        {
+          "name": "Tehflux22",
+          "pct": 42.78010633449817,
+          "lwt": 110019986,
+          "lr": 157086653
+        },
+        {
+          "name": "GeneralvonAral",
+          "pct": -38.27275994805524,
+          "lwt": 60562792,
+          "lr": 37383740
+        },
+        {
+          "name": "Snajen",
+          "pct": -33.62505674517696,
+          "lwt": 64001034,
+          "lr": 42480650
+        },
+        {
+          "name": "Gabsi77",
+          "pct": -24.2742306543568,
+          "lwt": 96443485,
+          "lr": 73032571
+        },
+        {
+          "name": "xxxWANDERERXXX",
+          "pct": -23.644930971848517,
+          "lwt": 87613747,
+          "lr": 66897537
+        },
+        {
+          "name": "Döner1312",
+          "pct": -22.60121491699657,
+          "lwt": 76599307,
+          "lr": 59286933
+        },
+        {
+          "name": "SaNi36",
+          "pct": 21.370846715257105,
+          "lwt": 73644120,
+          "lr": 89382492
+        },
+        {
+          "name": "VITTSERR",
+          "pct": -19.690936570102718,
+          "lwt": 79825685,
+          "lr": 64107260
+        },
+        {
+          "name": "Zurtoo",
+          "pct": 16.889448804640452,
+          "lwt": 113019384,
+          "lr": 132107735
+        },
+        {
+          "name": "Bibienyz",
+          "pct": 16.48034926151285,
+          "lwt": 110183569,
+          "lr": 128342206
+        },
+        {
+          "name": "dream0000",
+          "pct": -15.003962018070856,
+          "lwt": 107326618,
+          "lr": 91223373
+        },
+        {
+          "name": "LasMiRanDa",
+          "pct": -11.799011133554112,
+          "lwt": 142733936,
+          "lr": 125892743
+        },
+        {
+          "name": "B4RR4CVD4",
+          "pct": -10.802166241048123,
+          "lwt": 133782157,
+          "lr": 119330786
+        },
+        {
+          "name": "leonich",
+          "pct": -10.703655186497505,
+          "lwt": 170414533,
+          "lr": 152173949
+        }
+      ]
+    },
+    "lastIntel_vs_lastRank": {
+      "comparable": 94,
+      "medianPercentChange": -0.0021171673356305053,
+      "meanAbsolutePercentDifference": 4.5739116888020295,
+      "largestDifferences": [
+        {
+          "name": "SpaltenMeister69",
+          "pct": -50.932479139446365,
+          "li": 75130796,
+          "lr": 36864819
+        },
+        {
+          "name": "Tehflux22",
+          "pct": 42.78010633449817,
+          "li": 110019986,
+          "lr": 157086653
+        },
+        {
+          "name": "GeneralvonAral",
+          "pct": -38.27275994805524,
+          "li": 60562792,
+          "lr": 37383740
+        },
+        {
+          "name": "Snajen",
+          "pct": -33.62505674517696,
+          "li": 64001034,
+          "lr": 42480650
+        },
+        {
+          "name": "Gabsi77",
+          "pct": -24.2742306543568,
+          "li": 96443485,
+          "lr": 73032571
+        },
+        {
+          "name": "xxxWANDERERXXX",
+          "pct": -23.644930971848517,
+          "li": 87613747,
+          "lr": 66897537
+        },
+        {
+          "name": "Döner1312",
+          "pct": -22.59235540054947,
+          "li": 76590540,
+          "lr": 59286933
+        },
+        {
+          "name": "SaNi36",
+          "pct": 21.540918564279796,
+          "li": 73541070,
+          "lr": 89382492
+        },
+        {
+          "name": "VITTSERR",
+          "pct": -19.933404126170014,
+          "li": 80067423,
+          "lr": 64107260
+        },
+        {
+          "name": "Zurtoo",
+          "pct": 16.886042109177417,
+          "li": 113022678,
+          "lr": 132107735
+        },
+        {
+          "name": "Bibienyz",
+          "pct": 16.4914503743197,
+          "li": 110173069,
+          "lr": 128342206
+        },
+        {
+          "name": "dream0000",
+          "pct": -15.003962018070856,
+          "li": 107326618,
+          "lr": 91223373
+        },
+        {
+          "name": "LasMiRanDa",
+          "pct": -11.799011133554112,
+          "li": 142733936,
+          "lr": 125892743
+        },
+        {
+          "name": "B4RR4CVD4",
+          "pct": -10.802166241048123,
+          "li": 133782157,
+          "lr": 119330786
+        },
+        {
+          "name": "leonich",
+          "pct": -10.703655186497505,
+          "li": 170414533,
+          "lr": 152173949
+        }
+      ]
+    }
+  },
+  "uidRenames": [],
+  "anomalies": [
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Kommander 007",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Einäugiger Hansi",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Blabsl",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Durschti",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 33
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "GVBB",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Rob1922",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Flawlesspiet",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Haudruffski",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 30
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "meigl1337",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "RL050",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "DerMicha72",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "lude1987",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "ElFronzo",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Mercenaric",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Blaider187",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "by Voty",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 30
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "R5 Fapper",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 33
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "MIHAI 07",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Reversedlearner",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 30
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "green street elite",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Giano Divum Deus",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 30
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "EinfachKoko",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 30
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Lasse fire",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "TELELEU",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Unbreakablex",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 30
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Reclaimer90",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Don Harrison",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "NAPOLI FOREVER",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "tordal",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Graffio89",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 30
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "KingESkopa1453",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 30
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Todesnymphe",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "AVILLAI",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 30
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "DrJackykali",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Helge Nug",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "leonich",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 30
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Panzerrost",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Jibbe1905",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "srvrulz",
+      "lastWarTools": 34,
+      "lastIntel": 34,
+      "lastRank": 32
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "fettesau",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 30
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Dr Jackyl443",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "B4RR4CVD4",
+      "lastWarTools": 33,
+      "lastIntel": 33,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "1xnikx",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "NATO  BG",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 31
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Wogiman",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 31
+    },
+    {
+      "type": "power_gap_lwt_lastRank",
+      "name": "Zurtoo",
+      "percent": 16.889448804640452,
+      "lastWarTools": 113019384,
+      "lastRank": 132107735
+    },
+    {
+      "type": "power_gap_lwt_lastRank",
+      "name": "Bibienyz",
+      "percent": 16.48034926151285,
+      "lastWarTools": 110183569,
+      "lastRank": 128342206
+    },
+    {
+      "type": "hq_lastRank_outlier",
+      "name": "Tehflux22",
+      "lastWarTools": 32,
+      "lastIntel": 32,
+      "lastRank": 30
+    },
+    {
+      "type": "power_gap_lwt_lastRank",
+      "name": "Tehflux22",
+      "percent": 42.78010633449817,
+      "lastWarTools": 110019986,
+      "lastRank": 157086653
+    },
+    {
+      "type": "power_gap_lwt_lastRank",
+      "name": "dream0000",
+      "percent": -15.003962018070856,
+      "lastWarTools": 107326618,
+      "lastRank": 91223373
+    },
+    {
+      "type": "power_gap_lwt_lastRank",
+      "name": "Gabsi77",
+      "percent": -24.2742306543568,
+      "lastWarTools": 96443485,
+      "lastRank": 73032571
+    },
+    {
+      "type": "power_gap_lwt_lastRank",
+      "name": "xxxWANDERERXXX",
+      "percent": -23.644930971848517,
+      "lastWarTools": 87613747,
+      "lastRank": 66897537
+    },
+    {
+      "type": "power_gap_lwt_lastRank",
+      "name": "VITTSERR",
+      "percent": -19.690936570102718,
+      "lastWarTools": 79825685,
+      "lastRank": 64107260
+    },
+    {
+      "type": "power_gap_lwt_lastRank",
+      "name": "Döner1312",
+      "percent": -22.60121491699657,
+      "lastWarTools": 76599307,
+      "lastRank": 59286933
+    },
+    {
+      "type": "power_gap_lwt_lastRank",
+      "name": "SpaltenMeister69",
+      "percent": -50.932479139446365,
+      "lastWarTools": 75130796,
+      "lastRank": 36864819
+    },
+    {
+      "type": "power_gap_lwt_lastRank",
+      "name": "SaNi36",
+      "percent": 21.370846715257105,
+      "lastWarTools": 73644120,
+      "lastRank": 89382492
+    },
+    {
+      "type": "power_gap_lwt_lastRank",
+      "name": "Snajen",
+      "percent": -33.62505674517696,
+      "lastWarTools": 64001034,
+      "lastRank": 42480650
+    },
+    {
+      "type": "power_gap_lwt_lastRank",
+      "name": "GeneralvonAral",
+      "percent": -38.27275994805524,
+      "lastWarTools": 60562792,
+      "lastRank": 37383740
+    },
+    {
+      "type": "member_only_lastRank",
+      "name": "Chris0911"
+    },
+    {
+      "type": "member_only_lastRank",
+      "name": "WONDERgirl"
+    },
+    {
+      "type": "member_only_lastRank",
+      "name": "mh291st"
+    }
+  ],
+  "members": [
+    {
+      "name": "Kommander 007",
+      "lastWarTools": {
+        "uid": "1158652907001591",
+        "hq": 34,
+        "power": 244288350,
+        "rank": 5
+      },
+      "lastIntel": {
+        "uid": "B45Je0hVh1UtvDuRS7mjeg",
+        "hq": 34,
+        "power": 244288350,
+        "rank": 5
+      },
+      "lastRank": {
+        "uid": "5483228",
+        "hq": 32,
+        "power": 241525798,
+        "rank": 5
+      }
+    },
+    {
+      "name": "Einäugiger Hansi",
+      "lastWarTools": {
+        "uid": "1399060543001591",
+        "hq": 34,
+        "power": 242158468,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "jVMsvwtLLm6f6LgIuWeSRg",
+        "hq": 34,
+        "power": 242158468,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483196",
+        "hq": 32,
+        "power": 242035852,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Blabsl",
+      "lastWarTools": {
+        "uid": "1024395201001591",
+        "hq": 34,
+        "power": 238153500,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "6u_rs9nigByCm1FcZJKMrg",
+        "hq": 34,
+        "power": 238883656,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483156",
+        "hq": 32,
+        "power": 236421966,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Durschti",
+      "lastWarTools": {
+        "uid": "1236974097001591",
+        "hq": 34,
+        "power": 231930755,
+        "rank": 4
+      },
+      "lastIntel": {
+        "uid": "pPrqls8b63oiqB4ytEvw3A",
+        "hq": 34,
+        "power": 231930443,
+        "rank": 4
+      },
+      "lastRank": {
+        "uid": "5483147",
+        "hq": 33,
+        "power": 230209700,
+        "rank": 4
+      }
+    },
+    {
+      "name": "GVBB",
+      "lastWarTools": {
+        "uid": "1100136222001591",
+        "hq": 33,
+        "power": 227070221,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "iUmBBNSpCPbXZS9VddkRhg",
+        "hq": 33,
+        "power": 227070221,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483162",
+        "hq": 31,
+        "power": 227524266,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Rob1922",
+      "lastWarTools": {
+        "uid": "1337477026001591",
+        "hq": 34,
+        "power": 222054836,
+        "rank": 4
+      },
+      "lastIntel": {
+        "uid": "Qair91Bp51MtbSIVE0rV4g",
+        "hq": 34,
+        "power": 222054836,
+        "rank": 4
+      },
+      "lastRank": {
+        "uid": "5483189",
+        "hq": 32,
+        "power": 221704922,
+        "rank": 4
+      }
+    },
+    {
+      "name": "Flawlesspiet",
+      "lastWarTools": {
+        "uid": "1207536610001580",
+        "hq": 33,
+        "power": 219952107,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "aPOwSGrKPpy0-9AoXObZ4g",
+        "hq": 33,
+        "power": 219952107,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483601",
+        "hq": 31,
+        "power": 219953667,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Haudruffski",
+      "lastWarTools": {
+        "uid": "1003419393001591",
+        "hq": 32,
+        "power": 218357469,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "_8Qm2pI-JsoQS6o3W-G7HA",
+        "hq": 32,
+        "power": 218357469,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483155",
+        "hq": 30,
+        "power": 218760984,
+        "rank": 3
+      }
+    },
+    {
+      "name": "meigl1337",
+      "lastWarTools": {
+        "uid": "1440264019001591",
+        "hq": 33,
+        "power": 218266351,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "ZLFxQHj1BZYhlU6_2OYRSg",
+        "hq": 33,
+        "power": 218266351,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483205",
+        "hq": 31,
+        "power": 218645050,
+        "rank": 3
+      }
+    },
+    {
+      "name": "RL050",
+      "lastWarTools": {
+        "uid": "1491191532001591",
+        "hq": 33,
+        "power": 218242601,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "SPQvJxdwz9Iav7vTphBiMw",
+        "hq": 33,
+        "power": 218242601,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483312",
+        "hq": 32,
+        "power": 220213695,
+        "rank": 3
+      }
+    },
+    {
+      "name": "DerMicha72",
+      "lastWarTools": {
+        "uid": "1297081902001591",
+        "hq": 34,
+        "power": 217527634,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "eDUlA02rQ9FLu3Go5jiQgg",
+        "hq": 34,
+        "power": 217527634,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483604",
+        "hq": 32,
+        "power": 217538981,
+        "rank": 3
+      }
+    },
+    {
+      "name": "lude1987",
+      "lastWarTools": {
+        "uid": "1363634140001591",
+        "hq": 33,
+        "power": 215552204,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "WJG4MZTkWHjmqVEC7ebGzQ",
+        "hq": 33,
+        "power": 215552204,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483141",
+        "hq": 31,
+        "power": 215552204,
+        "rank": 3
+      }
+    },
+    {
+      "name": "ElFronzo",
+      "lastWarTools": {
+        "uid": "1535126310001591",
+        "hq": 34,
+        "power": 213400429,
+        "rank": 4
+      },
+      "lastIntel": {
+        "uid": "hDyN8jkw1UAYQ_kBR-hL0A",
+        "hq": 34,
+        "power": 213400429,
+        "rank": 4
+      },
+      "lastRank": {
+        "uid": "5483235",
+        "hq": 32,
+        "power": 210929434,
+        "rank": 4
+      }
+    },
+    {
+      "name": "Mercenaric",
+      "lastWarTools": {
+        "uid": "1438658057001591",
+        "hq": 34,
+        "power": 209568071,
+        "rank": 4
+      },
+      "lastIntel": {
+        "uid": "VPsErXUrMmMYcbG7DmQPww",
+        "hq": 34,
+        "power": 209568071,
+        "rank": 4
+      },
+      "lastRank": {
+        "uid": "5483204",
+        "hq": 32,
+        "power": 204381673,
+        "rank": 4
+      }
+    },
+    {
+      "name": "Lars2209",
+      "lastWarTools": {
+        "uid": "1557867465001591",
+        "hq": 31,
+        "power": 206827978,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "aT7lyAm5WWJUp3p2-UMzZg",
+        "hq": null,
+        "power": 206827978,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483145",
+        "hq": 30,
+        "power": 206827978,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Blaider187",
+      "lastWarTools": {
+        "uid": "1085428207001591",
+        "hq": 33,
+        "power": 204956437,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "VnSrMsSKlBURMkUAnN7cFA",
+        "hq": 33,
+        "power": 204956437,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483158",
+        "hq": 32,
+        "power": 204812731,
+        "rank": 3
+      }
+    },
+    {
+      "name": "by Voty",
+      "lastWarTools": {
+        "uid": "1460666442001591",
+        "hq": 32,
+        "power": 204009448,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "AlPlmKAII-0ruWqhbak5wA",
+        "hq": 32,
+        "power": 204009448,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483209",
+        "hq": 30,
+        "power": 204009448,
+        "rank": 3
+      }
+    },
+    {
+      "name": "R5 Fapper",
+      "lastWarTools": {
+        "uid": "1444040282001591",
+        "hq": 34,
+        "power": 202794770,
+        "rank": 4
+      },
+      "lastIntel": {
+        "uid": "LNeZE1lRl16jgVZdvzZA3g",
+        "hq": 34,
+        "power": 202794770,
+        "rank": 4
+      },
+      "lastRank": {
+        "uid": "5483206",
+        "hq": 33,
+        "power": 200860069,
+        "rank": 4
+      }
+    },
+    {
+      "name": "MIHAI 07",
+      "lastWarTools": {
+        "uid": "1121692345001591",
+        "hq": 34,
+        "power": 202275896,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "0hlz2zc1XZ5OMljN6-4h6A",
+        "hq": 34,
+        "power": 202275896,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483164",
+        "hq": 32,
+        "power": 202535720,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Reversedlearner",
+      "lastWarTools": {
+        "uid": "1320959982001591",
+        "hq": 32,
+        "power": 201739432,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "jKg7vaQbo5f-Nf64zdNSJQ",
+        "hq": 32,
+        "power": 201739432,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483186",
+        "hq": 30,
+        "power": 202513447,
+        "rank": 3
+      }
+    },
+    {
+      "name": "green street elite",
+      "lastWarTools": {
+        "uid": "1268550200001591",
+        "hq": 33,
+        "power": 199990887,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "FsGGvQFw99sh80VbJRi-kg",
+        "hq": 33,
+        "power": 199990887,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483179",
+        "hq": 31,
+        "power": 199986152,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Giano Divum Deus",
+      "lastWarTools": {
+        "uid": "1004431311001591",
+        "hq": 32,
+        "power": 199826825,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "jiZPaO8VXSXPXUim1iVFoA",
+        "hq": 32,
+        "power": 199826825,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483139",
+        "hq": 30,
+        "power": 198474638,
+        "rank": 3
+      }
+    },
+    {
+      "name": "EinfachKoko",
+      "lastWarTools": {
+        "uid": "1434464199001591",
+        "hq": 32,
+        "power": 198239690,
+        "rank": 4
+      },
+      "lastIntel": {
+        "uid": "QznpwT-TK6kcAN1y-sF4XQ",
+        "hq": 32,
+        "power": 198239690,
+        "rank": 4
+      },
+      "lastRank": {
+        "uid": "5483606",
+        "hq": 30,
+        "power": 197480423,
+        "rank": 4
+      }
+    },
+    {
+      "name": "Lasse fire",
+      "lastWarTools": {
+        "uid": "1390111741001591",
+        "hq": 33,
+        "power": 194942663,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "wLmMlFa2SbQChDEJd_dqIQ",
+        "hq": 33,
+        "power": 194942663,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483193",
+        "hq": 31,
+        "power": 194942663,
+        "rank": 3
+      }
+    },
+    {
+      "name": "TELELEU",
+      "lastWarTools": {
+        "uid": "1413981662001591",
+        "hq": 33,
+        "power": 194170749,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "9-pzhN79sAjOY3BQMbYT7A",
+        "hq": 33,
+        "power": 194170749,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483199",
+        "hq": 32,
+        "power": 194536988,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Unbreakablex",
+      "lastWarTools": {
+        "uid": "1000053590001591",
+        "hq": 32,
+        "power": 192066538,
+        "rank": 4
+      },
+      "lastIntel": {
+        "uid": "7we5nrw3ZVDl_wU8JdVluw",
+        "hq": 32,
+        "power": 192066538,
+        "rank": 4
+      },
+      "lastRank": {
+        "uid": "5483597",
+        "hq": 30,
+        "power": 192084404,
+        "rank": 4
+      }
+    },
+    {
+      "name": "Reclaimer90",
+      "lastWarTools": {
+        "uid": "1425842280001591",
+        "hq": 33,
+        "power": 191100376,
+        "rank": 4
+      },
+      "lastIntel": {
+        "uid": "O4VefLmT3RNIpfkGa_9oJw",
+        "hq": 33,
+        "power": 191100376,
+        "rank": 4
+      },
+      "lastRank": {
+        "uid": "5483200",
+        "hq": 31,
+        "power": 191100376,
+        "rank": 4
+      }
+    },
+    {
+      "name": "Don Harrison",
+      "lastWarTools": {
+        "uid": "1512133785001591",
+        "hq": 32,
+        "power": 190339096,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "RyeHxNR0zHYxfbNkIBzQXQ",
+        "hq": 32,
+        "power": 190339096,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483213",
+        "hq": 31,
+        "power": 191372116,
+        "rank": 3
+      }
+    },
+    {
+      "name": "NAPOLI FOREVER",
+      "lastWarTools": {
+        "uid": "1093358449001591",
+        "hq": 34,
+        "power": 190233327,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "fYsLaL5deYxqpYunctf0MA",
+        "hq": 34,
+        "power": 190233327,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483160",
+        "hq": 32,
+        "power": 190219519,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Kirilein",
+      "lastWarTools": {
+        "uid": "1220868140001591",
+        "hq": 31,
+        "power": 188826275,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "stF9I3zaxgER1HRvTCNBSw",
+        "hq": null,
+        "power": 188826275,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483602",
+        "hq": 30,
+        "power": 188671902,
+        "rank": 3
+      }
+    },
+    {
+      "name": "tordal",
+      "lastWarTools": {
+        "uid": "1240397315001591",
+        "hq": 33,
+        "power": 186935851,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "rvIgS0JiOCZrAWhAMWMzJA",
+        "hq": 33,
+        "power": 186522454,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483172",
+        "hq": 31,
+        "power": 186854452,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Raketen Willi",
+      "lastWarTools": {
+        "uid": "1187956635001591",
+        "hq": 31,
+        "power": 185508142,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "fdsEHoNyKWIEerqUR06S4A",
+        "hq": null,
+        "power": 185508142,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483600",
+        "hq": 30,
+        "power": 185610256,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Graffio89",
+      "lastWarTools": {
+        "uid": "1407848306001591",
+        "hq": 32,
+        "power": 184389416,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "L6uudhvnem9iDU5OZyDnlQ",
+        "hq": 32,
+        "power": 184389416,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483198",
+        "hq": 30,
+        "power": 182677897,
+        "rank": 3
+      }
+    },
+    {
+      "name": "KingESkopa1453",
+      "lastWarTools": {
+        "uid": "1121033053001591",
+        "hq": 32,
+        "power": 181597085,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "1sT606TGyZoguJhrWC8L9A",
+        "hq": 32,
+        "power": 181597085,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483163",
+        "hq": 30,
+        "power": 181597085,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Todesnymphe",
+      "lastWarTools": {
+        "uid": "1277584489001591",
+        "hq": 32,
+        "power": 181518866,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "_ZHNumJ48Wy5Kmsm0u-GXA",
+        "hq": 32,
+        "power": 181518866,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483151",
+        "hq": 31,
+        "power": 167156376,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Hardcore evil",
+      "lastWarTools": {
+        "uid": "1333883363001591",
+        "hq": 30,
+        "power": 180980233,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "Gdq_FTQr6ngbBKM4jL7AtQ",
+        "hq": null,
+        "power": 180980233,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483605",
+        "hq": 30,
+        "power": 180980233,
+        "rank": 3
+      }
+    },
+    {
+      "name": "AVILLAI",
+      "lastWarTools": {
+        "uid": "1301711660001586",
+        "hq": 32,
+        "power": 176035564,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "PQ-dC0IPDQ4BAP2VYU5v_A",
+        "hq": 32,
+        "power": 176035564,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "1495490",
+        "hq": 30,
+        "power": 176035407,
+        "rank": 3
+      }
+    },
+    {
+      "name": "HighballHeld",
+      "lastWarTools": {
+        "uid": "1237113861001591",
+        "hq": 31,
+        "power": 175500460,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "5_QfLV4yFLmPFS_I39y6rw",
+        "hq": null,
+        "power": 175062367,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483289",
+        "hq": 30,
+        "power": 175688277,
+        "rank": 3
+      }
+    },
+    {
+      "name": "DrJackykali",
+      "lastWarTools": {
+        "uid": "1243424909001591",
+        "hq": 33,
+        "power": 175196653,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "BIUa8geUl29y-LBvqUKC0g",
+        "hq": 33,
+        "power": 175196653,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483177",
+        "hq": 32,
+        "power": 175196653,
+        "rank": 3
+      }
+    },
+    {
+      "name": "sHutHunter",
+      "lastWarTools": {
+        "uid": "1525849192001591",
+        "hq": 31,
+        "power": 174554114,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "Sa-7ZZAOQ4H9xsp5LD_4eg",
+        "hq": null,
+        "power": 174554114,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483318",
+        "hq": 30,
+        "power": 174554114,
+        "rank": 3
+      }
+    },
+    {
+      "name": "DaniF76",
+      "lastWarTools": {
+        "uid": "1118975359001591",
+        "hq": 31,
+        "power": 172167119,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "DTuXfYDtvuXQt1Tlj2XsNg",
+        "hq": null,
+        "power": 172167119,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483598",
+        "hq": 30,
+        "power": 172167119,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Helge Nug",
+      "lastWarTools": {
+        "uid": "1097608547001591",
+        "hq": 32,
+        "power": 171907778,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "oQ6LL9MyERqFy6rBNybk4w",
+        "hq": 32,
+        "power": 171907778,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483161",
+        "hq": 31,
+        "power": 171904323,
+        "rank": 3
+      }
+    },
+    {
+      "name": "RoxiiCz",
+      "lastWarTools": {
+        "uid": "1067501919001591",
+        "hq": 30,
+        "power": 170940693,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "PaV1OUhpAJ3Za6seeb-FYg",
+        "hq": null,
+        "power": 170940693,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483572",
+        "hq": 30,
+        "power": 170940693,
+        "rank": 3
+      }
+    },
+    {
+      "name": "leonich",
+      "lastWarTools": {
+        "uid": "1170935187001591",
+        "hq": 32,
+        "power": 170414533,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "2zCd_UsflVNlAAfa42bsbw",
+        "hq": 32,
+        "power": 170414533,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483167",
+        "hq": 30,
+        "power": 152173949,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Panzerrost",
+      "lastWarTools": {
+        "uid": "1327175763001591",
+        "hq": 34,
+        "power": 167727314,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "m2hSbucgcORFcmKY8tTr6A",
+        "hq": 34,
+        "power": 167727314,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483187",
+        "hq": 32,
+        "power": 167277731,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Ninschaa",
+      "lastWarTools": {
+        "uid": "1573918267001591",
+        "hq": 31,
+        "power": 163798947,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "Tm6o2V5dK2alHvImh6T-Jw",
+        "hq": null,
+        "power": 163798947,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483220",
+        "hq": 30,
+        "power": 163798947,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Bamtross",
+      "lastWarTools": {
+        "uid": "1292752503001591",
+        "hq": 31,
+        "power": 163390791,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "R0HvDuClZDXixrXFRHi2OA",
+        "hq": null,
+        "power": 163344675,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483183",
+        "hq": 30,
+        "power": 161666143,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Merlin1984",
+      "lastWarTools": {
+        "uid": "1329876284001591",
+        "hq": 30,
+        "power": 159579223,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "iQRYY8EPpMI67udTlkGRCg",
+        "hq": null,
+        "power": 159579223,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483153",
+        "hq": 30,
+        "power": 159579223,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Jibbe1905",
+      "lastWarTools": {
+        "uid": "1471661411001591",
+        "hq": 33,
+        "power": 158806042,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "UG25UJNd4WN-j4vCXJE6jA",
+        "hq": 33,
+        "power": 158806042,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483211",
+        "hq": 31,
+        "power": 158830215,
+        "rank": 3
+      }
+    },
+    {
+      "name": "srvrulz",
+      "lastWarTools": {
+        "uid": "1550072846001591",
+        "hq": 34,
+        "power": 153868084,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "NZCEwIDkqzGRRmRIgA9WHA",
+        "hq": 34,
+        "power": 153868084,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483144",
+        "hq": 32,
+        "power": 153660979,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Biko1",
+      "lastWarTools": {
+        "uid": "1219223669001591",
+        "hq": 30,
+        "power": 152935177,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "S1gLMuN9STbXz3i6FcSiPQ",
+        "hq": null,
+        "power": 152935177,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483138",
+        "hq": 30,
+        "power": 148585158,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Chelbell",
+      "lastWarTools": {
+        "uid": "1362714010001591",
+        "hq": 30,
+        "power": 152756651,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "OGdX3VeGw8J4HfzF5lNdaA",
+        "hq": null,
+        "power": 152756651,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483191",
+        "hq": 30,
+        "power": 152758003,
+        "rank": 3
+      }
+    },
+    {
+      "name": "fettesau",
+      "lastWarTools": {
+        "uid": "1395146438001591",
+        "hq": 32,
+        "power": 147648874,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "xJpmg23KKkKqiug_2P9Jmg",
+        "hq": 32,
+        "power": 147638467,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483529",
+        "hq": 30,
+        "power": 148588015,
+        "rank": 3
+      }
+    },
+    {
+      "name": "SM12",
+      "lastWarTools": {
+        "uid": "1348839118001591",
+        "hq": 31,
+        "power": 146777271,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "z5f7aHoIyjqWB5M-IT92Iw",
+        "hq": null,
+        "power": 146777271,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483582",
+        "hq": 30,
+        "power": 146739900,
+        "rank": 3
+      }
+    },
+    {
+      "name": "BlackIce995",
+      "lastWarTools": {
+        "uid": "1209188499001591",
+        "hq": 30,
+        "power": 143977275,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "i6vJOtzJlPCu5sFWvfFfGQ",
+        "hq": null,
+        "power": 143977275,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483578",
+        "hq": 30,
+        "power": 139670062,
+        "rank": 3
+      }
+    },
+    {
+      "name": "N0PEE",
+      "lastWarTools": {
+        "uid": "1739656624001591",
+        "hq": 30,
+        "power": 142872485,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "j0tfSo8Gb-mbxvXoYVrVRg",
+        "hq": null,
+        "power": 142872485,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483224",
+        "hq": 30,
+        "power": 141481895,
+        "rank": 3
+      }
+    },
+    {
+      "name": "LasMiRanDa",
+      "lastWarTools": {
+        "uid": "1334578654001591",
+        "hq": 30,
+        "power": 142733936,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "xLzN0qVXrX300CxuVpqtQA",
+        "hq": 30,
+        "power": 142733936,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483188",
+        "hq": 30,
+        "power": 125892743,
+        "rank": 3
+      }
+    },
+    {
+      "name": "HerrHirsch",
+      "lastWarTools": {
+        "uid": "1395761294001591",
+        "hq": 30,
+        "power": 141534752,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "nMZvekAfh5n8_1d8Pz6VnA",
+        "hq": null,
+        "power": 141534752,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483195",
+        "hq": 30,
+        "power": 141534752,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Kommandant Cartman",
+      "lastWarTools": {
+        "uid": "1079960932001591",
+        "hq": 31,
+        "power": 141127113,
+        "rank": 2
+      },
+      "lastIntel": {
+        "uid": "6x4hrdcZfMyqvMIrscxvPA",
+        "hq": null,
+        "power": 141127113,
+        "rank": 2
+      },
+      "lastRank": {
+        "uid": "5483573",
+        "hq": 30,
+        "power": 140807575,
+        "rank": 2
+      }
+    },
+    {
+      "name": "Peterwilli",
+      "lastWarTools": {
+        "uid": "1222118968001591",
+        "hq": 30,
+        "power": 139818573,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "kDlA0WBXtToiZuwFgvrVpw",
+        "hq": null,
+        "power": 139786138,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483580",
+        "hq": 30,
+        "power": 137102575,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Murat57",
+      "lastWarTools": {
+        "uid": "1519487639001580",
+        "hq": 30,
+        "power": 139439074,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "zUvYtbgFCmrlOTERujZQAA",
+        "hq": null,
+        "power": 139439074,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483590",
+        "hq": 30,
+        "power": 133995818,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Steffen 56",
+      "lastWarTools": {
+        "uid": "1174296399001591",
+        "hq": 30,
+        "power": 139354895,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "M0Fd9pHsVB58l-WTWPLhaA",
+        "hq": null,
+        "power": 139354895,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483599",
+        "hq": 30,
+        "power": 139351795,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Dr Jackyl443",
+      "lastWarTools": {
+        "uid": "1271424878001591",
+        "hq": 33,
+        "power": 138811796,
+        "rank": 4
+      },
+      "lastIntel": {
+        "uid": "L10fF0T3pB5G3s2Pp1ctmg",
+        "hq": 33,
+        "power": 138811796,
+        "rank": 4
+      },
+      "lastRank": {
+        "uid": "5483231",
+        "hq": 31,
+        "power": 138811796,
+        "rank": 4
+      }
+    },
+    {
+      "name": "Uwe GC",
+      "lastWarTools": {
+        "uid": "2000268931001576",
+        "hq": 30,
+        "power": 138207207,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "5UAYa6_qSTxI_Qz5dqLPrA",
+        "hq": null,
+        "power": 138207207,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483333",
+        "hq": 30,
+        "power": 138213232,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Kim V Taehyung",
+      "lastWarTools": {
+        "uid": "1551089955001591",
+        "hq": 30,
+        "power": 135685737,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "KFQZgYlCc1Q5k8JUpo1hOQ",
+        "hq": null,
+        "power": 135685737,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483218",
+        "hq": 30,
+        "power": 135685737,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Eisbär83",
+      "lastWarTools": {
+        "uid": "1292385302001580",
+        "hq": 30,
+        "power": 134066444,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "aYmnr2bAwJnlsspGEnbT9A",
+        "hq": null,
+        "power": 134066444,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483152",
+        "hq": 30,
+        "power": 133589552,
+        "rank": 3
+      }
+    },
+    {
+      "name": "B4RR4CVD4",
+      "lastWarTools": {
+        "uid": "1148481050001591",
+        "hq": 33,
+        "power": 133782157,
+        "rank": 1
+      },
+      "lastIntel": {
+        "uid": "kL-2pmSN1VAYhkV03_M0Pg",
+        "hq": 33,
+        "power": 133782157,
+        "rank": 1
+      },
+      "lastRank": {
+        "uid": "5483362",
+        "hq": 31,
+        "power": 119330786,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Xentric",
+      "lastWarTools": {
+        "uid": "1531015122001591",
+        "hq": 30,
+        "power": 132267842,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "yLmgusB6wzfphVnS7MDeLw",
+        "hq": null,
+        "power": 132267842,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483352",
+        "hq": 30,
+        "power": 132267842,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Wacken Bubatz",
+      "lastWarTools": {
+        "uid": "1495852785001591",
+        "hq": 31,
+        "power": 131359513,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "PRoApyYZ9yQTigpsVQEF6g",
+        "hq": null,
+        "power": 131359513,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483154",
+        "hq": 30,
+        "power": 131359513,
+        "rank": 3
+      }
+    },
+    {
+      "name": "1xnikx",
+      "lastWarTools": {
+        "uid": "1300378858001591",
+        "hq": 32,
+        "power": 131247421,
+        "rank": 1
+      },
+      "lastIntel": {
+        "uid": "SXeygZpHdUw1lrJfEnQIyg",
+        "hq": 32,
+        "power": 131247421,
+        "rank": 1
+      },
+      "lastRank": {
+        "uid": "5483184",
+        "hq": 31,
+        "power": 129007501,
+        "rank": 1
+      }
+    },
+    {
+      "name": "NATO  BG",
+      "lastWarTools": {
+        "uid": "1021598778001591",
+        "hq": 32,
+        "power": 130266648,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "HLNvOXvIly-HdK9JnrDm0w",
+        "hq": 32,
+        "power": 130266648,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483137",
+        "hq": 31,
+        "power": 124876718,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Romsi7",
+      "lastWarTools": {
+        "uid": "1328605193001591",
+        "hq": 30,
+        "power": 129925019,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "5wIsNfMhPvzIQrqG75kT1A",
+        "hq": null,
+        "power": 129925019,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483558",
+        "hq": 29,
+        "power": 128776521,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Longo06",
+      "lastWarTools": {
+        "uid": "1086214556001591",
+        "hq": 30,
+        "power": 128743469,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "EPq--WZNXl4XeaRLpnswuA",
+        "hq": null,
+        "power": 128743469,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483574",
+        "hq": 29,
+        "power": 125836785,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Haubitze90",
+      "lastWarTools": {
+        "uid": "1466418128001591",
+        "hq": 30,
+        "power": 127651753,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "smNc0aD30SWcL-5vEvV2Sg",
+        "hq": null,
+        "power": 127651753,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483586",
+        "hq": 30,
+        "power": 127507071,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Jnkrp",
+      "lastWarTools": {
+        "uid": "1131083549001591",
+        "hq": 30,
+        "power": 126722098,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "yK6HV_hCOKWaLPE7NqV9yQ",
+        "hq": null,
+        "power": 126722098,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483149",
+        "hq": 30,
+        "power": 126547516,
+        "rank": 3
+      }
+    },
+    {
+      "name": "MirRa",
+      "lastWarTools": {
+        "uid": "1183483286001591",
+        "hq": 31,
+        "power": 126702934,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "RveHlLm1tIlaN2_LYRGaAQ",
+        "hq": null,
+        "power": 126702934,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483168",
+        "hq": 30,
+        "power": 126702934,
+        "rank": 3
+      }
+    },
+    {
+      "name": "mike 2020",
+      "lastWarTools": {
+        "uid": "1487551953001591",
+        "hq": 27,
+        "power": 126115852,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "8_HQvtPsYWqpR5IgSnRP3Q",
+        "hq": null,
+        "power": 126115852,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483587",
+        "hq": 26,
+        "power": 126115852,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Mkey94",
+      "lastWarTools": {
+        "uid": "1561756963001591",
+        "hq": 30,
+        "power": 123652912,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "TpJ5VlVRZLVa6eVshzcHfA",
+        "hq": null,
+        "power": 123652912,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483592",
+        "hq": 30,
+        "power": 121352746,
+        "rank": 3
+      }
+    },
+    {
+      "name": "The zombie fighters",
+      "lastWarTools": {
+        "uid": "2092934609001572",
+        "hq": 30,
+        "power": 118691223,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "-V4PAYcVbl4V1IZYB-xjZg",
+        "hq": null,
+        "power": 118691223,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483226",
+        "hq": 30,
+        "power": 119024276,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Wogiman",
+      "lastWarTools": {
+        "uid": "1458415343001591",
+        "hq": 32,
+        "power": 118320777,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "pa1EtFlgSQRxlClEDo6nzw",
+        "hq": 32,
+        "power": 118320777,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483308",
+        "hq": 31,
+        "power": 122742765,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Zurtoo",
+      "lastWarTools": {
+        "uid": "1482703132001591",
+        "hq": 30,
+        "power": 113019384,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "0NdIrnjUO4Q5C2BmwIJV9w",
+        "hq": null,
+        "power": 113022678,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483757",
+        "hq": 29,
+        "power": 132107735,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Bibienyz",
+      "lastWarTools": {
+        "uid": "1419678108001576",
+        "hq": 30,
+        "power": 110183569,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "ra2R3OHXttWkTzI5Cf72pg",
+        "hq": null,
+        "power": 110173069,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483585",
+        "hq": 30,
+        "power": 128342206,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Tehflux22",
+      "lastWarTools": {
+        "uid": "1496126384001564",
+        "hq": 32,
+        "power": 110019986,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "zxj-V3j8CtvVU9SaeqK6Pg",
+        "hq": 32,
+        "power": 110019986,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483313",
+        "hq": 30,
+        "power": 157086653,
+        "rank": 3
+      }
+    },
+    {
+      "name": "MDBuzz",
+      "lastWarTools": {
+        "uid": "1388940270001591",
+        "hq": 31,
+        "power": 108941676,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "OmcK1rQRuqlpz5P1EnabFQ",
+        "hq": null,
+        "power": 108941676,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483583",
+        "hq": 30,
+        "power": 118827426,
+        "rank": 3
+      }
+    },
+    {
+      "name": "dream0000",
+      "lastWarTools": {
+        "uid": "1573953889001580",
+        "hq": 30,
+        "power": 107326618,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "TD7Jl4bW7YJOcWnu6iPBLg",
+        "hq": null,
+        "power": 107326618,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483594",
+        "hq": 29,
+        "power": 91223373,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Gabsi77",
+      "lastWarTools": {
+        "uid": "1197551583001591",
+        "hq": 30,
+        "power": 96443485,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "fBxedAmmWeAC1xTf-ftjsw",
+        "hq": null,
+        "power": 96443485,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483552",
+        "hq": 29,
+        "power": 73032571,
+        "rank": 3
+      }
+    },
+    {
+      "name": "xxxWANDERERXXX",
+      "lastWarTools": {
+        "uid": "1808119626001576",
+        "hq": 29,
+        "power": 87613747,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "SN47xWwq6o26WH8YfwIFJg",
+        "hq": null,
+        "power": 87613747,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483595",
+        "hq": 28,
+        "power": 66897537,
+        "rank": 3
+      }
+    },
+    {
+      "name": "VITTSERR",
+      "lastWarTools": {
+        "uid": "1128538974001560",
+        "hq": 30,
+        "power": 79825685,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "Gy3-1ZvhDihZ2fVkoRwFgA",
+        "hq": null,
+        "power": 80067423,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483577",
+        "hq": 29,
+        "power": 64107260,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Döner1312",
+      "lastWarTools": {
+        "uid": "1100851506001576",
+        "hq": 29,
+        "power": 76599307,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "bvchZ7IFTrRME-mb0tREgQ",
+        "hq": null,
+        "power": 76590540,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483725",
+        "hq": 28,
+        "power": 59286933,
+        "rank": 3
+      }
+    },
+    {
+      "name": "SpaltenMeister69",
+      "lastWarTools": {
+        "uid": "2091312934001564",
+        "hq": 28,
+        "power": 75130796,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "UdI0Ly5_QgqLEwTfXmGufA",
+        "hq": null,
+        "power": 75130796,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483596",
+        "hq": 26,
+        "power": 36864819,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Jenny1439",
+      "lastWarTools": {
+        "uid": "1032691339001591",
+        "hq": 30,
+        "power": 74875019,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "Id626BqZOHpVVNoW5RXKIQ",
+        "hq": null,
+        "power": 74875019,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483760",
+        "hq": 29,
+        "power": 67337727,
+        "rank": 3
+      }
+    },
+    {
+      "name": "SaNi36",
+      "lastWarTools": {
+        "uid": "1146399583001591",
+        "hq": 30,
+        "power": 73644120,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "te2bj1t7z1Kg9s9x7HTVQQ",
+        "hq": null,
+        "power": 73541070,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483533",
+        "hq": 30,
+        "power": 89382492,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Snajen",
+      "lastWarTools": {
+        "uid": "1040362082001591",
+        "hq": 28,
+        "power": 64001034,
+        "rank": 3
+      },
+      "lastIntel": {
+        "uid": "5B9FO5AZ2CalU_66g7mRdA",
+        "hq": null,
+        "power": 64001034,
+        "rank": 3
+      },
+      "lastRank": {
+        "uid": "5483543",
+        "hq": 26,
+        "power": 42480650,
+        "rank": 3
+      }
+    },
+    {
+      "name": "GeneralvonAral",
+      "lastWarTools": {
+        "uid": "1112463629001591",
+        "hq": 25,
+        "power": 60562792,
+        "rank": 1
+      },
+      "lastIntel": {
+        "uid": "PZ4iQbEOkWmaJBuvdQ4iow",
+        "hq": null,
+        "power": 60562792,
+        "rank": 1
+      },
+      "lastRank": {
+        "uid": "188424318",
+        "hq": 24,
+        "power": 37383740,
+        "rank": 3
+      }
+    },
+    {
+      "name": "Chris0911",
+      "lastWarTools": null,
+      "lastIntel": null,
+      "lastRank": {
+        "uid": "5483212",
+        "hq": 30,
+        "power": 144216521,
+        "rank": 1
+      }
+    },
+    {
+      "name": "mh291st",
+      "lastWarTools": null,
+      "lastIntel": null,
+      "lastRank": {
+        "uid": "5483355",
+        "hq": 31,
+        "power": 118892908,
+        "rank": null
+      }
+    },
+    {
+      "name": "WONDERgirl",
+      "lastWarTools": null,
+      "lastIntel": null,
+      "lastRank": {
+        "uid": "5483180",
+        "hq": 30,
+        "power": 113395620,
+        "rank": 1
+      }
+    }
+  ]
+}
