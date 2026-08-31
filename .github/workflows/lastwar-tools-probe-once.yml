@@ -1,7 +1,11 @@
-name: LastWar Tools probe (manual test only)
+name: LastWar Tools probe (isolated one-shot)
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - test/lastwar-tools-comparison
+    paths:
+      - .github/lastwar-tools-probe.trigger
 
 permissions:
   contents: read
@@ -17,7 +21,7 @@ jobs:
         with:
           ref: test/lastwar-tools-comparison
 
-      - name: Run one read-only Alliance Members request
+      - name: Run exactly one read-only Alliance Members request
         env:
           LASTWAR_TOOLS_API_KEY: ${{ secrets.LASTWAR_TOOLS_API_KEY }}
           LASTWAR_TOOLS_ALLIANCE_ID: 26227dc9fb2945edaee8c7675c8fed5d
