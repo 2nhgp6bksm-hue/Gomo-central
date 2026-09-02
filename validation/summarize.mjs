@@ -50,7 +50,8 @@ const stablePass = stable.every((result) =>
 const fixturePass = fixtureResult.canonicalSnapshotsWritten === 1 &&
   fixtureResult.sourceObservationsWritten === 1 &&
   fixtureResult.meaningfulRows === 2;
-const passed = stablePass && fixturePass && api.ok === true;
+const cronAttached = process.env.VALIDATION_CRON_ATTACHED === "true";
+const passed = stablePass && fixturePass && api.ok === true && cronAttached;
 const stableTechnicalWrites = Math.max(...stable.map((result) => result.operationalBookkeepingRows));
 
 const report = {
@@ -59,6 +60,7 @@ const report = {
     worker: process.env.VALIDATION_WORKER_NAME,
     database: process.env.VALIDATION_DATABASE_NAME,
     cron: "15 * * * *",
+    cronAttached,
   },
   code: {
     testedCommit: process.env.TESTED_COMMIT,
@@ -79,6 +81,11 @@ const report = {
     productionDatabaseModified: false,
     productionDatabaseName: "gomo-core-db",
   },
+  failureReason: passed
+    ? null
+    : !cronAttached
+      ? "Cloudflare Workers Free limit of 5 Cron triggers prevented attaching the hourly :15 schedule (code 10072)."
+      : "One or more D1 write or API contract assertions failed.",
 };
 
 writeFileSync(`${dir}/validation-report.json`, `${JSON.stringify(report, null, 2)}\n`);
