@@ -1,0 +1,119 @@
+{
+  "generatedAt": "2026-09-02T07:35:31.007Z",
+  "environment": "test-only",
+  "branch": "test/lastwar-tools-comparison",
+  "safeguards": {
+    "mainTouched": false,
+    "productionTouched": false,
+    "productionD1Touched": false,
+    "lastWarToolsValidationFree": true,
+    "lastWarToolsMaxCost": 2,
+    "lastWarToolsEffectiveCost": 2,
+    "lastWarToolsAllianceMembersAttemptsThisRun": 1,
+    "lastWarToolsRetriedAfterFailure": false
+  },
+  "run": {
+    "syncTriggerCommit": "389444190166b0b271c8f5f4197487a51c5b8986",
+    "syncWorkflowRunId": 33604238563,
+    "fallbackComparisonTriggerCommit": "28cd415b121c41ea25acf6f96c092933d9c2e978",
+    "fallbackComparisonWorkflowRunId": 33604329818
+  },
+  "lastWarTools": {
+    "currentAttempt": {
+      "keyValidation": "success",
+      "costGate": "passed",
+      "costTokens": 2,
+      "requestAttempted": true,
+      "requestCompleted": false,
+      "httpStatus": 500,
+      "status": "unavailable",
+      "error": "Query failed: Login response too short (43 bytes) - authentication may have failed",
+      "retryThisRun": false,
+      "tokenChargeUnknownBecauseRequestFailed": true
+    },
+    "lastSuccessfulBaseline": {
+      "capturedAt": "2026-09-02T01:42:24.000Z",
+      "sourceCommit": "13f0167f0309d52b373f6c936a16dc6fe1b9120c",
+      "memberCount": 94,
+      "totalPower": 15152056146,
+      "lastIntelAtBaseline": {
+        "updatedAt": "2026-09-02T01:00:00.000Z",
+        "memberCount": 94,
+        "totalPower": 15152024124,
+        "hqComparable": 47,
+        "hqMismatch": 0,
+        "rankComparable": 94,
+        "rankMismatch": 0,
+        "meanAbsolutePowerDifferencePercent": 0.0002104709096125817
+      }
+    }
+  },
+  "freshSources": {
+    "lastIntel": {
+      "updatedAt": "2026-09-02T07:00:00.000Z",
+      "memberCount": 94,
+      "totalPower": 15155089076,
+      "ok": true
+    },
+    "lastRank": {
+      "updatedAt": "2026-09-02T06:03:06.294Z",
+      "memberCount": 96,
+      "totalPower": 15251753268,
+      "ok": true
+    }
+  },
+  "freshComparison": {
+    "membership": {
+      "shared": 94,
+      "onlyLastIntel": [],
+      "onlyLastRank": ["Chris0911", "WONDERgirl"]
+    },
+    "hq": {
+      "comparable": 47,
+      "agree": 1,
+      "mismatch": 46
+    },
+    "rankR1R5": {
+      "comparable": 94,
+      "agree": 94,
+      "mismatch": 0,
+      "differences": []
+    },
+    "power": {
+      "comparable": 94,
+      "medianPercentDifferenceLastIntelToLastRank": 0,
+      "meanAbsolutePercentDifference": 3.384508189906062,
+      "largestDifferences": [
+        {"name":"SpaltenMeister69","lastIntel":77171161,"lastRank":36864819,"percent":-52.22979864200825},
+        {"name":"GeneralvonAral","lastIntel":60813266,"lastRank":37383740,"percent":-38.526998369072956},
+        {"name":"Snajen","lastIntel":62549140,"lastRank":42480650,"percent":-32.08435799437051},
+        {"name":"xxxWANDERERXXX","lastIntel":90959440,"lastRank":66897537,"percent":-26.453442325502447},
+        {"name":"Gabsi77","lastIntel":96592285,"lastRank":73032571,"percent":-24.390885876651534},
+        {"name":"Döner1312","lastIntel":76173693,"lastRank":59286933,"percent":-22.168755819676488},
+        {"name":"VITTSERR","lastIntel":79807974,"lastRank":64107260,"percent":-19.673114368245958},
+        {"name":"SaNi36","lastIntel":75223544,"lastRank":89382492,"percent":18.822495254943053},
+        {"name":"dream0000","lastIntel":107602262,"lastRank":91223373,"percent":-15.221695804127242},
+        {"name":"Zurtoo","lastIntel":114772089,"lastRank":132107735,"percent":15.1044092261839}
+      ]
+    },
+    "uidRenames": []
+  },
+  "anomalies": [
+    {"type":"lastWarTools_unavailable","detail":"Alliance Members returned HTTP 500 after successful free key validation and 2-token cost gate."},
+    {"type":"member_only_lastRank","name":"Chris0911"},
+    {"type":"member_only_lastRank","name":"WONDERgirl"},
+    {"type":"hq_systemic_divergence","detail":"46 of 47 comparable HQ values differ between fresh LastIntel and LastRank."},
+    {"type":"power_gap","name":"SpaltenMeister69","percent":-52.22979864200825},
+    {"type":"power_gap","name":"GeneralvonAral","percent":-38.526998369072956},
+    {"type":"power_gap","name":"Snajen","percent":-32.08435799437051},
+    {"type":"power_gap","name":"xxxWANDERERXXX","percent":-26.453442325502447},
+    {"type":"power_gap","name":"Gabsi77","percent":-24.390885876651534}
+  ],
+  "notes": [
+    "No second LastWar Tools request was made after the failure.",
+    "The current LastWar Tools-to-LastIntel/LastRank comparison could not be refreshed because the one allowed request failed.",
+    "The last successful LastWar Tools baseline from 2026-09-02T01:42:24Z is retained for context only.",
+    "Fresh LastIntel and LastRank data were compared through the isolated read-only fallback workflow.",
+    "The existing tests/sync-results/latest.json was intentionally not overwritten because it remains the most recent complete successful three-source snapshot."
+  ]
+}
