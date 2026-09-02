@@ -62,7 +62,7 @@ jobs:
           node --check validation/validate-api.mjs
           node --check validation/summarize.mjs
 
-      - name: Verify isolated Cloudflare credentials
+      - name: Verify isolated Cloudflare credentials and resolve account
         shell: bash
         run: |
           set -euo pipefail
@@ -71,8 +71,10 @@ jobs:
             exit 1
           fi
           if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
-            echo "::error::Missing Cloudflare preview account ID."
-            exit 1
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            account_id="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+            test -n "$account_id"
+            echo "CLOUDFLARE_ACCOUNT_ID=$account_id" >> "$GITHUB_ENV"
           fi
 
       - name: Create a fresh isolated D1 database
