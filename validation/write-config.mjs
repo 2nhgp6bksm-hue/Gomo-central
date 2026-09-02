@@ -15,7 +15,7 @@ if (databaseId === "ac1b5094-c1f9-4706-b29b-8507e6f85a92") {
 
 const config = {
   name: workerName,
-  main: "validation/cloudflare-entry.js",
+  main: "cloudflare-entry.js",
   compatibility_date: "2026-08-07",
   compatibility_flags: ["nodejs_compat"],
   vars: {
