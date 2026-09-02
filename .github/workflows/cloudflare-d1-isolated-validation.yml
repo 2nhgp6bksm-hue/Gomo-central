@@ -1,0 +1,197 @@
+name: Isolated Cloudflare D1 write validation
+
+on:
+  push:
+    branches:
+      - test/core-d1-write-optimization
+    paths:
+      - .github/workflows/cloudflare-d1-isolated-validation.yml
+      - validation/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gomo-core-d1-isolated-validation-105d61d
+  cancel-in-progress: false
+
+env:
+  TESTED_COMMIT: 105d61d2cf66fab294106bf6e971257226da8a85
+  VALIDATION_WORKER_NAME: gomo-core-d1-write-validation-105d61d
+  VALIDATION_DATABASE_NAME: gomo-core-d1-write-validation-105d61d-db
+  WRANGLER_CONFIG: validation/wrangler.generated.json
+
+jobs:
+  validate-cloudflare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout validation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify immutable application commit and isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$TESTED_COMMIT")" = "$TESTED_COMMIT"
+          unexpected="$(git diff --name-only "$TESTED_COMMIT"..HEAD | grep -Ev '^(validation/|\.github/workflows/cloudflare-d1-isolated-validation\.yml$)' || true)"
+          if [ -n "$unexpected" ]; then
+            echo "::error::Application files changed after the tested commit: $unexpected"
+            exit 1
+          fi
+          test "$VALIDATION_WORKER_NAME" != "gomo-core-test"
+          test "$VALIDATION_DATABASE_NAME" != "gomo-core-db"
+          grep -q 'const V = "0.7.5-write-optimization-test"' gomo-core-entry-v07.js
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run local regression suite and syntax checks
+        run: |
+          npm test
+          node --check validation/cloudflare-entry.js
+          node --check validation/write-config.mjs
+          node --check validation/validate-api.mjs
+          node --check validation/summarize.mjs
+
+      - name: Verify isolated Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "::error::Missing repository secret CFPREVIEW."
+            exit 1
+          fi
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            echo "::error::Missing Cloudflare preview account ID."
+            exit 1
+          fi
+
+      - name: Create a fresh isolated D1 database
+        id: d1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p validation-results
+          npx --yes wrangler@4.125.0 d1 list --json > validation-results/d1-before.json
+          if node -e 'const f=require("fs"); const a=JSON.parse(f.readFileSync(process.argv[1])); process.exit(a.some(x=>x.name===process.env.VALIDATION_DATABASE_NAME)?0:1)' validation-results/d1-before.json; then
+            echo "::error::The isolated D1 name already exists; refusing to reuse unknown test data."
+            exit 1
+          fi
+          npx --yes wrangler@4.125.0 d1 create "$VALIDATION_DATABASE_NAME" --location weur
+          npx --yes wrangler@4.125.0 d1 list --json > validation-results/d1-after.json
+          database_id="$(node -e 'const f=require("fs"); const a=JSON.parse(f.readFileSync(process.argv[1])); const d=a.find(x=>x.name===process.env.VALIDATION_DATABASE_NAME); if(!d) process.exit(1); process.stdout.write(d.uuid||d.id)' validation-results/d1-after.json)"
+          test -n "$database_id"
+          test "$database_id" != "ac1b5094-c1f9-4706-b29b-8507e6f85a92"
+          echo "database_id=$database_id" >> "$GITHUB_OUTPUT"
+
+      - name: Generate isolated Worker configuration
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+          admin_key="$(openssl rand -hex 32)"
+          node validation/write-config.mjs "${{ steps.d1.outputs.database_id }}" "$admin_key" "$WRANGLER_CONFIG"
+          node -e 'const c=require("./validation/wrangler.generated.json"); if(c.name==="gomo-core-test"||c.d1_databases[0].database_name==="gomo-core-db") process.exit(1)'
+          echo "admin_key=$admin_key" >> "$GITHUB_OUTPUT"
+
+      - name: Apply migrations only to isolated D1
+        run: |
+          npx --yes wrangler@4.125.0 d1 execute "$VALIDATION_DATABASE_NAME" --remote --file migrations/0001_gomo_core.sql --config "$WRANGLER_CONFIG"
+          npx --yes wrangler@4.125.0 d1 execute "$VALIDATION_DATABASE_NAME" --remote --file migrations/0002_gomo_core_hardening.sql --config "$WRANGLER_CONFIG"
+
+      - name: Deploy isolated validation Worker with hourly :15 Cron
+        run: npx --yes wrangler@4.125.0 deploy --config "$WRANGLER_CONFIG"
+
+      - name: Resolve isolated Worker URL
+        id: origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          subdomain="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||!j.result?.subdomain)process.exit(1);process.stdout.write(j.result.subdomain)})')"
+          origin="https://${VALIDATION_WORKER_NAME}.${subdomain}.workers.dev"
+          curl -fsS --retry 5 --retry-delay 2 "$origin/api/core/status" > validation-results/status-before.json || true
+          echo "origin=$origin" >> "$GITHUB_OUTPUT"
+          echo "$origin" > validation-results/worker-origin.txt
+
+      - name: Run one live initialization and three identical replays
+        shell: bash
+        env:
+          ORIGIN: ${{ steps.origin.outputs.origin }}
+          ADMIN_KEY: ${{ steps.config.outputs.admin_key }}
+        run: |
+          set -euo pipefail
+          count_sql="SELECT (SELECT COUNT(*) FROM core_members) AS members,(SELECT COUNT(*) FROM core_canonical_snapshots) AS canonical_snapshots,(SELECT COUNT(*) FROM core_source_observations) AS source_observations,(SELECT COUNT(*) FROM core_public_reports) AS public_reports,(SELECT COUNT(*) FROM core_sync_runs) AS sync_runs,(SELECT COUNT(*) FROM core_sync_metadata) AS sync_metadata;"
+          measure() {
+            npx --yes wrangler@4.125.0 d1 execute "$VALIDATION_DATABASE_NAME" --remote --command "$count_sql" --json --config "$WRANGLER_CONFIG" > "validation-results/counts-$1.json"
+          }
+          curl -fsS -X POST -H "Authorization: Bearer $ADMIN_KEY" "$ORIGIN/api/core/refresh" > validation-results/sync-1.json
+          node -e 'const j=require("./validation-results/sync-1.json"); if(!j.ok) throw Error(JSON.stringify(j))'
+          measure 1
+          for n in 2 3 4; do
+            curl -fsS -X POST -H "Authorization: Bearer $ADMIN_KEY" "$ORIGIN/__validation/replay-stored-report" > "validation-results/sync-$n.json"
+            node -e 'const j=require(`./validation-results/sync-${process.argv[1]}.json`); if(!j.ok) throw Error(JSON.stringify(j))' "$n"
+            measure "$n"
+          done
+
+      - name: Simulate one controlled member change
+        shell: bash
+        env:
+          ORIGIN: ${{ steps.origin.outputs.origin }}
+          ADMIN_KEY: ${{ steps.config.outputs.admin_key }}
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST -H "Authorization: Bearer $ADMIN_KEY" "$ORIGIN/__validation/change-one-member" > validation-results/fixture.json
+          node -e 'const j=require("./validation-results/fixture.json"); if(!j.ok) throw Error(JSON.stringify(j))'
+          count_sql="SELECT (SELECT COUNT(*) FROM core_members) AS members,(SELECT COUNT(*) FROM core_canonical_snapshots) AS canonical_snapshots,(SELECT COUNT(*) FROM core_source_observations) AS source_observations,(SELECT COUNT(*) FROM core_public_reports) AS public_reports,(SELECT COUNT(*) FROM core_sync_runs) AS sync_runs,(SELECT COUNT(*) FROM core_sync_metadata) AS sync_metadata;"
+          npx --yes wrangler@4.125.0 d1 execute "$VALIDATION_DATABASE_NAME" --remote --command "$count_sql" --json --config "$WRANGLER_CONFIG" > validation-results/counts-fixture.json
+
+      - name: Validate Members and Power API contracts
+        shell: bash
+        env:
+          ORIGIN: ${{ steps.origin.outputs.origin }}
+        run: |
+          set -euo pipefail
+          curl -fsS "$ORIGIN/api/core/members" > validation-results/api-members.json
+          curl -fsS "$ORIGIN/api/core/power" > validation-results/api-power.json
+          curl -fsS "$ORIGIN/api/core/status" > validation-results/api-status.json
+          node validation/validate-api.mjs validation-results
+
+      - name: Build validation report
+        run: node validation/summarize.mjs validation-results
+
+      - name: Publish validation summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Isolated Cloudflare D1 validation"
+            echo
+            echo "- Worker: \`$VALIDATION_WORKER_NAME\`"
+            echo "- D1: \`$VALIDATION_DATABASE_NAME\`"
+            echo "- Tested commit: \`$TESTED_COMMIT\`"
+            echo "- Production Worker and \`gomo-core-db\`: not targeted"
+            if [ -f validation-results/validation-report.json ]; then
+              echo
+              echo '```json'
+              cat validation-results/validation-report.json
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gomo-core-d1-validation-evidence
+          path: validation-results/
+          if-no-files-found: warn
+          retention-days: 30
