@@ -16,7 +16,7 @@ import {
   handleCoreMemberAvatar,
 } from "./gomo-core-avatars.js";
 
-const V = "0.7.4-test";
+const V = "0.7.5-write-optimization-test";
 const DEFAULT_CACHE_SECONDS = 600;
 const REPORT_RETENTION_DAYS = 7;
 const MAX_PUBLIC_ALIASES_PER_MEMBER = 25;
@@ -179,15 +179,25 @@ async function membersPayload(request, env, ctx, options = {}) {
 
   const [result, aliasResult] = await Promise.all([
     env.CORE_DB.prepare(`
+    WITH latest_ids AS(
+      SELECT gomo_id,MAX(id) id
+      FROM core_canonical_snapshots
+      GROUP BY gomo_id
+    ), latest AS(
+      SELECT c.*
+      FROM core_canonical_snapshots c
+      JOIN latest_ids x ON x.id=c.id
+    )
     SELECT c.gomo_id,c.name,c.rank,c.hq,c.power,c.hero_power,c.kills,c.avatar_url,
            c.confidence,c.confidence_level,c.flags_json,c.field_sources_json,c.observed_at,
            m.normalized_name,m.active,COALESCE(ms.status,'confirmed') membership_status
-    FROM core_canonical_snapshots c
+    FROM latest c
     JOIN core_members m ON m.gomo_id=c.gomo_id
     LEFT JOIN core_member_membership ms ON ms.gomo_id=c.gomo_id
-    WHERE c.sync_id=?
+    WHERE m.active=1
+      AND COALESCE(ms.status,'confirmed')<>'departed'
     ORDER BY c.power DESC,c.name COLLATE NOCASE
-    `).bind(sync.sync_id).all(),
+    `).all(),
     env.CORE_DB.prepare(`
       SELECT gomo_id,alias,normalized_alias
       FROM core_member_aliases
@@ -326,6 +336,8 @@ async function statusPayload(env) {
       publicPowerUsesD1: true,
       centralAvatarsUseAssistantBinding: true,
       centralAvatarsCreateNoStorage: true,
+      differentialD1Writes: true,
+      unchangedMembersWriteNothing: true,
       manualRefreshRequiresAdminKey: true,
       liveUpstreamEndpointRequiresAdminKey: true,
       hqNeverDecrease: true,
@@ -395,7 +407,7 @@ async function runSync(request, env, ctx) {
   await schemaV07(env.CORE_DB);
   const rep = await report(request, env, ctx);
   const saved = await persist(env.CORE_DB, rep);
-  await savePublicReport(env.CORE_DB, saved.syncId, rep);
+  if (saved.changed) await savePublicReport(env.CORE_DB, saved.syncId, rep);
   return { rep, saved };
 }
 

@@ -1,5 +1,15 @@
 import { V, HEARTBEAT, CONFIRM, LEAVE, iso, norm, ch, schema } from "./gomo-core-v06-engine.js";
 
+function stable(value) {
+  if (Array.isArray(value)) return value.map(stable);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])]));
+}
+
+function stableJson(value, fallback) {
+  return JSON.stringify(stable(value ?? fallback));
+}
+
 async function identities(db) {
   const r = await db.prepare("SELECT 'link' kind,source key1,source_member_id key2,gomo_id FROM core_source_links UNION ALL SELECT 'alias',normalized_alias,'',gomo_id FROM core_member_aliases").all();
   const links = new Map();
@@ -51,8 +61,8 @@ function payload(rep, idx, syncId, now) {
       avatar: m.canonical?.avatarUrl ?? null,
       confidence: m.confidence?.score ?? 0,
       level: m.confidence?.level || "review",
-      flags: JSON.stringify(m.flags || []),
-      fields: JSON.stringify(m.fieldSources || {}),
+      flags: stableJson([...new Set(m.flags || [])].sort(), []),
+      fields: stableJson(m.fieldSources, {}),
       sourceCount,
       li: hasLastIntel ? 1 : 0,
     };
@@ -121,12 +131,16 @@ async function persist(db, rep) {
     const C = JSON.stringify(p.canonical);
     const O = JSON.stringify(p.obs);
     const healthy = [rep.sources?.lastIntel, rep.sources?.lastRank, rep.sources?.lastWarRank].filter((x) => x?.ok).length;
-    const cutoff = new Date(Date.parse(now) - HEARTBEAT * 3600000).toISOString();
     const q = [];
+    const labels = [];
+    const add = (label, statement) => {
+      labels.push(label);
+      q.push(statement);
+    };
 
     // Keep identities for all observed rows so source history remains usable,
     // but LastRank/LastWarRank-only rows start inactive and never reactivate a departed member.
-    q.push(db.prepare(`
+    add("members_inserted", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                json_extract(value,'$.name') name,
@@ -139,7 +153,7 @@ async function persist(db, rep) {
     `).bind(M, now, now));
 
     // Only LastIntel-present members may refresh the current identity and active flag.
-    q.push(db.prepare(`
+    add("members_updated", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                json_extract(value,'$.name') name,
@@ -156,10 +170,9 @@ async function persist(db, rep) {
       WHERE core_members.current_name<>excluded.current_name
          OR core_members.normalized_name<>excluded.normalized_name
          OR core_members.active<>1
-         OR core_members.updated_at<=?
-    `).bind(C, now, now, cutoff));
+    `).bind(C, now, now));
 
-    q.push(db.prepare(`
+    add("aliases_updated", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                json_extract(value,'$.name') name,
@@ -169,15 +182,13 @@ async function persist(db, rep) {
       INSERT INTO core_member_aliases(gomo_id,alias,normalized_alias,source,first_seen,last_seen)
       SELECT g,name,n,'core',?,? FROM j WHERE 1=1
       ON CONFLICT(gomo_id,normalized_alias) DO UPDATE SET
-        alias=excluded.alias,
-        last_seen=excluded.last_seen
+        alias=excluded.alias
       WHERE core_member_aliases.alias<>excluded.alias
-         OR core_member_aliases.last_seen<=?
-    `).bind(M, now, now, cutoff));
+    `).bind(M, now, now));
 
     // Confirmation is driven by LastIntel presence, not by the number of sources.
     // A LastRank-only row can therefore never progress from pending to confirmed.
-    q.push(db.prepare(`
+    add("memberships_updated", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                CAST(json_extract(value,'$.li') AS INTEGER) li
@@ -192,7 +203,8 @@ async function persist(db, rep) {
           WHEN excluded.confirmation_syncs=1 THEN
             CASE
               WHEN core_member_membership.status IN ('departed','departure_candidate') THEN 1
-              ELSE core_member_membership.confirmation_syncs+1
+              WHEN core_member_membership.status='confirmed' THEN core_member_membership.confirmation_syncs
+              ELSE MIN(core_member_membership.confirmation_syncs+1,${CONFIRM})
             END
           ELSE core_member_membership.confirmation_syncs
         END,
@@ -211,11 +223,16 @@ async function persist(db, rep) {
           ELSE core_member_membership.status
         END,
         status_updated_at=excluded.status_updated_at
+      WHERE excluded.confirmation_syncs=1
+        AND (
+          core_member_membership.status<>'confirmed'
+          OR core_member_membership.missing_syncs<>0
+        )
     `).bind(M, now, now));
 
     // Canonical/public snapshots contain only members present in LastIntel.
     // LastRank and LastWarRank still enrich fields and remain in source observations.
-    q.push(db.prepare(`
+    add("canonical_snapshots_inserted", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                json_extract(value,'$.name') name,
@@ -230,15 +247,38 @@ async function persist(db, rep) {
                json_extract(value,'$.flags') flags,
                json_extract(value,'$.fields') fields
         FROM json_each(?)
+      ), latest AS(
+        SELECT c.*
+        FROM core_canonical_snapshots c
+        JOIN(
+          SELECT gomo_id,MAX(id) id
+          FROM core_canonical_snapshots
+          GROUP BY gomo_id
+        ) x ON x.id=c.id
       )
       INSERT INTO core_canonical_snapshots(
         sync_id,gomo_id,name,rank,hq,power,hero_power,kills,avatar_url,
         confidence,confidence_level,flags_json,field_sources_json,observed_at
       )
-      SELECT ?,g,name,rank,hq,power,hero,kills,avatar,confidence,level,flags,fields,? FROM j
+      SELECT ?,j.g,j.name,j.rank,j.hq,j.power,j.hero,j.kills,j.avatar,
+             j.confidence,j.level,j.flags,j.fields,?
+      FROM j
+      LEFT JOIN latest l ON l.gomo_id=j.g
+      WHERE l.id IS NULL
+         OR l.name IS NOT j.name
+         OR l.rank IS NOT j.rank
+         OR l.hq IS NOT j.hq
+         OR l.power IS NOT j.power
+         OR l.hero_power IS NOT j.hero
+         OR l.kills IS NOT j.kills
+         OR l.avatar_url IS NOT j.avatar
+         OR l.confidence IS NOT j.confidence
+         OR l.confidence_level IS NOT j.level
+         OR l.flags_json IS NOT j.flags
+         OR l.field_sources_json IS NOT j.fields
     `).bind(C, syncId, now));
 
-    q.push(db.prepare(`
+    add("source_links_updated", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.s') s,
                json_extract(value,'$.id') id,
@@ -248,13 +288,11 @@ async function persist(db, rep) {
       INSERT INTO core_source_links(source,source_member_id,gomo_id,first_seen,last_seen)
       SELECT s,id,g,?,? FROM j WHERE 1=1
       ON CONFLICT(source,source_member_id) DO UPDATE SET
-        gomo_id=excluded.gomo_id,
-        last_seen=excluded.last_seen
+        gomo_id=excluded.gomo_id
       WHERE core_source_links.gomo_id<>excluded.gomo_id
-         OR core_source_links.last_seen<=?
-    `).bind(O, now, now, cutoff));
+    `).bind(O, now, now));
 
-    q.push(db.prepare(`
+    add("source_observations_inserted", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                json_extract(value,'$.s') s,
@@ -268,17 +306,36 @@ async function persist(db, rep) {
                json_extract(value,'$.avatar') avatar,
                json_extract(value,'$.observed') observed
         FROM json_each(?)
+      ), latest AS(
+        SELECT o.*
+        FROM core_source_observations o
+        JOIN(
+          SELECT source,source_member_id,MAX(id) id
+          FROM core_source_observations
+          GROUP BY source,source_member_id
+        ) x ON x.id=o.id
       )
       INSERT INTO core_source_observations(
         sync_id,gomo_id,source,source_member_id,name,rank,hq,power,hero_power,
         kills,avatar_url,observed_at,fetched_at
       )
-      SELECT ?,g,s,id,name,rank,hq,power,hero,kills,avatar,observed,? FROM j
+      SELECT ?,j.g,j.s,j.id,j.name,j.rank,j.hq,j.power,j.hero,j.kills,j.avatar,j.observed,?
+      FROM j
+      LEFT JOIN latest l ON l.source=j.s AND l.source_member_id=j.id
+      WHERE l.id IS NULL
+         OR l.gomo_id IS NOT j.g
+         OR l.name IS NOT j.name
+         OR l.rank IS NOT j.rank
+         OR l.hq IS NOT j.hq
+         OR l.power IS NOT j.power
+         OR l.hero_power IS NOT j.hero
+         OR l.kills IS NOT j.kills
+         OR l.avatar_url IS NOT j.avatar
     `).bind(O, syncId, now));
 
     // Because LastIntel is healthy here, every identity absent from its roster
     // counts as one consecutive missing membership sync, even if LastRank still lists it.
-    q.push(db.prepare(`
+    add("memberships_missing_updated", db.prepare(`
       WITH li(g) AS(
         SELECT json_extract(value,'$.g') FROM json_each(?)
       )
@@ -295,7 +352,7 @@ async function persist(db, rep) {
         AND gomo_id NOT IN(SELECT g FROM li)
     `).bind(C, now));
 
-    q.push(db.prepare(
+    add("members_archived", db.prepare(
       "UPDATE core_members SET active=0,updated_at=? WHERE gomo_id IN(SELECT gomo_id FROM core_member_membership WHERE status='departed') AND active<>0"
     ).bind(now));
 
@@ -310,16 +367,7 @@ async function persist(db, rep) {
       canonicalMembers: p.canonical.length,
     };
 
-    q.push(db.prepare(`
-      INSERT INTO core_sync_metadata(sync_id,lastwarrank_status,lastwarrank_members,metadata_json)
-      VALUES(?,?,?,?)
-      ON CONFLICT(sync_id) DO UPDATE SET
-        lastwarrank_status=excluded.lastwarrank_status,
-        lastwarrank_members=excluded.lastwarrank_members,
-        metadata_json=excluded.metadata_json
-    `).bind(syncId, lwr.ok ? "ok" : "error", lwr.memberCount || 0, JSON.stringify(meta)));
-
-    q.push(db.prepare(
+    add("sync_completed", db.prepare(
       "UPDATE core_sync_runs SET completed_at=?,status='ok',reconciled_members=?,error_json=? WHERE sync_id=?"
     ).bind(
       new Date().toISOString(),
@@ -335,20 +383,31 @@ async function persist(db, rep) {
     ));
 
     const r = await db.batch(q);
+    const changesByStatement = Object.fromEntries(labels.map((label, index) => [label, ch(r[index])]));
+    const meaningfulRows = Object.entries(changesByStatement)
+      .filter(([label]) => label !== "sync_completed")
+      .reduce((total, [, changes]) => total + changes, 0);
     const metrics = {
       statements: r.length,
       rowsChanged: r.reduce((a, x) => a + ch(x), 0),
+      meaningfulRows,
+      operationalBookkeepingRows: 3,
+      changesByStatement,
       canonicalRows: p.canonical.length,
       observationRows: p.obs.length,
     };
 
-    await db.prepare("UPDATE core_sync_metadata SET metadata_json=? WHERE sync_id=?")
-      .bind(JSON.stringify({ ...meta, ...metrics }), syncId)
+    await db.prepare(`
+      INSERT INTO core_sync_metadata(sync_id,lastwarrank_status,lastwarrank_members,metadata_json)
+      VALUES(?,?,?,?)
+    `)
+      .bind(syncId, lwr.ok ? "ok" : "error", lwr.memberCount || 0, JSON.stringify({ ...meta, ...metrics }))
       .run();
 
     return {
       syncId,
       members: p.canonical.length,
+      changed: meaningfulRows > 0,
       summary: rep.summary,
       storage: { ...meta, ...metrics },
     };

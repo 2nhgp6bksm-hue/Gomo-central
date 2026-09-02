@@ -149,7 +149,7 @@ test("la route membres v0.7 publie le contrat avatar central complet", async () 
   await ctx.flush();
 
   assert.equal(response.status, 200);
-  assert.equal(body.coreVersion, "0.7.4-test");
+  assert.equal(body.coreVersion, "0.7.5-write-optimization-test");
   assert.equal(body.avatarContractVersion, 1);
   assert.equal(body.avatarStats.matched, 1);
   assert.equal(body.avatarStats.ambiguous, 0);
