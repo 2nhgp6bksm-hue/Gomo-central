@@ -1,0 +1,62 @@
+name: One-shot Core production HTTP preflight read-only
+
+on:
+  push:
+    branches:
+      - test/core-d1-read-optimization
+    paths:
+      - .github/workflows/core-production-http-preflight-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROD_WORKER: gomo-central
+    steps:
+      - name: Resolve production Worker and GET endpoints only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          export CLOUDFLARE_ACCOUNT_ID
+          subdomain="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||!j.result?.subdomain)process.exit(1);process.stdout.write(j.result.subdomain)})')"
+          origin="https://${PROD_WORKER}.${subdomain}.workers.dev"
+          mkdir -p preflight-http
+          for path in status members power; do
+            curl --retry 0 -fsS -D "preflight-http/${path}.headers" -o "preflight-http/${path}.json" "$origin/api/core/$path"
+          done
+          ORIGIN="$origin" node - <<'NODE'
+          const fs=require('fs');
+          const read=(p)=>JSON.parse(fs.readFileSync(p,'utf8'));
+          const members=read('preflight-http/members.json');
+          const power=read('preflight-http/power.json');
+          const status=read('preflight-http/status.json');
+          const count=(x)=>Array.isArray(x)?x.length:Array.isArray(x?.members)?x.members.length:Array.isArray(x?.data)?x.data.length:Number(x?.memberCount??x?.membersCount??NaN);
+          const membersCount=count(members), powerCount=count(power);
+          if(membersCount!==94) throw new Error(`members count ${membersCount}`);
+          if(powerCount!==94) throw new Error(`power count ${powerCount}`);
+          const report={worker:process.env.PROD_WORKER,origin:process.env.ORIGIN,membersCount,powerCount,statusOk:status?.ok!==false,statusKeys:Object.keys(status||{}).slice(0,20),readOnly:true};
+          fs.writeFileSync('preflight-http/report.json',JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(report));
+          NODE
+
+      - name: Publish HTTP preflight
+        if: always()
+        shell: bash
+        run: |
+          echo '## Core production HTTP preflight — GET only' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f preflight-http/report.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat preflight-http/report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
