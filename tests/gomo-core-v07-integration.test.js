@@ -1,20 +1,33 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import core from "../gomo-core-entry-v071.js";
-import { VERIFIED_TRAIN_LEGACY_ALIASES } from "../gomo-core-entry-v07.js";
+import { VERIFIED_TRAIN_LEGACY_ALIASES, invalidateCurrentApiCache } from "../gomo-core-entry-v07.js";
 
 const CORE_ORIGIN = "https://core.test";
 const ASSISTANT_ORIGIN = "https://gomo-assistant-v2.gjp86wh7p2.workers.dev";
 const GOMO_ID = "gomo_54becf01-9972-4808-bd4c-747ef19c0976";
 
 class MemoryCache {
-  constructor() { this.values = new Map(); }
+  constructor({ failMatch = false, failPut = false, failDelete = false } = {}) {
+    this.values = new Map();
+    this.failMatch = failMatch;
+    this.failPut = failPut;
+    this.failDelete = failDelete;
+    this.lastMatchUrl = null;
+  }
   async match(request) {
-    const value = this.values.get(new Request(request).url);
+    this.lastMatchUrl = new Request(request).url;
+    if (this.failMatch) throw new Error("cache_match_test_failure");
+    const value = this.values.get(this.lastMatchUrl);
     return value ? value.clone() : undefined;
   }
   async put(request, response) {
+    if (this.failPut) throw new Error("cache_put_test_failure");
     this.values.set(new Request(request).url, response.clone());
+  }
+  async delete(request) {
+    if (this.failDelete) throw new Error("cache_delete_test_failure");
+    return this.values.delete(new Request(request).url);
   }
 }
 
@@ -182,4 +195,63 @@ test("la route avatar v0.7 diffuse l'image versionnée", async () => {
     new Uint8Array(await response.arrayBuffer()),
     new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
   );
+});
+
+
+test("la clé de cache utilise un nouvel epoch isolé", async () => {
+  const cache = new MemoryCache();
+  globalThis.caches = { default: cache };
+  const ctx = context();
+  const response = await core.fetch(
+    new Request(`${CORE_ORIGIN}/api/core/power`),
+    environment(),
+    ctx,
+  );
+  await ctx.flush();
+
+  assert.equal(response.status, 200);
+  assert.match(cache.lastMatchUrl, /cacheEpoch=2026-09-03-fail-open-v1/);
+});
+
+test("une panne cache.match reste fail-open et sert la D1", async () => {
+  globalThis.caches = { default: new MemoryCache({ failMatch: true }) };
+  const ctx = context();
+  const response = await core.fetch(
+    new Request(`${CORE_ORIGIN}/api/core/power`),
+    environment(),
+    ctx,
+  );
+  const body = await response.json();
+  await ctx.flush();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.memberCount, 1);
+  assert.equal(body.members[0].name, "AVILLAI");
+});
+
+test("une panne cache.put ne fait pas échouer la réponse", async () => {
+  globalThis.caches = { default: new MemoryCache({ failPut: true }) };
+  const ctx = context();
+  const response = await core.fetch(
+    new Request(`${CORE_ORIGIN}/api/core/power`),
+    environment(),
+    ctx,
+  );
+  const body = await response.json();
+  await ctx.flush();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.memberCount, 1);
+});
+
+test("une panne cache.delete ne fait pas échouer l'invalidation", async () => {
+  globalThis.caches = { default: new MemoryCache({ failDelete: true }) };
+  const ctx = context();
+  await invalidateCurrentApiCache(
+    ctx,
+    {},
+    new Request(`${CORE_ORIGIN}/api/core/refresh`),
+  );
+  await ctx.flush();
+  assert.ok(true);
 });

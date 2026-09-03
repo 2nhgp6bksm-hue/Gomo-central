@@ -18,6 +18,7 @@ import {
 } from "./gomo-core-avatars.js";
 
 const V = "0.8.0-read-optimization-test";
+const CACHE_EPOCH = "2026-09-03-fail-open-v1";
 const DEFAULT_CACHE_SECONDS = 600;
 const CURRENT_API_CACHE_SECONDS = 300;
 const REPORT_RETENTION_DAYS = 7;
@@ -85,8 +86,17 @@ function cacheKey(request) {
 
 function cacheKeyFor(origin, pathname) {
   const key = new URL(pathname, origin);
-  key.search = `?coreVersion=${encodeURIComponent(V)}`;
+  key.search = `?coreVersion=${encodeURIComponent(V)}&cacheEpoch=${encodeURIComponent(CACHE_EPOCH)}`;
   return new Request(key.toString(), { method: "GET" });
+}
+
+function cacheFailure(operation, error) {
+  console.warn(JSON.stringify({
+    event: "gomo_core_cache_failure",
+    operation,
+    failOpen: true,
+    error: error instanceof Error ? error.message : String(error),
+  }));
 }
 
 function configuredCacheOrigins(env = {}) {
@@ -110,7 +120,13 @@ async function invalidateCurrentApiCache(ctx, env = {}, request = null) {
   }
   const paths = ["/api/core/members", "/api/core/power", "/api/core/precision", "/api/core/status"];
   const invalidation = Promise.all([...origins].flatMap((origin) => (
-    paths.map((pathname) => cache.delete(cacheKeyFor(origin, pathname)))
+    paths.map(async (pathname) => {
+      try {
+        await cache.delete(cacheKeyFor(origin, pathname));
+      } catch (error) {
+        cacheFailure("delete", error);
+      }
+    })
   )));
   if (ctx?.waitUntil) ctx.waitUntil(invalidation);
   else await invalidation;
@@ -120,9 +136,16 @@ export { invalidateCurrentApiCache };
 
 async function cached(request, env, ctx, producer) {
   if (!["GET", "HEAD"].includes(request.method)) return json({ error: "Method Not Allowed" }, 405, env);
-  const cache = caches.default;
+  const cache = typeof caches !== "undefined" ? caches.default : null;
   const key = cacheKey(request);
-  const hit = await cache.match(key);
+  let hit;
+  if (cache?.match) {
+    try {
+      hit = await cache.match(key);
+    } catch (error) {
+      cacheFailure("match", error);
+    }
+  }
   if (hit) {
     const headers = new Headers(hit.headers);
     headers.set("x-gomo-core-cache", "HIT");
@@ -135,7 +158,13 @@ async function cached(request, env, ctx, producer) {
     const headers = new Headers(response.headers);
     headers.set("x-gomo-core-cache", "MISS");
     const cacheable = new Response(response.body, { status: response.status, statusText: response.statusText, headers });
-    ctx.waitUntil(cache.put(key, cacheable.clone()));
+    if (cache?.put) {
+      const write = Promise.resolve()
+        .then(() => cache.put(key, cacheable.clone()))
+        .catch((error) => { cacheFailure("put", error); });
+      if (ctx?.waitUntil) ctx.waitUntil(write);
+      else await write;
+    }
     return headify(request, maybeNotModified(request, cacheable));
   }
   return headify(request, response);
