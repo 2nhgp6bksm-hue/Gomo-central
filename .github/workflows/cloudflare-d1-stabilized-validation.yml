@@ -1,5 +1,5 @@
-name: One-shot derived-metadata-stable D1 refresh validation
-# Autorisation explicite du 3 septembre 2026. Une seule mesure distante de da712c13. Ne pas relancer.
+name: One-shot freshness-stable D1 refresh validation
+# Autorisation explicite du 3 septembre 2026. Une seule mesure distante de fdd03626. Ne pas relancer.
 
 on:
   push:
@@ -12,17 +12,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: gomo-core-derived-metadata-stable-d1-validation-da712c13
+  group: gomo-core-freshness-stable-d1-validation-fdd03626
   cancel-in-progress: false
 
 env:
-  TESTED_COMMIT: da712c1382f010d46700f706555975e493b12cb8
+  TESTED_COMMIT: fdd03626c1b624e774eb9d2c9d0f40241c864429
   VALIDATION_WORKER_NAME: gomo-core-d1-read-validation-28d4ef7
   VALIDATION_DATABASE_NAME: gomo-core-d1-write-validation-105d61d-a3-db
   VALIDATION_DATABASE_ID: bfb37928-febc-4ae6-8075-da89cc40d4d5
   PRODUCTION_DATABASE_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
-  WRANGLER_CONFIG: validation/derived-metadata-stable-wrangler.generated.json
-  RESULTS: validation-results-derived-metadata-stable
+  WRANGLER_CONFIG: validation/freshness-stable-wrangler.generated.json
+  RESULTS: validation-results-freshness-stable
 
 jobs:
   measure-once:
@@ -96,7 +96,7 @@ jobs:
           echo "origin=$origin" >> "$GITHUB_OUTPUT"
           echo "$origin" > "$RESULTS/worker-origin.txt"
 
-      - name: Run derived-metadata-stable refresh exactly once
+      - name: Run freshness-stable refresh exactly once
         env:
           ORIGIN: ${{ steps.origin.outputs.origin }}
           ADMIN_KEY: ${{ steps.setup.outputs.admin_key }}
@@ -136,6 +136,7 @@ jobs:
             statementsSkippedAsUnchanged: storage.statementsSkippedAsUnchanged ?? null,
             dedupStateRowsLoaded: storage.dedupStateRowsLoaded ?? null,
             derivedMetadataRowsSuppressed: storage.derivedMetadataRowsSuppressed ?? null,
+            freshnessOnlyCanonicalRowsSuppressed: storage.freshnessOnlyCanonicalRowsSuppressed ?? null,
             volatileConfidenceRowsSuppressed: storage.volatileConfidenceRowsSuppressed ?? null,
             confidenceStabilityRowsLoaded: storage.confidenceStabilityRowsLoaded ?? null,
             changesByStatement: storage.changesByStatement ?? null,
@@ -148,26 +149,26 @@ jobs:
             productionTouched: false,
             productionD1Touched: false
           };
-          fs.writeFileSync(`${resultDir}/derived-metadata-stable-report.json`, JSON.stringify(report, null, 2) + '\n');
+          fs.writeFileSync(`${resultDir}/freshness-stable-report.json`, JSON.stringify(report, null, 2) + '\n');
           console.log(JSON.stringify(report));
           if (!report.ok || report.changed !== false) {
             throw new Error(`STOP: changed:false not obtained: ${JSON.stringify({ok: report.ok, changed: report.changed})}`);
           }
           NODE
 
-      - name: Publish derived-metadata-stable measurement
+      - name: Publish freshness-stable measurement
         if: always()
         shell: bash
         run: |
-          echo "## Derived-metadata-stable isolated D1 refresh measurement" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Freshness-stable isolated D1 refresh measurement" >> "$GITHUB_STEP_SUMMARY"
           echo "- Migration replayed: \`false\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Backfill replayed: \`false\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Historical recount: \`false\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Members/Power endpoints called: \`false\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Cron configured: \`false\`" >> "$GITHUB_STEP_SUMMARY"
-          if [ -f "$RESULTS/derived-metadata-stable-report.json" ]; then
+          if [ -f "$RESULTS/freshness-stable-report.json" ]; then
             echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            cat "$RESULTS/derived-metadata-stable-report.json" >> "$GITHUB_STEP_SUMMARY"
+            cat "$RESULTS/freshness-stable-report.json" >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           fi
 
@@ -175,7 +176,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gomo-core-d1-derived-metadata-stable-evidence
-          path: validation-results-derived-metadata-stable/
+          name: gomo-core-d1-freshness-stable-evidence
+          path: validation-results-freshness-stable/
           if-no-files-found: warn
           retention-days: 30
