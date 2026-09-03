@@ -1,0 +1,41 @@
+name: One-shot Core test safety audit
+
+on:
+  push:
+    branches:
+      - test/core-d1-read-optimization
+    paths:
+      - .github/workflows/core-test-safety-audit-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WORKER: gomo-core-test
+    steps:
+      - name: Read test worker settings and schedules only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          settings="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/settings")"
+          schedules="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules")"
+          SETTINGS="$settings" SCHEDULES="$schedules" node - <<'NODE'
+          const settings=JSON.parse(process.env.SETTINGS);
+          const schedules=JSON.parse(process.env.SCHEDULES);
+          if(!settings.success || !schedules.success) process.exit(1);
+          const bindings=(settings.result?.bindings||[]).map(b=>({name:b.name,type:b.type,id:b.id||b.database_id||null,service:b.service||null}));
+          const report={worker:process.env.WORKER,bindings,schedules:schedules.result||[],cronCount:(schedules.result||[]).length};
+          console.log('CORE_TEST_SAFETY='+JSON.stringify(report));
+          NODE
