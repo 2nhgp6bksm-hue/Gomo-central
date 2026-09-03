@@ -1,5 +1,5 @@
-name: One-shot stabilized D1 refresh measurement
-# Autorisation explicite du 3 septembre 2026. Une seule mesure, ne pas relancer.
+name: One-shot confidence-stable D1 refresh validation
+# Autorisation explicite du 3 septembre 2026. Une seule mesure distante du commit db16a412. Ne pas relancer.
 
 on:
   push:
@@ -12,17 +12,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: gomo-core-stabilized-d1-read-validation-896a677
+  group: gomo-core-confidence-stable-d1-validation-db16a412
   cancel-in-progress: false
 
 env:
-  TESTED_COMMIT: 896a677e04701be796b99f4c471e1d074d13cf28
+  TESTED_COMMIT: db16a412a28ce9e3382bf78def3ebece59c4b396
   VALIDATION_WORKER_NAME: gomo-core-d1-read-validation-28d4ef7
   VALIDATION_DATABASE_NAME: gomo-core-d1-write-validation-105d61d-a3-db
   VALIDATION_DATABASE_ID: bfb37928-febc-4ae6-8075-da89cc40d4d5
   PRODUCTION_DATABASE_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
-  WRANGLER_CONFIG: validation/stabilized-wrangler.generated.json
-  RESULTS: validation-results-stabilized
+  WRANGLER_CONFIG: validation/confidence-stable-wrangler.generated.json
+  RESULTS: validation-results-confidence-stable
 
 jobs:
   measure-once:
@@ -43,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git merge-base HEAD "$TESTED_COMMIT")" = "$TESTED_COMMIT"
-          unexpected="$(git diff --name-only "$TESTED_COMMIT"..HEAD | grep -Ev '^(validation/final-|\.github/workflows/cloudflare-d1-final-validation\.yml$|\.github/workflows/cloudflare-d1-stabilized-validation\.yml$)' || true)"
+          unexpected="$(git diff --name-only "$TESTED_COMMIT"..HEAD | grep -Ev '^(\.github/workflows/cloudflare-d1-stabilized-validation\.yml$)' || true)"
           test -z "$unexpected"
           test "$VALIDATION_WORKER_NAME" != "gomo-core-test"
           test "$VALIDATION_WORKER_NAME" != "gomo-central"
@@ -77,7 +77,7 @@ jobs:
           node -e 'const f=require("fs");const p=process.argv[1];const c=JSON.parse(f.readFileSync(p));c.main="final-cloudflare-entry.js";if(c.triggers)throw Error("Cron forbidden");if(c.d1_databases[0].database_id===process.env.PRODUCTION_DATABASE_ID)throw Error("Production D1 forbidden");f.writeFileSync(p,JSON.stringify(c,null,2)+"\n")' "$WRANGLER_CONFIG"
           echo "admin_key=$admin_key" >> "$GITHUB_OUTPUT"
 
-      - name: Redeploy exact optimized application to same isolated Worker
+      - name: Redeploy exact corrected application to same isolated Worker
         shell: bash
         run: |
           set -euo pipefail
@@ -96,7 +96,7 @@ jobs:
           echo "origin=$origin" >> "$GITHUB_OUTPUT"
           echo "$origin" > "$RESULTS/worker-origin.txt"
 
-      - name: Run stabilized refresh exactly once
+      - name: Run confidence-stable refresh exactly once
         env:
           ORIGIN: ${{ steps.origin.outputs.origin }}
           ADMIN_KEY: ${{ steps.setup.outputs.admin_key }}
@@ -116,6 +116,7 @@ jobs:
             if (i > 0) headers[line.slice(0, i).trim().toLowerCase()] = line.slice(i + 1).trim();
           }
           const curlMeta = fs.readFileSync(`${resultDir}/sync.curl-meta`, 'utf8').trim().split(/\s+/);
+          const storage = body.storage || {};
           const report = {
             testedCommit: process.env.TESTED_COMMIT,
             worker: process.env.VALIDATION_WORKER_NAME,
@@ -124,39 +125,48 @@ jobs:
             requestSeconds: Number(curlMeta[1]),
             ok: body.ok === true,
             changed: body.changed,
+            members: body.members ?? null,
             rowsRead: Number(headers['x-validation-d1-rows-read'] || 0),
             rowsWritten: Number(headers['x-validation-d1-rows-written'] || 0),
             queryCount: Number(headers['x-validation-d1-query-count'] || 0),
             d1DurationMs: Number(headers['x-validation-d1-duration-ms'] || 0),
             tables: String(headers['x-validation-d1-tables'] || '').split(',').filter(Boolean),
+            meaningfulRows: storage.meaningfulRows ?? null,
+            statements: storage.statements ?? null,
+            statementsSkippedAsUnchanged: storage.statementsSkippedAsUnchanged ?? null,
+            dedupStateRowsLoaded: storage.dedupStateRowsLoaded ?? null,
+            volatileConfidenceRowsSuppressed: storage.volatileConfidenceRowsSuppressed ?? null,
+            confidenceStabilityRowsLoaded: storage.confidenceStabilityRowsLoaded ?? null,
+            changesByStatement: storage.changesByStatement ?? null,
             migrationReplayed: false,
             backfillReplayed: false,
             historicalRecount: false,
+            membersPowerEndpointsCalled: false,
             cronConfigured: false,
             mainTouched: false,
             productionTouched: false,
             productionD1Touched: false
           };
-          fs.writeFileSync(`${resultDir}/stabilized-report.json`, JSON.stringify(report, null, 2) + '\n');
+          fs.writeFileSync(`${resultDir}/confidence-stable-report.json`, JSON.stringify(report, null, 2) + '\n');
           console.log(JSON.stringify(report));
           if (!report.ok || report.changed !== false) {
-            throw new Error(`STOP: stabilized state not obtained: ${JSON.stringify({ok: report.ok, changed: report.changed})}`);
+            throw new Error(`STOP: changed:false not obtained: ${JSON.stringify({ok: report.ok, changed: report.changed})}`);
           }
           NODE
 
-      - name: Publish stabilized measurement
+      - name: Publish confidence-stable measurement
         if: always()
         shell: bash
         run: |
-          echo "## Stabilized isolated D1 refresh measurement" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Confidence-stable isolated D1 refresh measurement" >> "$GITHUB_STEP_SUMMARY"
           echo "- Migration replayed: \`false\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Backfill replayed: \`false\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Historical recount: \`false\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Members/Power endpoints called: \`false\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Cron configured: \`false\`" >> "$GITHUB_STEP_SUMMARY"
-          if [ -f "$RESULTS/stabilized-report.json" ]; then
+          if [ -f "$RESULTS/confidence-stable-report.json" ]; then
             echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            cat "$RESULTS/stabilized-report.json" >> "$GITHUB_STEP_SUMMARY"
+            cat "$RESULTS/confidence-stable-report.json" >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           fi
 
@@ -164,7 +174,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gomo-core-d1-stabilized-validation-evidence
-          path: validation-results-stabilized/
+          name: gomo-core-d1-confidence-stable-evidence
+          path: validation-results-confidence-stable/
           if-no-files-found: warn
           retention-days: 30
