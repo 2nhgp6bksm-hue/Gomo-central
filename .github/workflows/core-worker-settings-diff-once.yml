@@ -1,0 +1,68 @@
+name: One-shot Core worker settings diff read-only
+
+on:
+  push:
+    branches:
+      - test/core-d1-read-optimization
+    paths:
+      - .github/workflows/core-worker-settings-diff-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Compare gomo-central and gomo-core-test settings read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          export CLOUDFLARE_ACCOUNT_ID
+          mkdir -p settings-diff
+          for worker in gomo-central gomo-core-test; do
+            base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$worker"
+            curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/settings" > "settings-diff/$worker.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const read=(n)=>JSON.parse(fs.readFileSync(`settings-diff/${n}.json`,'utf8')).result;
+          const normalize=(s)=>({
+            compatibility_date:s.compatibility_date||null,
+            compatibility_flags:[...(s.compatibility_flags||[])].sort(),
+            usage_model:s.usage_model||null,
+            placement:s.placement||null,
+            tail_consumers:s.tail_consumers||null,
+            plain:Object.fromEntries((s.bindings||[]).filter(b=>b.type==='plain_text').map(b=>[b.name,b.text])),
+            services:(s.bindings||[]).filter(b=>b.type==='service').map(b=>({binding:b.name,service:b.service,environment:b.environment||null})).sort((a,b)=>a.binding.localeCompare(b.binding)),
+            d1:(s.bindings||[]).filter(b=>b.type==='d1').map(b=>({binding:b.name,id:b.id||b.database_id})),
+            bindingTypes:(s.bindings||[]).map(b=>`${b.name}:${b.type}`).sort()
+          });
+          const prod=normalize(read('gomo-central'));
+          const test=normalize(read('gomo-core-test'));
+          const keys=[...new Set([...Object.keys(prod.plain),...Object.keys(test.plain)])].sort();
+          const plainDiff=Object.fromEntries(keys.filter(k=>prod.plain[k]!==test.plain[k]).map(k=>[k,{production:prod.plain[k]??null,test: test.plain[k]??null}]));
+          const report={production:prod,test,plainDiff,compatibilityEqual:JSON.stringify([prod.compatibility_date,prod.compatibility_flags])===JSON.stringify([test.compatibility_date,test.compatibility_flags]),servicesEqual:JSON.stringify(prod.services)===JSON.stringify(test.services),d1Equal:JSON.stringify(prod.d1)===JSON.stringify(test.d1)};
+          fs.writeFileSync('settings-diff/report.json',JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(report,null,2));
+          NODE
+
+      - name: Publish settings diff
+        if: always()
+        shell: bash
+        run: |
+          echo '## Core worker settings diff — read only' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f settings-diff/report.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat settings-diff/report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
