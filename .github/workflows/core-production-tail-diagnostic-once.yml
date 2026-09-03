@@ -1,0 +1,84 @@
+name: One-shot Core production 1101 tail diagnostic
+
+on:
+  push:
+    branches:
+      - test/core-d1-read-optimization
+    paths:
+      - .github/workflows/core-production-tail-diagnostic-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROD_WORKER: gomo-central
+      EXPECTED_ROLLBACK_VERSION: 7f93df13-eb14-41a9-9e3f-c269781c1195
+    steps:
+      - name: Confirm rollback and capture one failing GET with tail
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          export CLOUDFLARE_ACCOUNT_ID
+          mkdir -p tail-evidence
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$PROD_WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" > tail-evidence/deployments.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" > tail-evidence/subdomain.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const d=JSON.parse(fs.readFileSync('tail-evidence/deployments.json','utf8'));
+          if(!d.success) throw new Error('deployments unavailable');
+          const arr=Array.isArray(d.result)?d.result:Array.isArray(d.result?.deployments)?d.result.deployments:[];
+          const active=arr.find(x=>Array.isArray(x.versions)&&x.versions.some(v=>Number(v.percentage??v.traffic??0)>=99.9))||arr[0];
+          const v=(active?.versions||[]).slice().sort((a,b)=>Number(b.percentage??b.traffic??0)-Number(a.percentage??a.traffic??0))[0];
+          const id=v?.version_id||v?.id||active?.version_id||active?.id;
+          if(id!==process.env.EXPECTED_ROLLBACK_VERSION) throw new Error(`Rollback version not active: ${id}`);
+          fs.writeFileSync('tail-evidence/active-version.txt',id+'\n');
+          NODE
+          subdomain="$(node -e 'const j=require("./tail-evidence/subdomain.json");if(!j.success||!j.result?.subdomain)process.exit(1);process.stdout.write(j.result.subdomain)')"
+          origin="https://${PROD_WORKER}.${subdomain}.workers.dev"
+          printf '%s\n' "$origin" > tail-evidence/origin.txt
+
+          timeout 25s npx --yes wrangler@4.125.0 tail "$PROD_WORKER" --format json > tail-evidence/tail.log 2>&1 &
+          tail_pid=$!
+          sleep 6
+          code="$(curl --retry 0 -sS -o tail-evidence/members.body -w '%{http_code}' "$origin/api/core/members")"
+          printf '%s\n' "$code" > tail-evidence/members.code
+          wait "$tail_pid" || true
+
+          CODE="$code" node - <<'NODE'
+          const fs=require('fs');
+          const raw=fs.existsSync('tail-evidence/tail.log')?fs.readFileSync('tail-evidence/tail.log','utf8'):'';
+          const interesting=raw.split(/\r?\n/).filter(line=>/exception|error|1101|stack|message|RangeError|TypeError|InternalError|recurs|subrequest|service/i.test(line));
+          const body=fs.readFileSync('tail-evidence/members.body','utf8').slice(0,500);
+          const report={
+            rollbackVersion:fs.readFileSync('tail-evidence/active-version.txt','utf8').trim(),
+            membersHttpStatus:Number(process.env.CODE),
+            bodyPreview:body,
+            tailCaptured:raw.length>0,
+            relevantTailLines:interesting.slice(-80)
+          };
+          fs.writeFileSync('tail-evidence/report.json',JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(report,null,2));
+          NODE
+
+      - name: Publish exception diagnostic
+        if: always()
+        shell: bash
+        run: |
+          echo '## GoMo Core production 1101 diagnostic' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f tail-evidence/report.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat tail-evidence/report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
