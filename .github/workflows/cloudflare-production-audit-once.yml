@@ -1,0 +1,80 @@
+name: One-shot Core production audit read-only
+
+on:
+  push:
+    branches:
+      - test/core-d1-read-optimization
+    paths:
+      - .github/workflows/cloudflare-production-audit-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read-only Cloudflare worker audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          export CLOUDFLARE_ACCOUNT_ID
+          mkdir -p audit
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" > audit/scripts.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('audit/scripts.json','utf8'));
+          if(!j.success) throw new Error('workers/scripts failed');
+          const names=(j.result||[]).map(x=>x.id||x.name).filter(Boolean).filter(n=>/gomo|core|central/i.test(n));
+          fs.writeFileSync('audit/names.txt',names.join('\n')+'\n');
+          console.log(JSON.stringify({matchingWorkers:names},null,2));
+          NODE
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            safe="$(printf '%s' "$name" | tr -c 'A-Za-z0-9._-' '_')"
+            curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$name/settings" > "audit/${safe}.settings.json"
+            curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$name/schedules" > "audit/${safe}.schedules.json"
+            curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$name/versions?per_page=5" > "audit/${safe}.versions.json"
+          done < audit/names.txt
+          node - <<'NODE'
+          const fs=require('fs'),path=require('path');
+          const names=fs.readFileSync('audit/names.txt','utf8').trim().split(/\n/).filter(Boolean);
+          const out=[];
+          for(const name of names){
+            const safe=name.replace(/[^A-Za-z0-9._-]/g,'_');
+            const read=(suffix)=>{try{return JSON.parse(fs.readFileSync(`audit/${safe}.${suffix}.json`,'utf8'))}catch{return null}};
+            const settings=read('settings');
+            const schedules=read('schedules');
+            const versions=read('versions');
+            const bindings=(settings?.result?.bindings||[]).map(b=>({name:b.name,type:b.type,database_id:b.id||b.database_id||null,database_name:b.database_name||null,service:b.service||null,environment:b.environment||null}));
+            const crons=(schedules?.result||[]).map(x=>x.cron||x);
+            const versionList=(versions?.result||[]).map(v=>({id:v.id,created_on:v.created_on,annotations:v.annotations||null}));
+            out.push({name,settingsOk:settings?.success===true,bindings,crons,versions:versionList});
+          }
+          fs.writeFileSync('audit/summary.json',JSON.stringify(out,null,2)+'\n');
+          console.log(JSON.stringify(out,null,2));
+          NODE
+
+      - name: Publish audit summary
+        if: always()
+        shell: bash
+        run: |
+          echo '## Core production read-only audit' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f audit/summary.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat audit/summary.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
