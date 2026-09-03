@@ -47,6 +47,7 @@ jobs:
               --data "$payload" \
               -o "d1-audit/$name.json" -w '%{http_code}' "$endpoint")"
             echo "$name HTTP $code"
+            echo "${name}_BODY=$(cat "d1-audit/$name.json")"
             test "$code" = "200"
             FILE="d1-audit/$name.json" node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(process.env.FILE,"utf8"));if(!j.success)throw Error(JSON.stringify(j.errors||j));'
           }
@@ -55,13 +56,25 @@ jobs:
           query current_members_columns "PRAGMA table_info(core_current_members)"
           query current_source_columns "PRAGMA table_info(core_current_source_state)"
           query current_members_indexes "PRAGMA index_list(core_current_members)"
-          query current_counts "SELECT COUNT(*) AS total_rows, SUM(CASE WHEN active=1 THEN 1 ELSE 0 END) AS active_rows, SUM(CASE WHEN active=1 AND membership_status<>'departed' THEN 1 ELSE 0 END) AS public_rows FROM core_current_members"
-          query current_source_count "SELECT COUNT(*) AS source_rows FROM core_current_source_state"
+
+          has_members="$(FILE=d1-audit/tables.json node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(process.env.FILE,"utf8"));const a=(Array.isArray(j.result)?j.result:[j.result]).flatMap(x=>x?.results||[]);process.stdout.write(a.some(x=>x.name==="core_current_members")?"1":"0")')"
+          has_source="$(FILE=d1-audit/tables.json node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(process.env.FILE,"utf8"));const a=(Array.isArray(j.result)?j.result:[j.result]).flatMap(x=>x?.results||[]);process.stdout.write(a.some(x=>x.name==="core_current_source_state")?"1":"0")')"
+
+          if [ "$has_members" = "1" ]; then
+            query current_count "SELECT COUNT(*) AS total_rows FROM core_current_members"
+            query active_count "SELECT COUNT(*) AS active_rows FROM core_current_members WHERE active=1"
+            query public_count "SELECT COUNT(*) AS public_rows FROM core_current_members WHERE active=1 AND membership_status!='departed'"
+          fi
+          if [ "$has_source" = "1" ]; then
+            query current_source_count "SELECT COUNT(*) AS source_rows FROM core_current_source_state"
+          fi
 
           node - <<'NODE'
           const fs=require('fs');
+          const exists=(name)=>fs.existsSync(`d1-audit/${name}.json`);
           const read=(name)=>JSON.parse(fs.readFileSync(`d1-audit/${name}.json`,'utf8'));
           const rows=(name)=>{
+            if(!exists(name)) return [];
             const j=read(name);
             const r=Array.isArray(j.result)?j.result:[j.result];
             return r.flatMap(x=>x?.results||[]);
@@ -70,17 +83,21 @@ jobs:
           const memberColumns=rows('current_members_columns').map(x=>x.name);
           const sourceColumns=rows('current_source_columns').map(x=>x.name);
           const indexes=rows('current_members_indexes').map(x=>x.name);
-          const counts=rows('current_counts')[0]||{};
-          const sourceCount=rows('current_source_count')[0]||{};
           const requiredMembers=['gomo_id','name','rank','hq','max_hq','power','hero_power','kills','avatar_url','confidence','confidence_level','flags_json','field_sources_json','observed_at','active','membership_status','updated_sync_id','updated_at'];
           const requiredSource=['source','source_member_id','gomo_id','name','rank','hq','power','hero_power','kills','avatar_url','observed_at','updated_sync_id','updated_at'];
+          const number=(name,key)=>Number(rows(name)[0]?.[key]||0);
           const report={
             databaseId:process.env.DB_ID,
             tables,
             memberColumns,
             sourceColumns,
             indexes,
-            counts:{total:Number(counts.total_rows||0),active:Number(counts.active_rows||0),public:Number(counts.public_rows||0),sourceRows:Number(sourceCount.source_rows||0)},
+            counts:{
+              total:exists('current_count')?number('current_count','total_rows'):null,
+              active:exists('active_count')?number('active_count','active_rows'):null,
+              public:exists('public_count')?number('public_count','public_rows'):null,
+              sourceRows:exists('current_source_count')?number('current_source_count','source_rows'):null
+            },
             missingMemberColumns:requiredMembers.filter(x=>!memberColumns.includes(x)),
             extraMemberColumns:memberColumns.filter(x=>!requiredMembers.includes(x)),
             missingSourceColumns:requiredSource.filter(x=>!sourceColumns.includes(x)),
