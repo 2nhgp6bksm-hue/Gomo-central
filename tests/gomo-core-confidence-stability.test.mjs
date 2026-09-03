@@ -1,0 +1,139 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
+
+import { persist } from "../gomo-core-v06-storage-stable-confidence.js";
+
+class LocalStatement {
+  constructor(owner, sql, params = []) {
+    this.owner = owner;
+    this.sql = String(sql);
+    this.params = params;
+  }
+  bind(...params) { return new LocalStatement(this.owner, this.sql, params); }
+  statement() { return this.owner.database.prepare(this.sql); }
+  async first() { return this.statement().get(...this.params) ?? null; }
+  async all() { return { results: this.statement().all(...this.params), meta: { changes: 0 } }; }
+  async run() {
+    const result = this.statement().run(...this.params);
+    return { success: true, meta: { changes: Number(result.changes || 0) } };
+  }
+  async execute() {
+    const statement = this.statement();
+    if (statement.columns().length) return { results: statement.all(...this.params), meta: { changes: 0 } };
+    const result = statement.run(...this.params);
+    return { success: true, meta: { changes: Number(result.changes || 0) } };
+  }
+}
+
+class LocalD1 {
+  constructor() {
+    this.database = new DatabaseSync(":memory:");
+    for (const file of [
+      "0001_gomo_core.sql",
+      "0002_gomo_core_hardening.sql",
+      "0003_gomo_core_current_state.sql",
+    ]) this.database.exec(readFileSync(new URL(`../migrations/${file}`, import.meta.url), "utf8"));
+  }
+  prepare(sql) { return new LocalStatement(this, sql); }
+  async batch(statements) {
+    const results = [];
+    for (const statement of statements) results.push(await statement.execute());
+    return results;
+  }
+  async exec(sql) { this.database.exec(sql); }
+  scalar(sql, ...params) { return Object.values(this.database.prepare(sql).get(...params))[0]; }
+  close() { this.database.close(); }
+}
+
+function member(index, { powerOffset = 0, confidence = 96, level = "high" } = {}) {
+  const name = `Member ${String(index + 1).padStart(2, "0")}`;
+  const power = 100_000_000 + index * 10_000 + powerOffset;
+  const common = {
+    name,
+    rank: index < 4 ? "R4" : "R3",
+    hq: 35,
+    power,
+    heroPower: 50_000_000 + index,
+    kills: 1_000 + index,
+  };
+  return {
+    name,
+    canonical: { ...common, avatarUrl: `https://lastintel.io/member-${index}.jpg` },
+    confidence: { score: confidence, level },
+    flags: [],
+    fieldSources: { rank: "lastintel", hq: "lastintel", power: "lastintel", heroPower: "lastintel" },
+    sources: {
+      lastIntel: { ...common, sourceId: `li-${index}`, avatarUrl: `https://lastintel.io/member-${index}.jpg`, observedAt: "2026-09-03T00:15:00.000Z" },
+      lastRank: { ...common, sourceId: `lr-${index}`, avatarUrl: null, observedAt: "2026-09-03T00:15:00.000Z" },
+    },
+  };
+}
+
+function fixture({ changedIndex = -1, powerOffset = 0, confidence = 96, level = "high" } = {}) {
+  return {
+    generatedAt: "2026-09-03T00:15:00.000Z",
+    members: Array.from({ length: 94 }, (_, index) => member(index, {
+      powerOffset: index === changedIndex ? powerOffset : 0,
+      confidence,
+      level,
+    })),
+    sources: {
+      lastIntel: { ok: true, memberCount: 94 },
+      lastRank: { ok: true, memberCount: 94 },
+      lastWarRank: { ok: false, memberCount: 0, error: "fixture_disabled" },
+    },
+    summary: { unionMembers: 94, matchedBothSources: 94, conflicts: 0 },
+  };
+}
+
+test("une variation uniquement temporelle de confiance ne cree ni snapshot ni mise a jour courante", async (t) => {
+  const db = new LocalD1();
+  t.after(() => db.close());
+
+  await persist(db, fixture());
+  await persist(db, fixture());
+
+  const snapshotsBefore = db.scalar("SELECT COUNT(*) FROM core_canonical_snapshots");
+  const observationsBefore = db.scalar("SELECT COUNT(*) FROM core_source_observations");
+
+  const stable = await persist(db, fixture({ confidence: 82, level: "medium" }));
+
+  assert.equal(stable.changed, false);
+  assert.equal(stable.storage.volatileConfidenceRowsSuppressed, 94);
+  assert.equal(stable.storage.confidenceStabilityRowsLoaded, 94);
+  assert.equal(stable.storage.changesByStatement.canonical_snapshots_inserted, 0);
+  assert.equal(stable.storage.changesByStatement.current_members_updated, 0);
+  assert.equal(stable.storage.changesByStatement.source_observations_inserted, 0);
+  assert.equal(stable.storage.changesByStatement.current_source_state_updated, 0);
+  assert.equal(db.scalar("SELECT COUNT(*) FROM core_canonical_snapshots"), snapshotsBefore);
+  assert.equal(db.scalar("SELECT COUNT(*) FROM core_source_observations"), observationsBefore);
+  assert.equal(db.scalar("SELECT confidence FROM core_current_members WHERE name='Member 01'"), 96);
+  assert.equal(db.scalar("SELECT confidence_level FROM core_current_members WHERE name='Member 01'"), "high");
+});
+
+test("un vrai changement metier reste historise meme si la confiance change en meme temps", async (t) => {
+  const db = new LocalD1();
+  t.after(() => db.close());
+
+  await persist(db, fixture());
+  await persist(db, fixture());
+
+  const changed = await persist(db, fixture({
+    changedIndex: 0,
+    powerOffset: 1,
+    confidence: 82,
+    level: "medium",
+  }));
+
+  assert.equal(changed.changed, true);
+  assert.equal(changed.storage.volatileConfidenceRowsSuppressed, 93);
+  assert.equal(changed.storage.changesByStatement.canonical_snapshots_inserted, 1);
+  assert.equal(changed.storage.changesByStatement.current_members_updated, 1);
+  assert.equal(changed.storage.changesByStatement.source_observations_inserted, 2);
+  assert.equal(changed.storage.changesByStatement.current_source_state_updated, 2);
+  assert.equal(db.scalar("SELECT confidence FROM core_current_members WHERE name='Member 01'"), 82);
+  assert.equal(db.scalar("SELECT confidence_level FROM core_current_members WHERE name='Member 01'"), "medium");
+  assert.equal(db.scalar("SELECT power FROM core_current_members WHERE name='Member 01'"), 100000001);
+});
