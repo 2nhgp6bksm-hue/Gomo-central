@@ -97,7 +97,7 @@ async function seeded() {
   return db;
 }
 
-test("diagnostic: fieldSources seul reproduit des snapshots canoniques sans observation source", async (t) => {
+test("fieldSources seul ne cree plus de snapshot ni de mise a jour courante", async (t) => {
   const db = await seeded();
   t.after(() => db.close());
 
@@ -106,26 +106,47 @@ test("diagnostic: fieldSources seul reproduit des snapshots canoniques sans obse
 
   const result = await persist(db, fixture({ provenance: "lastwarrank" }));
 
-  assert.equal(result.changed, true);
-  assert.equal(result.storage.changesByStatement.canonical_snapshots_inserted, 94);
-  assert.equal(result.storage.changesByStatement.current_members_updated, 94);
+  assert.equal(result.changed, false);
+  assert.equal(result.storage.derivedMetadataRowsSuppressed, 94);
+  assert.equal(result.storage.changesByStatement.canonical_snapshots_inserted, 0);
+  assert.equal(result.storage.changesByStatement.current_members_updated, 0);
   assert.equal(result.storage.changesByStatement.source_observations_inserted, 0);
   assert.equal(result.storage.changesByStatement.current_source_state_updated, 0);
-  assert.equal(result.storage.meaningfulRows, 188);
-  assert.equal(db.scalar("SELECT COUNT(*) FROM core_canonical_snapshots"), snapshotsBefore + 94);
+  assert.equal(result.storage.meaningfulRows, 0);
+  assert.equal(db.scalar("SELECT COUNT(*) FROM core_canonical_snapshots"), snapshotsBefore);
   assert.equal(db.scalar("SELECT COUNT(*) FROM core_source_observations"), observationsBefore);
 });
 
-test("diagnostic: flags seul reproduit aussi un changement canonique sans observation source", async (t) => {
+test("flags seuls ne creent plus de snapshot ni de mise a jour courante", async (t) => {
   const db = await seeded();
   t.after(() => db.close());
 
   const result = await persist(db, fixture({ flags: ["power_conflict"] }));
 
-  assert.equal(result.changed, true);
-  assert.equal(result.storage.changesByStatement.canonical_snapshots_inserted, 94);
-  assert.equal(result.storage.changesByStatement.current_members_updated, 94);
+  assert.equal(result.changed, false);
+  assert.equal(result.storage.derivedMetadataRowsSuppressed, 94);
+  assert.equal(result.storage.changesByStatement.canonical_snapshots_inserted, 0);
+  assert.equal(result.storage.changesByStatement.current_members_updated, 0);
   assert.equal(result.storage.changesByStatement.source_observations_inserted, 0);
   assert.equal(result.storage.changesByStatement.current_source_state_updated, 0);
-  assert.equal(result.storage.meaningfulRows, 188);
+  assert.equal(result.storage.meaningfulRows, 0);
+});
+
+
+test("une vraie observation source peut actualiser les metadonnees courantes sans creer de snapshot", async (t) => {
+  const db = await seeded();
+  t.after(() => db.close());
+
+  const report = fixture({ provenance: "lastwarrank", flags: ["power_conflict"] });
+  report.members[0].sources.lastRank.power += 1;
+
+  const result = await persist(db, report);
+
+  assert.equal(result.changed, true);
+  assert.equal(result.storage.derivedMetadataRowsSuppressed, 93);
+  assert.equal(result.storage.changesByStatement.canonical_snapshots_inserted, 0);
+  assert.equal(result.storage.changesByStatement.current_members_updated, 1);
+  assert.equal(result.storage.changesByStatement.source_observations_inserted, 1);
+  assert.equal(result.storage.changesByStatement.current_source_state_updated, 1);
+  assert.equal(result.storage.meaningfulRows, 3);
 });

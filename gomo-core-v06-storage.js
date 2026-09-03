@@ -49,7 +49,7 @@ async function storageState(db) {
 
 const same = (left, right) => left === right || (left == null && right == null);
 
-function canonicalChanged(current, row) {
+function canonicalBusinessChanged(current, row) {
   if (!current) return true;
   return !same(current.name, row.name)
     || !same(current.rank, row.rank)
@@ -57,8 +57,12 @@ function canonicalChanged(current, row) {
     || !same(current.power, row.power)
     || !same(current.hero_power, row.hero)
     || !same(current.kills, row.kills)
-    || !same(current.avatar_url, row.avatar)
-    || !same(current.confidence, row.confidence)
+    || !same(current.avatar_url, row.avatar);
+}
+
+function canonicalDerivedChanged(current, row) {
+  if (!current) return true;
+  return !same(current.confidence, row.confidence)
     || !same(current.confidence_level, row.level)
     || !same(current.flags_json, row.flags)
     || !same(current.field_sources_json, row.fields);
@@ -202,18 +206,27 @@ async function persist(db, rep) {
         || current.membership_status !== "confirmed"
         || Number(current.missing_syncs || 0) !== 0;
     });
-    const canonicalChanges = p.canonical.filter((row) => canonicalChanged(state.currentMembers.get(row.g), row));
+    const sourceLinkUpdates = p.obs.filter((row) => !same(state.links.get(`${row.s}:${row.id}`), row.g));
+    const sourceChanges = p.obs.filter((row) => sourceChanged(state.currentSources.get(`${row.s}:${row.id}`), row));
+    const sourceChangedMembers = new Set(sourceChanges.map((row) => row.g));
+    const canonicalChanges = p.canonical.filter((row) => canonicalBusinessChanged(state.currentMembers.get(row.g), row));
+    const derivedMetadataRowsSuppressed = p.canonical.filter((row) => {
+      const current = state.currentMembers.get(row.g);
+      return current
+        && !canonicalBusinessChanged(current, row)
+        && canonicalDerivedChanged(current, row)
+        && !sourceChangedMembers.has(row.g);
+    }).length;
     const currentMemberUpdates = p.canonical.filter((row) => {
       const current = state.currentMembers.get(row.g);
       const membership = nextMembership(state.members.get(row.g), true);
-      return canonicalChanged(current, row)
+      return canonicalBusinessChanged(current, row)
+        || (canonicalDerivedChanged(current, row) && sourceChangedMembers.has(row.g))
         || current?.max_hq == null
         || (row.hq != null && Number(row.hq) > Number(current?.max_hq))
         || Number(current?.active) !== 1
         || !same(current?.membership_status, membership);
     });
-    const sourceLinkUpdates = p.obs.filter((row) => !same(state.links.get(`${row.s}:${row.id}`), row.g));
-    const sourceChanges = p.obs.filter((row) => sourceChanged(state.currentSources.get(`${row.s}:${row.id}`), row));
     const currentRoster = new Set(p.canonical.map((row) => row.g));
     const missingMemberships = [...state.members.values()].filter((row) => (
       row.membership_status
@@ -625,6 +638,7 @@ async function persist(db, rep) {
       statementsSkippedAsUnchanged: allLabels.length - r.length,
       dedupStateQueries: 4,
       dedupStateRowsLoaded: state.rowsLoaded,
+      derivedMetadataRowsSuppressed,
       rowsChanged: r.reduce((a, x) => a + ch(x), 0),
       meaningfulRows,
       operationalBookkeepingRows: 3,
