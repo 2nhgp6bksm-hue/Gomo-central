@@ -1,0 +1,57 @@
+name: One-shot Core migration guard patch
+
+on:
+  push:
+    branches:
+      - test/core-d1-read-optimization
+    paths:
+      - .github/workflows/core-current-state-safety-patch-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/core-d1-read-optimization
+          fetch-depth: 0
+      - name: Patch only false-positive DELETE guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          script = Path('validation/prod-current-state-migrate-once.mjs')
+          text = script.read_text()
+          old = r"if (/\b(DROP|DELETE|ALTER|TRUNCATE|VACUUM|ATTACH|DETACH|REPLACE)\b/i.test(statement)) {"
+          new = r"if (/\b(DROP|ALTER|TRUNCATE|VACUUM|ATTACH|DETACH|REPLACE)\b/i.test(statement) || /\bDELETE\s+FROM\b/i.test(statement)) {"
+          if text.count(old) != 2:
+              raise SystemExit(f'expected 2 script guards, found {text.count(old)}')
+          script.write_text(text.replace(old, new))
+
+          workflow = Path('.github/workflows/core-current-state-migrate-once.yml')
+          text = workflow.read_text()
+          old = r"if grep -Eiq '\b(DROP|DELETE|ALTER|TRUNCATE|VACUUM|ATTACH|DETACH|REPLACE)\b' migrations/0003_gomo_core_current_state.sql validation/backfill-current-state.sql; then"
+          new = r"if grep -Eiq '\b(DROP|ALTER|TRUNCATE|VACUUM|ATTACH|DETACH|REPLACE)\b|\bDELETE[[:space:]]+FROM\b' migrations/0003_gomo_core_current_state.sql validation/backfill-current-state.sql; then"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected 1 workflow guard, found {text.count(old)}')
+          workflow.write_text(text.replace(old, new))
+          PY
+          node --check validation/prod-current-state-migrate-once.mjs
+          changed="$(git diff --name-only)"
+          test "$changed" = $'.github/workflows/core-current-state-migrate-once.yml\nvalidation/prod-current-state-migrate-once.mjs' || test "$changed" = $'validation/prod-current-state-migrate-once.mjs\n.github/workflows/core-current-state-migrate-once.yml'
+          git diff --check
+      - name: Commit guarded patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/core-current-state-migrate-once.yml validation/prod-current-state-migrate-once.mjs
+          git commit -m 'fix(core): allow foreign-key ON DELETE in migration guard'
+          git push origin HEAD:test/core-d1-read-optimization
