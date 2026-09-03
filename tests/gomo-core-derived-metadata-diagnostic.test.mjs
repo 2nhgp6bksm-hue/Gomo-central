@@ -150,3 +150,66 @@ test("une vraie observation source peut actualiser les metadonnees courantes san
   assert.equal(result.storage.changesByStatement.current_source_state_updated, 1);
   assert.equal(result.storage.meaningfulRows, 3);
 });
+
+
+function freshnessFixture({ provenance = "lastintel", lastWarRankObservedAt = "2026-09-03T00:00:00.000Z" } = {}) {
+  const report = fixture({ provenance, flags: ["power_conflict", "hero_power_conflict"] });
+  for (const member of report.members) {
+    member.sources.lastRank.power += 1_000;
+    member.sources.lastRank.heroPower += 100;
+    member.sources.lastWarRank.power += 2_000;
+    member.sources.lastWarRank.heroPower += 200;
+    member.sources.lastWarRank.observedAt = lastWarRankObservedAt;
+    if (provenance === "lastwarrank") {
+      member.canonical.power = member.sources.lastWarRank.power;
+      member.canonical.heroPower = member.sources.lastWarRank.heroPower;
+    }
+  }
+  return report;
+}
+
+test("un basculement de fraicheur observedAt seul ne change plus la puissance canonique", async (t) => {
+  const db = new LocalD1();
+  t.after(() => db.close());
+
+  const baseline = freshnessFixture({ provenance: "lastintel", lastWarRankObservedAt: "2026-09-03T00:00:00.000Z" });
+  await persist(db, baseline);
+  await persist(db, baseline);
+
+  const snapshotsBefore = db.scalar("SELECT COUNT(*) FROM core_canonical_snapshots");
+  const observationsBefore = db.scalar("SELECT COUNT(*) FROM core_source_observations");
+  const flipped = freshnessFixture({ provenance: "lastwarrank", lastWarRankObservedAt: "2026-09-03T00:30:00.000Z" });
+  const result = await persist(db, flipped);
+
+  assert.equal(result.changed, false);
+  assert.equal(result.storage.freshnessOnlyCanonicalRowsSuppressed, 94);
+  assert.equal(result.storage.changesByStatement.canonical_snapshots_inserted, 0);
+  assert.equal(result.storage.changesByStatement.current_members_updated, 0);
+  assert.equal(result.storage.changesByStatement.source_observations_inserted, 0);
+  assert.equal(result.storage.changesByStatement.current_source_state_updated, 0);
+  assert.equal(result.storage.meaningfulRows, 0);
+  assert.equal(db.scalar("SELECT COUNT(*) FROM core_canonical_snapshots"), snapshotsBefore);
+  assert.equal(db.scalar("SELECT COUNT(*) FROM core_source_observations"), observationsBefore);
+});
+
+test("une vraie variation de puissance source reste historisee malgre la stabilisation de fraicheur", async (t) => {
+  const db = new LocalD1();
+  t.after(() => db.close());
+
+  const baseline = freshnessFixture({ provenance: "lastintel", lastWarRankObservedAt: "2026-09-03T00:00:00.000Z" });
+  await persist(db, baseline);
+  await persist(db, baseline);
+
+  const changedReport = freshnessFixture({ provenance: "lastwarrank", lastWarRankObservedAt: "2026-09-03T00:30:00.000Z" });
+  changedReport.members[0].sources.lastWarRank.power += 1;
+  changedReport.members[0].canonical.power = changedReport.members[0].sources.lastWarRank.power;
+
+  const result = await persist(db, changedReport);
+
+  assert.equal(result.changed, true);
+  assert.equal(result.storage.freshnessOnlyCanonicalRowsSuppressed, 93);
+  assert.equal(result.storage.changesByStatement.canonical_snapshots_inserted, 1);
+  assert.equal(result.storage.changesByStatement.current_members_updated, 1);
+  assert.equal(result.storage.changesByStatement.source_observations_inserted, 1);
+  assert.equal(result.storage.changesByStatement.current_source_state_updated, 1);
+});
