@@ -17,9 +17,8 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
-      PROD_WORKER: gomo-central
     steps:
-      - name: Diagnose production Worker with GET endpoints only
+      - name: Compare production and test Workers with GET endpoints only
         shell: bash
         run: |
           set -euo pipefail
@@ -30,30 +29,28 @@ jobs:
           fi
           export CLOUDFLARE_ACCOUNT_ID
           subdomain="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||!j.result?.subdomain)process.exit(1);process.stdout.write(j.result.subdomain)})')"
-          origin="https://${PROD_WORKER}.${subdomain}.workers.dev"
           mkdir -p preflight-http
-          for path in status members power; do
-            code="$(curl --retry 0 -sS -D "preflight-http/${path}.headers" -o "preflight-http/${path}.body" -w '%{http_code}' "$origin/api/core/$path")"
-            printf '%s\n' "$code" > "preflight-http/${path}.code"
+          for worker in gomo-central gomo-core-test; do
+            origin="https://${worker}.${subdomain}.workers.dev"
+            for path in status members power; do
+              code="$(curl --retry 0 -sS -o "preflight-http/${worker}-${path}.body" -w '%{http_code}' "$origin/api/core/$path")"
+              printf '%s\n' "$code" > "preflight-http/${worker}-${path}.code"
+            done
           done
-          ORIGIN="$origin" node - <<'NODE'
+          node - <<'NODE'
           const fs=require('fs');
-          const parse=(p)=>{const raw=fs.readFileSync(p,'utf8');try{return {json:JSON.parse(raw),raw:null}}catch{return {json:null,raw:raw.slice(0,500)}}};
+          const parse=(p)=>{const raw=fs.readFileSync(p,'utf8');try{return {json:JSON.parse(raw),raw:null}}catch{return {json:null,raw:raw.slice(0,300)}}};
           const count=(x)=>Array.isArray(x)?x.length:Array.isArray(x?.members)?x.members.length:Array.isArray(x?.data)?x.data.length:Number(x?.memberCount??x?.membersCount??NaN);
-          const endpoints={};
-          for(const name of ['status','members','power']){
-            const code=Number(fs.readFileSync(`preflight-http/${name}.code`,'utf8').trim());
-            const parsed=parse(`preflight-http/${name}.body`);
-            const j=parsed.json;
-            endpoints[name]={
-              code,
-              count:name==='status'?null:(j?count(j):null),
-              error:j?.error||j?.message||null,
-              keys:j&&typeof j==='object'&&!Array.isArray(j)?Object.keys(j).slice(0,20):[],
-              nonJsonPreview:parsed.raw
-            };
+          const report={readOnly:true,workers:{}};
+          for(const worker of ['gomo-central','gomo-core-test']){
+            const endpoints={};
+            for(const name of ['status','members','power']){
+              const code=Number(fs.readFileSync(`preflight-http/${worker}-${name}.code`,'utf8').trim());
+              const parsed=parse(`preflight-http/${worker}-${name}.body`),j=parsed.json;
+              endpoints[name]={code,count:name==='status'?null:(j?count(j):null),error:j?.error||j?.message||null,keys:j&&typeof j==='object'&&!Array.isArray(j)?Object.keys(j).slice(0,15):[],nonJsonPreview:parsed.raw};
+            }
+            report.workers[worker]=endpoints;
           }
-          const report={worker:process.env.PROD_WORKER,origin:process.env.ORIGIN,endpoints,readOnly:true};
           fs.writeFileSync('preflight-http/report.json',JSON.stringify(report,null,2)+'\n');
           console.log(JSON.stringify(report));
           NODE
@@ -62,7 +59,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo '## Core production HTTP diagnostic — GET only' >> "$GITHUB_STEP_SUMMARY"
+          echo '## Core production/test HTTP diagnostic — GET only' >> "$GITHUB_STEP_SUMMARY"
           if [ -f preflight-http/report.json ]; then
             echo '```json' >> "$GITHUB_STEP_SUMMARY"
             cat preflight-http/report.json >> "$GITHUB_STEP_SUMMARY"
