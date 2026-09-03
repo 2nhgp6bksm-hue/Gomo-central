@@ -5,6 +5,7 @@ on:
     branches:
       - test/gomo-core
       - test/gomo-core-v06-hardening
+      - test/core-d1-read-optimization
   pull_request:
     branches:
       - main
@@ -46,6 +47,7 @@ jobs:
           set -euo pipefail
           test -f migrations/0001_gomo_core.sql
           test -f migrations/0002_gomo_core_hardening.sql
+          test -f migrations/0003_gomo_core_current_state.sql
           for migration in migrations/*gomo_core*.sql; do
             if grep -Eiv '(^[[:space:]]*$|^--|core_|PRAGMA|sqlite_)' "$migration" | grep -Ei '(CREATE TABLE|DROP TABLE|ALTER TABLE|DELETE FROM|UPDATE )'; then
               echo "Migration contains a non-Core table mutation: $migration"
@@ -58,6 +60,7 @@ jobs:
           db = sqlite3.connect(':memory:')
           db.executescript(Path('migrations/0001_gomo_core.sql').read_text())
           db.executescript(Path('migrations/0002_gomo_core_hardening.sql').read_text())
+          db.executescript(Path('migrations/0003_gomo_core_current_state.sql').read_text())
           assert db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='core_sync_metadata'").fetchone()
           assert db.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_core_canonical_observed_at'").fetchone()
           print('D1 migrations OK')

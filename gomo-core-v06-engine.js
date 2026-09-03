@@ -31,14 +31,17 @@ async function schema(db){
   schemaOK=true;
 }
 
-function historyDb(db){
+function currentReads(env){return String(env?.CORE_CURRENT_READS||"")==="1"}
+function historyDb(db,useCurrent=false){
   if(!db) return db;
   const cutoff=new Date(Date.now()-24*3600000).toISOString();
-  return {prepare(sql){const s=String(sql);if(s.includes("WHERE julianday(c.observed_at) >= julianday('now', '-24 hours')")) return db.prepare(s.replace("WHERE julianday(c.observed_at) >= julianday('now', '-24 hours')","WHERE c.observed_at >= ?")).bind(cutoff);return db.prepare(s)},batch:x=>db.batch(x),exec:x=>db.exec(x)};
+  return {prepare(sql){const s=String(sql);if(s.includes("WHERE julianday(c.observed_at) >= julianday('now', '-24 hours')")){if(useCurrent)return db.prepare(`SELECT m.normalized_name,c.max_hq hq,c.power,c.hero_power,c.rank,c.observed_at FROM core_current_members c JOIN core_members m ON m.gomo_id=c.gomo_id WHERE c.active=1 AND c.observed_at>=? ORDER BY c.observed_at DESC LIMIT 5000`).bind(cutoff);return db.prepare(s.replace("WHERE julianday(c.observed_at) >= julianday('now', '-24 hours')","WHERE c.observed_at >= ?")).bind(cutoff)}return db.prepare(s)},batch:x=>db.batch(x),exec:x=>db.exec(x)};
 }
-async function hqFloors(db,names){
+async function hqFloors(db,names,useCurrent=false){
   const p=JSON.stringify([...new Set(names.map(norm).filter(Boolean))]); if(p==="[]") return new Map();
-  const q=`WITH w(name) AS(SELECT value FROM json_each(?)),i(name,gomo_id) AS(SELECT w.name,m.gomo_id FROM w JOIN core_members m ON m.normalized_name=w.name UNION SELECT w.name,a.gomo_id FROM w JOIN core_member_aliases a ON a.normalized_alias=w.name),h AS(SELECT i.name,c.hq FROM i JOIN core_canonical_snapshots c ON c.gomo_id=i.gomo_id WHERE c.hq IS NOT NULL UNION ALL SELECT i.name,r.hq FROM i JOIN core_daily_member_rollups r ON r.gomo_id=i.gomo_id WHERE r.hq IS NOT NULL) SELECT name,MAX(hq) max_hq FROM h GROUP BY name`;
+  const q=useCurrent
+    ? `WITH w(name) AS(SELECT value FROM json_each(?)),i(name,gomo_id) AS(SELECT w.name,m.gomo_id FROM w JOIN core_members m ON m.normalized_name=w.name UNION SELECT w.name,a.gomo_id FROM w JOIN core_member_aliases a ON a.normalized_alias=w.name) SELECT i.name,MAX(c.max_hq) max_hq FROM i JOIN core_current_members c ON c.gomo_id=i.gomo_id GROUP BY i.name`
+    : `WITH w(name) AS(SELECT value FROM json_each(?)),i(name,gomo_id) AS(SELECT w.name,m.gomo_id FROM w JOIN core_members m ON m.normalized_name=w.name UNION SELECT w.name,a.gomo_id FROM w JOIN core_member_aliases a ON a.normalized_alias=w.name),h AS(SELECT i.name,c.hq FROM i JOIN core_canonical_snapshots c ON c.gomo_id=i.gomo_id WHERE c.hq IS NOT NULL UNION ALL SELECT i.name,r.hq FROM i JOIN core_daily_member_rollups r ON r.gomo_id=i.gomo_id WHERE r.hq IS NOT NULL) SELECT name,MAX(hq) max_hq FROM h GROUP BY name`;
   const r=await db.prepare(q).bind(p).all(), m=new Map(); for(const x of r.results||[]) if(Number.isFinite(Number(x.max_hq))) m.set(String(x.name),Number(x.max_hq)); return m;
 }
 function protect(report,floors){
@@ -47,8 +50,9 @@ function protect(report,floors){
 }
 async function report(req,env,ctx){
   await schema(env.CORE_DB); const u=new URL(req.url);u.pathname="/api/core/precision";u.search="";
-  const r=await coreV05.fetch(new Request(u,{method:"GET",headers:req.headers}),{...env,CORE_DB:historyDb(env.CORE_DB)},ctx), d=await body(r);if(!r.ok||!d?.members) throw new Error(d?.error||`GoMo Core precision HTTP ${r.status}`);return protect(d,await hqFloors(env.CORE_DB,d.members.map(x=>x.name)));
+  const useCurrent=currentReads(env);
+  const r=await coreV05.fetch(new Request(u,{method:"GET",headers:req.headers}),{...env,CORE_DB:historyDb(env.CORE_DB,useCurrent)},ctx), d=await body(r);if(!r.ok||!d?.members) throw new Error(d?.error||`GoMo Core precision HTTP ${r.status}`);return protect(d,await hqFloors(env.CORE_DB,d.members.map(x=>x.name),useCurrent));
 }
 
 
-export { V, HEARTBEAT, CONFIRM, LEAVE, OBS_DAYS, SNAP_DAYS, RUN_DAYS, iso, norm, ch, level, out, body, admin, schema, report };
+export { V, HEARTBEAT, CONFIRM, LEAVE, OBS_DAYS, SNAP_DAYS, RUN_DAYS, iso, norm, ch, level, out, body, admin, schema, currentReads, hqFloors, protect, report };

@@ -4,6 +4,40 @@ Branche : `test/gomo-core`
 
 Worker de test : `gomo-core-test`
 
+## Optimisation D1 rows_read v0.8 — test uniquement
+
+La branche `test/core-d1-read-optimization` sépare désormais le chemin courant
+du chemin historique, sans supprimer ni réécrire aucun snapshot ou observation.
+
+- `core_current_members` conserve une ligne canonique par membre : puissance,
+  QG courant et maximal, rang, activité, sources retenues et synchronisation ;
+- `core_current_source_state` conserve une ligne par membre et par source pour
+  comparer une collecte normalisée sans relire tout l'historique ;
+- `/api/core/members` et `/api/core/power` lisent ces tables lorsque
+  `CORE_CURRENT_READS=1` ; `/power` ne charge plus les alias ;
+- les snapshots et observations restent écrits uniquement lorsqu'une valeur
+  change et restent la source des consultations historiques ;
+- les deux réponses ont un cache partagé de 5 minutes et gardent leurs ETag ;
+  une synchronisation qui modifie réellement l'état invalide les clés connues ;
+- les clés de cache restent séparées par origine afin de ne jamais mélanger les
+  URLs d'avatar. Les origines publiques à invalider lors d'un Cron peuvent être
+  déclarées, séparées par des virgules, dans `CORE_PUBLIC_CACHE_ORIGINS`.
+
+La migration `0003_gomo_core_current_state.sql` et le backfill
+`validation/backfill-current-state.sql` doivent d'abord être exécutés sur une
+D1 locale ou isolée. Le backfill est idempotent et ne contient aucun `DELETE`
+sur l'historique. L'activation distante exige ensuite : sauvegarde, migration,
+backfill contrôlé, comparaison 94/94, puis seulement `CORE_CURRENT_READS=1`.
+
+Le rollback applicatif immédiat consiste à remettre `CORE_CURRENT_READS=0` :
+les endpoints reprennent alors la reconstruction historique existante. Les
+tables courantes sont additives et peuvent rester en place pendant ce rollback.
+
+Au 3 septembre 2026, aucune lecture, migration, synchronisation, mesure ou
+publication D1 distante n'a été lancée pour cette optimisation. Les mesures
+`meta.rows_read` restent volontairement reportées après la remise à zéro du
+quota et devront être effectuées une seule fois pour chaque scénario convenu.
+
 ## Photos membres centrales
 
 Le contrat public des photos membres est porté par GoMo Core :

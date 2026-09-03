@@ -18,6 +18,7 @@
     "LASTINTEL_ALLIANCE_ID": "jzpvMwRRgPkPWtOgEraW9g",
     "LASTWARRANK_URL": "https://www.lastwarrank.com/alliance/MRMCVY2KTB",
     "CORE_PUBLIC_CACHE_SECONDS": "600",
+    "CORE_CURRENT_READS": "1",
     "GOMO_ASSISTANT_PUBLIC_ORIGIN": "https://gomo-assistant-v2.gjp86wh7p2.workers.dev"
   },
   "d1_databases": [

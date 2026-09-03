@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/gomo-core-avatars.test.js tests/core-avatars-v07.test.mjs tests/gomo-core-v07-integration.test.js tests/gomo-core-d1-write-optimization.test.mjs"
+    "test": "node --test tests/gomo-core-avatars.test.js tests/core-avatars-v07.test.mjs tests/gomo-core-v07-integration.test.js tests/gomo-core-d1-write-optimization.test.mjs tests/gomo-core-d1-read-optimization.test.mjs"
   }
 }

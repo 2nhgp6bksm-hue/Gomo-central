@@ -49,6 +49,7 @@ class LocalD1 {
     this.database = new DatabaseSync(":memory:");
     this.database.exec(readFileSync(new URL("../migrations/0001_gomo_core.sql", import.meta.url), "utf8"));
     this.database.exec(readFileSync(new URL("../migrations/0002_gomo_core_hardening.sql", import.meta.url), "utf8"));
+    this.database.exec(readFileSync(new URL("../migrations/0003_gomo_core_current_state.sql", import.meta.url), "utf8"));
   }
 
   prepare(sql) {

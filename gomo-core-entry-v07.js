@@ -8,6 +8,7 @@ import {
   RUN_DAYS,
   admin,
   schema,
+  currentReads,
   report,
 } from "./gomo-core-v06-engine.js";
 import { persist } from "./gomo-core-v06-storage.js";
@@ -16,8 +17,9 @@ import {
   handleCoreMemberAvatar,
 } from "./gomo-core-avatars.js";
 
-const V = "0.7.5-write-optimization-test";
+const V = "0.8.0-read-optimization-test";
 const DEFAULT_CACHE_SECONDS = 600;
+const CURRENT_API_CACHE_SECONDS = 300;
 const REPORT_RETENTION_DAYS = 7;
 const MAX_PUBLIC_ALIASES_PER_MEMBER = 25;
 export const VERIFIED_TRAIN_LEGACY_ALIASES = Object.freeze({
@@ -28,6 +30,7 @@ export const VERIFIED_TRAIN_LEGACY_ALIASES = Object.freeze({
   "gomo_182126c9-a3d3-4b11-a4e1-5ee82e1851fb": ["srvulz"],
 });
 let schemaV07OK = false;
+const seenCacheOrigins = new Set();
 
 function cacheSeconds(env) {
   const value = Number(env.CORE_PUBLIC_CACHE_SECONDS || DEFAULT_CACHE_SECONDS);
@@ -76,9 +79,44 @@ function headify(request, response) {
 
 function cacheKey(request) {
   const url = new URL(request.url);
-  url.search = `?coreVersion=${encodeURIComponent(V)}`;
-  return new Request(url.toString(), { method: "GET" });
+  seenCacheOrigins.add(url.origin);
+  return cacheKeyFor(url.origin, url.pathname);
 }
+
+function cacheKeyFor(origin, pathname) {
+  const key = new URL(pathname, origin);
+  key.search = `?coreVersion=${encodeURIComponent(V)}`;
+  return new Request(key.toString(), { method: "GET" });
+}
+
+function configuredCacheOrigins(env = {}) {
+  return String(env.CORE_PUBLIC_CACHE_ORIGINS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => {
+      try { return new URL(value).origin; } catch { return null; }
+    })
+    .filter(Boolean);
+}
+
+async function invalidateCurrentApiCache(ctx, env = {}, request = null) {
+  if (typeof caches === "undefined") return;
+  const cache = caches.default;
+  if (!cache?.delete) return;
+  const origins = new Set([...seenCacheOrigins, ...configuredCacheOrigins(env)]);
+  if (request) {
+    try { origins.add(new URL(request.url).origin); } catch { /* ignore an invalid synthetic URL */ }
+  }
+  const paths = ["/api/core/members", "/api/core/power", "/api/core/precision", "/api/core/status"];
+  const invalidation = Promise.all([...origins].flatMap((origin) => (
+    paths.map((pathname) => cache.delete(cacheKeyFor(origin, pathname)))
+  )));
+  if (ctx?.waitUntil) ctx.waitUntil(invalidation);
+  else await invalidation;
+}
+
+export { invalidateCurrentApiCache };
 
 async function cached(request, env, ctx, producer) {
   if (!["GET", "HEAD"].includes(request.method)) return json({ error: "Method Not Allowed" }, 405, env);
@@ -177,34 +215,51 @@ async function membersPayload(request, env, ctx, options = {}) {
   const sync = await latestSuccessfulSync(env.CORE_DB);
   if (!sync) return { error: "No successful Core sync available", status: 503 };
 
+  const useCurrent = currentReads(env);
+  const memberStatement = useCurrent
+    ? env.CORE_DB.prepare(`
+      SELECT gomo_id,name,rank,hq,power,hero_power,kills,avatar_url,
+             confidence,confidence_level,flags_json,field_sources_json,observed_at,
+             active,membership_status
+      FROM core_current_members
+      WHERE active=1 AND membership_status<>'departed'
+      ORDER BY power DESC,name COLLATE NOCASE
+    `)
+    : env.CORE_DB.prepare(`
+      WITH latest_ids AS(
+        SELECT gomo_id,MAX(id) id
+        FROM core_canonical_snapshots
+        GROUP BY gomo_id
+      ), latest AS(
+        SELECT c.*
+        FROM core_canonical_snapshots c
+        JOIN latest_ids x ON x.id=c.id
+      )
+      SELECT c.gomo_id,c.name,c.rank,c.hq,c.power,c.hero_power,c.kills,c.avatar_url,
+             c.confidence,c.confidence_level,c.flags_json,c.field_sources_json,c.observed_at,
+             m.normalized_name,m.active,COALESCE(ms.status,'confirmed') membership_status
+      FROM latest c
+      JOIN core_members m ON m.gomo_id=c.gomo_id
+      LEFT JOIN core_member_membership ms ON ms.gomo_id=c.gomo_id
+      WHERE m.active=1
+        AND COALESCE(ms.status,'confirmed')<>'departed'
+      ORDER BY c.power DESC,c.name COLLATE NOCASE
+    `);
+  const aliasPromise = options.includeAliases === false
+    ? Promise.resolve({ results: [] })
+    : env.CORE_DB.prepare(`
+        SELECT gomo_id,alias,normalized_alias
+        FROM core_member_aliases
+        WHERE alias IS NOT NULL AND trim(alias)<>''
+        ORDER BY last_seen DESC,alias COLLATE NOCASE
+      `).all();
   const [result, aliasResult] = await Promise.all([
-    env.CORE_DB.prepare(`
-    WITH latest_ids AS(
-      SELECT gomo_id,MAX(id) id
-      FROM core_canonical_snapshots
-      GROUP BY gomo_id
-    ), latest AS(
-      SELECT c.*
-      FROM core_canonical_snapshots c
-      JOIN latest_ids x ON x.id=c.id
-    )
-    SELECT c.gomo_id,c.name,c.rank,c.hq,c.power,c.hero_power,c.kills,c.avatar_url,
-           c.confidence,c.confidence_level,c.flags_json,c.field_sources_json,c.observed_at,
-           m.normalized_name,m.active,COALESCE(ms.status,'confirmed') membership_status
-    FROM latest c
-    JOIN core_members m ON m.gomo_id=c.gomo_id
-    LEFT JOIN core_member_membership ms ON ms.gomo_id=c.gomo_id
-    WHERE m.active=1
-      AND COALESCE(ms.status,'confirmed')<>'departed'
-    ORDER BY c.power DESC,c.name COLLATE NOCASE
-    `).all(),
-    env.CORE_DB.prepare(`
-      SELECT gomo_id,alias,normalized_alias
-      FROM core_member_aliases
-      WHERE alias IS NOT NULL AND trim(alias)<>''
-      ORDER BY last_seen DESC,alias COLLATE NOCASE
-    `).all(),
+    memberStatement.all(),
+    aliasPromise,
   ]);
+  if (useCurrent && !(result.results || []).length && Number(sync.reconciled_members || 0) > 0) {
+    return { error: "Core current state is empty; isolated backfill is required", status: 503 };
+  }
 
   const aliasesByGomoId = new Map();
   for (const row of aliasResult.results || []) {
@@ -228,7 +283,7 @@ async function membersPayload(request, env, ctx, options = {}) {
     gomoId: row.gomo_id,
     name: row.name,
     aliases: (aliasesByGomoId.get(String(row.gomo_id)) || [])
-      .filter((entry) => entry.normalizedAlias !== String(row.normalized_name || ""))
+      .filter((entry) => entry.normalizedAlias !== String(row.normalized_name || normalizePublicAlias(row.name)))
       .map((entry) => entry.alias),
     rank: row.rank,
     hq: row.hq,
@@ -251,7 +306,7 @@ async function membersPayload(request, env, ctx, options = {}) {
   return {
     ok: true,
     coreVersion: V,
-    source: "gomo-core-d1-last-successful-sync",
+    source: useCurrent ? "gomo-core-d1-current-state" : "gomo-core-d1-history-rollback",
     cachePolicy: "shared-edge-cache",
     syncId: sync.sync_id,
     generatedAt: sync.completed_at || sync.started_at,
@@ -267,7 +322,7 @@ async function membersPayload(request, env, ctx, options = {}) {
 }
 
 async function powerPayload(request, env, ctx) {
-  const data = await membersPayload(request, env, ctx, { includeAvatars: false });
+  const data = await membersPayload(request, env, ctx, { includeAvatars: false, includeAliases: false });
   if (data.error) return data;
   return {
     ok: true,
@@ -304,7 +359,9 @@ async function statusPayload(env) {
     coreVersion: V,
     previousHardeningVersion: V06,
     mode: "shared-data-test",
-    dataPath: "external sources -> hourly Core sync -> D1 -> edge cache -> GoMo sites",
+    dataPath: currentReads(env)
+      ? "external sources -> normalization -> current state + change history -> edge cache -> GoMo sites"
+      : "external sources -> hourly Core sync -> history rollback path -> edge cache -> GoMo sites",
     upstreamOnPublicRead: false,
     avatarCatalogPath: "GoMo Assistant -> Service Binding -> edge cache -> GoMo Core",
     cacheSeconds: cacheSeconds(env),
@@ -337,6 +394,7 @@ async function statusPayload(env) {
       centralAvatarsUseAssistantBinding: true,
       centralAvatarsCreateNoStorage: true,
       differentialD1Writes: true,
+      currentStateReads: currentReads(env),
       unchangedMembersWriteNothing: true,
       manualRefreshRequiresAdminKey: true,
       liveUpstreamEndpointRequiresAdminKey: true,
@@ -407,7 +465,10 @@ async function runSync(request, env, ctx) {
   await schemaV07(env.CORE_DB);
   const rep = await report(request, env, ctx);
   const saved = await persist(env.CORE_DB, rep);
-  if (saved.changed) await savePublicReport(env.CORE_DB, saved.syncId, rep);
+  if (saved.changed) {
+    await savePublicReport(env.CORE_DB, saved.syncId, rep);
+    await invalidateCurrentApiCache(ctx, env, request);
+  }
   return { rep, saved };
 }
 
@@ -475,11 +536,15 @@ export default {
       return cached(request, env, ctx, async () => payloadResponse(
         await membersPayload(request, env, ctx),
         env,
-        { "cache-control": "public, max-age=30, s-maxage=60, stale-while-revalidate=300" },
+        { "cache-control": `public, max-age=60, s-maxage=${CURRENT_API_CACHE_SECONDS}, stale-while-revalidate=300` },
       ));
     }
     if (path === "/api/core/power") {
-      return cached(request, env, ctx, async () => payloadResponse(await powerPayload(request, env, ctx), env));
+      return cached(request, env, ctx, async () => payloadResponse(
+        await powerPayload(request, env, ctx),
+        env,
+        { "cache-control": `public, max-age=60, s-maxage=${CURRENT_API_CACHE_SECONDS}, stale-while-revalidate=300` },
+      ));
     }
     if (path === "/api/core/status") {
       return cached(request, env, ctx, async () => payloadResponse(await statusPayload(env), env));
