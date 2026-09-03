@@ -11,7 +11,7 @@ import {
   currentReads,
   report,
 } from "./gomo-core-v06-engine.js";
-import { persist } from "./gomo-core-v06-storage.js";
+import { persist } from "./gomo-core-v06-storage-stable-confidence.js";
 import {
   enrichCoreMembersWithAvatars,
   handleCoreMemberAvatar,
