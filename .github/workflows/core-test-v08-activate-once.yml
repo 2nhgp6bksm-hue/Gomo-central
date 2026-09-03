@@ -54,25 +54,24 @@ jobs:
           base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
           curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" > activation-evidence/deployments-before.json
           curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" > activation-evidence/schedules-before.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/versions/$TARGET_VERSION" > activation-evidence/target-version.json
           curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" > activation-evidence/subdomain.json
-          npx --yes wrangler@4.125.0 versions list --name "$WORKER" --json > activation-evidence/versions.json
           node - <<'NODE'
           const fs=require('fs');
           const deployments=JSON.parse(fs.readFileSync('activation-evidence/deployments-before.json','utf8'));
           const schedules=JSON.parse(fs.readFileSync('activation-evidence/schedules-before.json','utf8'));
-          const versions=JSON.parse(fs.readFileSync('activation-evidence/versions.json','utf8'));
+          const target=JSON.parse(fs.readFileSync('activation-evidence/target-version.json','utf8'));
           const subdomain=JSON.parse(fs.readFileSync('activation-evidence/subdomain.json','utf8'));
-          if(!deployments.success||!schedules.success||!subdomain.success) throw new Error('Cloudflare preflight unavailable');
+          if(!deployments.success||!schedules.success||!target.success||!subdomain.success) throw new Error('Cloudflare preflight unavailable');
+          if(String(target.result?.id)!==process.env.TARGET_VERSION) throw new Error(`Target version mismatch: ${target.result?.id}`);
           const deps=deployments.result?.deployments||deployments.result||[];
           const active=deps?.[0]?.versions?.slice().sort((a,b)=>Number(b.percentage??0)-Number(a.percentage??0))[0]?.version_id||null;
           if(active!==process.env.ROLLBACK_VERSION) throw new Error(`Unexpected active version before activation: ${active}`);
           const crons=(Array.isArray(schedules.result)?schedules.result:(schedules.result?.schedules||[])).map(x=>x.cron||x);
           if(crons.length!==1||crons[0]!==process.env.EXPECTED_CRON) throw new Error(`Unexpected Cron: ${JSON.stringify(crons)}`);
-          const list=Array.isArray(versions)?versions:(versions?.versions||versions?.result||[]);
-          if(!list.some(v=>String(v.id||v.version_id)===process.env.TARGET_VERSION)) throw new Error(`Target version not found: ${process.env.TARGET_VERSION}`);
           if(!subdomain.result?.subdomain) throw new Error('Workers subdomain unavailable');
           fs.writeFileSync('activation-evidence/origin.txt',`https://${process.env.WORKER}.${subdomain.result.subdomain}.workers.dev\n`);
-          fs.writeFileSync('activation-evidence/preflight.json',JSON.stringify({activeBefore:active,targetVersion:process.env.TARGET_VERSION,cron:crons[0]},null,2)+'\n');
+          fs.writeFileSync('activation-evidence/preflight.json',JSON.stringify({activeBefore:active,targetVersion:target.result.id,cron:crons[0]},null,2)+'\n');
           NODE
 
           endpoint="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$DB_ID/query"
@@ -123,7 +122,6 @@ jobs:
             sleep 25
             exit 1
           fi
-
           base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
           curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" > activation-evidence/deployments-after.json
           curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" > activation-evidence/schedules-after.json
