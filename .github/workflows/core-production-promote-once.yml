@@ -1,0 +1,227 @@
+name: One-shot Core production promotion
+
+on:
+  push:
+    branches:
+      - test/core-d1-read-optimization
+    paths:
+      - .github/workflows/core-production-promote-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gomo-core-production-promotion-fdd03626
+  cancel-in-progress: false
+
+env:
+  VALIDATED_COMMIT: fdd03626c1b624e774eb9d2c9d0f40241c864429
+  PROD_WORKER: gomo-central
+  PROD_DB_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
+  PROD_DB_NAME: gomo-core-db
+  EXPECTED_CRON: 15 * * * *
+  GENERATED_CONFIG: production-core.generated.json
+
+jobs:
+  promote-once:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout exact validated application
+        uses: actions/checkout@v4
+        with:
+          ref: fdd03626c1b624e774eb9d2c9d0f40241c864429
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Lock exact application and run local validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$VALIDATED_COMMIT"
+          npm test
+          node --check gomo-core-entry-v07.js
+          node --check gomo-core-entry-v071.js
+          npx --yes wrangler@4.125.0 deploy --dry-run --outdir .wrangler-production-preflight
+
+      - name: Resolve account and capture current production state
+        id: state
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+            echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+          fi
+          export CLOUDFLARE_ACCOUNT_ID
+          mkdir -p production-evidence
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$PROD_WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/settings" > production-evidence/settings-before.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" > production-evidence/schedules-before.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" > production-evidence/deployments-before.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" > production-evidence/subdomain.json
+          npx --yes wrangler@4.125.0 rollback --help > production-evidence/rollback-help.txt
+          grep -qi 'version' production-evidence/rollback-help.txt
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const settings=JSON.parse(fs.readFileSync('production-evidence/settings-before.json','utf8'));
+          const schedules=JSON.parse(fs.readFileSync('production-evidence/schedules-before.json','utf8'));
+          const deployments=JSON.parse(fs.readFileSync('production-evidence/deployments-before.json','utf8'));
+          const subdomain=JSON.parse(fs.readFileSync('production-evidence/subdomain.json','utf8'));
+          if(!settings.success) throw new Error('Production settings unavailable');
+          if(!schedules.success) throw new Error('Production schedules unavailable');
+          if(!deployments.success) throw new Error('Production deployments unavailable');
+          const bindings=Array.isArray(settings.result?.bindings)?settings.result.bindings:[];
+          const allowed=new Set(['plain_text','d1','service','ai','assets']);
+          const unknown=bindings.filter(b=>!allowed.has(b.type));
+          if(unknown.length) throw new Error(`Unknown/unsafe production bindings: ${unknown.map(b=>`${b.name}:${b.type}`).join(',')}`);
+          const d1=bindings.filter(b=>b.type==='d1');
+          if(d1.length!==1||d1[0].name!=='CORE_DB'||String(d1[0].id||d1[0].database_id)!==process.env.PROD_DB_ID) throw new Error(`Unexpected production D1 binding: ${JSON.stringify(d1)}`);
+          const services=bindings.filter(b=>b.type==='service');
+          const serviceNames=new Set(services.map(b=>b.name));
+          if(!serviceNames.has('GOMO_ASSISTANT')||!serviceNames.has('SHINY')) throw new Error(`Missing service binding: ${JSON.stringify(services)}`);
+          const ai=bindings.filter(b=>b.type==='ai');
+          if(ai.length!==1||ai[0].name!=='AI') throw new Error(`Unexpected AI binding: ${JSON.stringify(ai)}`);
+          const scheduleRaw=Array.isArray(schedules.result)?schedules.result:Array.isArray(schedules.result?.schedules)?schedules.result.schedules:[];
+          const crons=scheduleRaw.map(x=>x?.cron||x).filter(Boolean);
+          if(crons.length!==1||crons[0]!==process.env.EXPECTED_CRON) throw new Error(`Unexpected production cron: ${JSON.stringify(crons)}`);
+
+          const plain={};
+          for(const b of bindings.filter(b=>b.type==='plain_text')) plain[b.name]=b.text;
+          if(String(plain.CORE_CURRENT_READS)!=='1') throw new Error(`CORE_CURRENT_READS is not 1: ${plain.CORE_CURRENT_READS}`);
+
+          const depRaw=Array.isArray(deployments.result)?deployments.result:Array.isArray(deployments.result?.deployments)?deployments.result.deployments:[];
+          if(!depRaw.length) throw new Error('No production deployment available for rollback');
+          let active=depRaw.find(d=>Array.isArray(d.versions)&&d.versions.some(v=>Number(v.percentage??v.traffic??0)>=99.9))||depRaw[0];
+          const versions=Array.isArray(active?.versions)?active.versions:[];
+          const prev=versions.slice().sort((a,b)=>Number(b.percentage??b.traffic??0)-Number(a.percentage??a.traffic??0))[0];
+          const previousVersion=prev?.version_id||prev?.id||active?.version_id||active?.id;
+          if(!previousVersion) throw new Error(`Cannot determine rollback version from deployment: ${JSON.stringify(active)}`);
+
+          const config={
+            name:process.env.PROD_WORKER,
+            main:'gomo-core-entry-v071.js',
+            compatibility_date:'2026-08-07',
+            compatibility_flags:['nodejs_compat'],
+            build:{command:'npm test && node --check gomo-core-entry-v07.js && node --check gomo-core-entry-v071.js'},
+            vars:plain,
+            d1_databases:[{binding:'CORE_DB',database_name:process.env.PROD_DB_NAME,database_id:process.env.PROD_DB_ID}],
+            triggers:{crons:[process.env.EXPECTED_CRON]},
+            assets:{directory:'.',binding:'ASSETS',run_worker_first:['/','/index.html','/api/*','/core','/core/*','/fallback.json','/gestion-train','/gestion-train/*','/vs-planner','/vs-planner/*','/sw.js','/shiny-radar','/shiny-radar/*']},
+            services:services.map(b=>({binding:b.name,service:b.service,...(b.environment?{environment:b.environment}:{})})),
+            ai:{binding:'AI'}
+          };
+          fs.writeFileSync(process.env.GENERATED_CONFIG,JSON.stringify(config,null,2)+'\n');
+          fs.writeFileSync('production-evidence/previous-version.txt',String(previousVersion)+'\n');
+          fs.writeFileSync('production-evidence/predeploy-summary.json',JSON.stringify({worker:process.env.PROD_WORKER,validatedCommit:process.env.VALIDATED_COMMIT,databaseId:process.env.PROD_DB_ID,cron:crons[0],previousVersion,plainTextKeys:Object.keys(plain).sort(),serviceBindings:services.map(b=>({binding:b.name,service:b.service,environment:b.environment||null})),safeToDeploy:true},null,2)+'\n');
+          if(!subdomain.success||!subdomain.result?.subdomain) throw new Error('Workers subdomain unavailable');
+          fs.writeFileSync('production-evidence/origin.txt',`https://${process.env.PROD_WORKER}.${subdomain.result.subdomain}.workers.dev\n`);
+          NODE
+          previous_version="$(cat production-evidence/previous-version.txt)"
+          echo "previous_version=$previous_version" >> "$GITHUB_OUTPUT"
+          echo "Previous production version captured: $previous_version"
+
+      - name: Dry-run exact generated production configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.125.0 deploy --config "$GENERATED_CONFIG" --dry-run --outdir .wrangler-production-generated
+
+      - name: Deploy validated application to gomo-central only
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.125.0 deploy --config "$GENERATED_CONFIG" | tee production-evidence/deploy.txt
+
+      - name: Wait for production edge propagation
+        run: sleep 30
+
+      - name: Production smoke test with automatic rollback on failure
+        id: smoke
+        shell: bash
+        run: |
+          set +e
+          origin="$(cat production-evidence/origin.txt)"
+          failed=0
+          for path in status members power; do
+            code="$(curl --retry 0 -sS -o "production-evidence/${path}-after.body" -w '%{http_code}' "$origin/api/core/$path")"
+            printf '%s\n' "$code" > "production-evidence/${path}-after.code"
+            [ "$code" = "200" ] || failed=1
+          done
+          ORIGIN="$origin" node - <<'NODE'
+          const fs=require('fs');
+          const read=(p)=>JSON.parse(fs.readFileSync(p,'utf8'));
+          const count=(x)=>Array.isArray(x)?x.length:Array.isArray(x?.members)?x.members.length:Array.isArray(x?.data)?x.data.length:Number(x?.memberCount??x?.membersCount??NaN);
+          let ok=true,report={};
+          try{
+            const status=read('production-evidence/status-after.body');
+            const members=read('production-evidence/members-after.body');
+            const power=read('production-evidence/power-after.body');
+            const membersCount=count(members),powerCount=count(power);
+            ok=Number(fs.readFileSync('production-evidence/status-after.code','utf8'))===200&&Number(fs.readFileSync('production-evidence/members-after.code','utf8'))===200&&Number(fs.readFileSync('production-evidence/power-after.code','utf8'))===200&&membersCount===94&&powerCount===94&&status?.ok!==false;
+            report={ok,membersCount,powerCount,statusOk:status?.ok!==false,coreVersion:status?.coreVersion||null,dataPath:status?.dataPath||null};
+          }catch(e){ok=false;report={ok,error:e.message};}
+          fs.writeFileSync('production-evidence/smoke.json',JSON.stringify(report,null,2)+'\n');
+          if(!ok) process.exit(2);
+          NODE
+          node_rc=$?
+          if [ "$failed" -ne 0 ] || [ "$node_rc" -ne 0 ]; then
+            echo "Smoke test failed; rolling back to ${{ steps.state.outputs.previous_version }}"
+            npx --yes wrangler@4.125.0 rollback "${{ steps.state.outputs.previous_version }}" --name "$PROD_WORKER" --message "Automatic rollback: Core production smoke test failed"
+            sleep 30
+            echo "rolled_back=true" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "rolled_back=false" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Verify production bindings and Cron unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$PROD_WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/settings" > production-evidence/settings-after.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" > production-evidence/schedules-after.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" > production-evidence/deployments-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const settings=JSON.parse(fs.readFileSync('production-evidence/settings-after.json','utf8'));
+          const schedules=JSON.parse(fs.readFileSync('production-evidence/schedules-after.json','utf8'));
+          if(!settings.success||!schedules.success) throw new Error('Postdeploy Cloudflare state unavailable');
+          const bindings=settings.result?.bindings||[];
+          const d1=bindings.filter(b=>b.type==='d1');
+          if(d1.length!==1||d1[0].name!=='CORE_DB'||String(d1[0].id||d1[0].database_id)!==process.env.PROD_DB_ID) throw new Error(`D1 changed: ${JSON.stringify(d1)}`);
+          const scheduleRaw=Array.isArray(schedules.result)?schedules.result:Array.isArray(schedules.result?.schedules)?schedules.result.schedules:[];
+          const crons=scheduleRaw.map(x=>x?.cron||x).filter(Boolean);
+          if(crons.length!==1||crons[0]!==process.env.EXPECTED_CRON) throw new Error(`Cron changed: ${JSON.stringify(crons)}`);
+          const services=bindings.filter(b=>b.type==='service').map(b=>b.name).sort();
+          if(!services.includes('GOMO_ASSISTANT')||!services.includes('SHINY')) throw new Error(`Service bindings changed: ${JSON.stringify(services)}`);
+          const report={ok:true,worker:process.env.PROD_WORKER,databaseId:process.env.PROD_DB_ID,cron:crons[0],services,validatedCommit:process.env.VALIDATED_COMMIT,mainMerged:false,migrationApplied:false,backfillApplied:false,manualRefresh:false};
+          fs.writeFileSync('production-evidence/final-report.json',JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(report));
+          NODE
+
+      - name: Publish production promotion report
+        if: always()
+        shell: bash
+        run: |
+          echo '## GoMo Core production promotion' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Validated application: \`$VALIDATED_COMMIT\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Worker: \`$PROD_WORKER\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- D1: \`$PROD_DB_ID\`" >> "$GITHUB_STEP_SUMMARY"
+          echo '- main merged: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- migration/backfill/manual refresh: `false`' >> "$GITHUB_STEP_SUMMARY"
+          for f in production-evidence/predeploy-summary.json production-evidence/smoke.json production-evidence/final-report.json; do
+            if [ -f "$f" ]; then
+              echo '```json' >> "$GITHUB_STEP_SUMMARY"
+              cat "$f" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
