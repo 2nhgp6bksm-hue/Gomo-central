@@ -1,4 +1,5 @@
 name: One-shot isolated D1 read validation
+# Validation distante unique autorisee le 3 septembre 2026.
 
 on:
   push:
