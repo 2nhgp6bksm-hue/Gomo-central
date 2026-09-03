@@ -1,6 +1,6 @@
 import coreV05 from "./gomo-core-entry-v05.js";
 import { V, CONFIRM, LEAVE, OBS_DAYS, SNAP_DAYS, RUN_DAYS, out, body, admin, schema, report } from "./gomo-core-v06-engine.js";
-import { persist } from "./gomo-core-v06-storage.js";
+import { persist } from "./gomo-core-v06-storage-stable-confidence.js";
 import { enrichCoreMembersWithAvatars, handleCoreMemberAvatar } from "./gomo-core-avatars.js";
 
 async function membersApi(req,env,ctx){
