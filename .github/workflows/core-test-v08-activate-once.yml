@@ -1,0 +1,245 @@
+name: One-shot Core test v0.8 activation and Cron validation
+
+on:
+  push:
+    branches:
+      - test/core-d1-read-optimization
+    paths:
+      - .github/workflows/core-test-v08-activate-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gomo-core-test-v08-activation-once
+  cancel-in-progress: false
+
+env:
+  WORKER: gomo-core-test
+  TARGET_VERSION: b864e993-c8ac-4613-a41e-d3386d835847
+  ROLLBACK_VERSION: fe297cda-d6fe-460b-b3da-ebbc5983e3ca
+  DB_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
+  EXPECTED_CRON: '15 * * * *'
+  EXPECTED_MEMBERS: '94'
+
+jobs:
+  activate-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout test branch
+        uses: actions/checkout@v4
+        with:
+          ref: test/core-d1-read-optimization
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve account and lock preconditions
+        id: preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          git merge-base --is-ancestor d4e0ee3b5f074d624d7ba33bbe11b2722cc35572 HEAD
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            account_id="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+            echo "CLOUDFLARE_ACCOUNT_ID=$account_id" >> "$GITHUB_ENV"
+          fi
+          export CLOUDFLARE_ACCOUNT_ID
+          mkdir -p activation-evidence
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" > activation-evidence/deployments-before.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" > activation-evidence/schedules-before.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" > activation-evidence/subdomain.json
+          npx --yes wrangler@4.125.0 versions list --name "$WORKER" --json > activation-evidence/versions.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const deployments=JSON.parse(fs.readFileSync('activation-evidence/deployments-before.json','utf8'));
+          const schedules=JSON.parse(fs.readFileSync('activation-evidence/schedules-before.json','utf8'));
+          const versions=JSON.parse(fs.readFileSync('activation-evidence/versions.json','utf8'));
+          const subdomain=JSON.parse(fs.readFileSync('activation-evidence/subdomain.json','utf8'));
+          if(!deployments.success||!schedules.success||!subdomain.success) throw new Error('Cloudflare preflight unavailable');
+          const deps=deployments.result?.deployments||deployments.result||[];
+          const active=deps?.[0]?.versions?.slice().sort((a,b)=>Number(b.percentage??0)-Number(a.percentage??0))[0]?.version_id||null;
+          if(active!==process.env.ROLLBACK_VERSION) throw new Error(`Unexpected active version before activation: ${active}`);
+          const crons=(Array.isArray(schedules.result)?schedules.result:(schedules.result?.schedules||[])).map(x=>x.cron||x);
+          if(crons.length!==1||crons[0]!==process.env.EXPECTED_CRON) throw new Error(`Unexpected Cron: ${JSON.stringify(crons)}`);
+          const list=Array.isArray(versions)?versions:(versions?.versions||versions?.result||[]);
+          const found=list.some(v=>String(v.id||v.version_id)===process.env.TARGET_VERSION);
+          if(!found) throw new Error(`Target version not found: ${process.env.TARGET_VERSION}`);
+          if(!subdomain.result?.subdomain) throw new Error('Workers subdomain unavailable');
+          fs.writeFileSync('activation-evidence/origin.txt',`https://${process.env.WORKER}.${subdomain.result.subdomain}.workers.dev\n`);
+          fs.writeFileSync('activation-evidence/preflight.json',JSON.stringify({activeBefore:active,targetVersion:process.env.TARGET_VERSION,cron:crons[0],origin:`https://${process.env.WORKER}.${subdomain.result.subdomain}.workers.dev`},null,2)+'\n');
+          NODE
+
+          endpoint="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$DB_ID/query"
+          sql="SELECT (SELECT COUNT(*) FROM core_current_members WHERE active=1 AND membership_status<>'departed') public_members,(SELECT COUNT(*) FROM core_current_source_state) source_rows,(SELECT COUNT(*) FROM core_canonical_snapshots) canonical_snapshots,(SELECT COUNT(*) FROM core_source_observations) source_observations,(SELECT COUNT(*) FROM core_sync_runs) sync_runs,(SELECT sync_id FROM core_sync_runs ORDER BY started_at DESC LIMIT 1) last_sync_id,(SELECT started_at FROM core_sync_runs ORDER BY started_at DESC LIMIT 1) last_sync_started_at;"
+          payload="$(SQL="$sql" node -e 'process.stdout.write(JSON.stringify({sql:process.env.SQL,params:[]}))')"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' --data "$payload" "$endpoint" > activation-evidence/d1-before.json
+          FILE=activation-evidence/d1-before.json node - <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync(process.env.FILE,'utf8'));if(!j.success)throw new Error(JSON.stringify(j.errors));const r=(j.result||[]).flatMap(x=>x.results||[])[0]||{};
+          if(Number(r.public_members)!==Number(process.env.EXPECTED_MEMBERS)) throw new Error(`Expected ${process.env.EXPECTED_MEMBERS} public members, got ${r.public_members}`);
+          if(Number(r.source_rows)<=0) throw new Error('Current source state empty');
+          console.log('D1_BEFORE='+JSON.stringify(r));
+          NODE
+
+      - name: Activate exact validated version at 100 percent
+        shell: bash
+        run: |
+          set -euo pipefail
+          date -u +'%Y-%m-%dT%H:%M:%SZ' > activation-evidence/activated-at.txt
+          npx --yes wrangler@4.125.0 versions deploy "${TARGET_VERSION}@100%" --name "$WORKER" -y --message "Activate validated Core v0.8 on gomo-core-test" | tee activation-evidence/version-deploy.txt
+          sleep 25
+
+      - name: Immediate live smoke test with rollback on failure
+        shell: bash
+        run: |
+          set +e
+          origin="$(cat activation-evidence/origin.txt)"
+          failed=0
+          for path in status members power; do
+            code="$(curl --retry 0 --max-time 30 -sS -D "activation-evidence/${path}-immediate.headers" -o "activation-evidence/${path}-immediate.body" -w '%{http_code}' "$origin/api/core/$path")"
+            echo "$code" > "activation-evidence/${path}-immediate.code"
+            [ "$code" = "200" ] || failed=1
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          let ok=true, report={};
+          try {
+            const status=JSON.parse(fs.readFileSync('activation-evidence/status-immediate.body','utf8'));
+            const members=JSON.parse(fs.readFileSync('activation-evidence/members-immediate.body','utf8'));
+            const power=JSON.parse(fs.readFileSync('activation-evidence/power-immediate.body','utf8'));
+            const codes=['status','members','power'].map(x=>Number(fs.readFileSync(`activation-evidence/${x}-immediate.code`,'utf8')));
+            ok=codes.every(x=>x===200)&&status?.ok===true&&members?.memberCount===94&&power?.memberCount===94&&members?.coreVersion==='0.8.0-read-optimization-test'&&power?.coreVersion==='0.8.0-read-optimization-test';
+            report={ok,codes,statusOk:status?.ok===true,members:members?.memberCount,power:power?.memberCount,coreVersion:members?.coreVersion||null};
+          } catch(e) { ok=false; report={ok,error:e.message}; }
+          fs.writeFileSync('activation-evidence/immediate-smoke.json',JSON.stringify(report,null,2)+'\n');
+          if(!ok) process.exit(2);
+          NODE
+          node_rc=$?
+          if [ "$failed" -ne 0 ] || [ "$node_rc" -ne 0 ]; then
+            echo 'Immediate smoke failed; rolling back'
+            npx --yes wrangler@4.125.0 rollback "$ROLLBACK_VERSION" --name "$WORKER" --message "Automatic rollback: Core v0.8 immediate smoke failed"
+            sleep 25
+            exit 1
+          fi
+
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" > activation-evidence/deployments-immediate.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" > activation-evidence/schedules-immediate.json
+          node - <<'NODE'
+          const fs=require('fs');const d=JSON.parse(fs.readFileSync('activation-evidence/deployments-immediate.json','utf8'));const s=JSON.parse(fs.readFileSync('activation-evidence/schedules-immediate.json','utf8'));
+          const deps=d.result?.deployments||d.result||[];const v=deps?.[0]?.versions?.slice().sort((a,b)=>Number(b.percentage??0)-Number(a.percentage??0))[0];
+          if(v?.version_id!==process.env.TARGET_VERSION||Number(v?.percentage??0)<99.9) throw new Error(`Target not active at 100%: ${JSON.stringify(v)}`);
+          const crons=(Array.isArray(s.result)?s.result:(s.result?.schedules||[])).map(x=>x.cron||x);if(crons.length!==1||crons[0]!==process.env.EXPECTED_CRON) throw new Error(`Cron changed: ${JSON.stringify(crons)}`);
+          NODE
+
+      - name: Wait for first scheduled Cron on v0.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          now="$(date -u +%s)"
+          hour_start="$(date -u -d "$(date -u +'%Y-%m-%d %H'):00:00" +%s)"
+          target="$((hour_start + 15*60))"
+          if [ "$target" -le "$((now + 75))" ]; then target="$((target + 3600))"; fi
+          wait_seconds="$((target - now + 90))"
+          if [ "$wait_seconds" -gt 1800 ]; then
+            echo "Next Cron is too far away for this one-shot run: ${wait_seconds}s"
+            exit 3
+          fi
+          echo "Waiting ${wait_seconds}s for Cron at $(date -u -d "@$target" +'%Y-%m-%dT%H:%M:%SZ') plus propagation"
+          sleep "$wait_seconds"
+
+      - name: Validate first real Cron and keep or rollback
+        shell: bash
+        run: |
+          set +e
+          endpoint="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$DB_ID/query"
+          activated_at="$(cat activation-evidence/activated-at.txt)"
+          sql="SELECT sync_id,started_at,completed_at,status,error_json FROM core_sync_runs WHERE started_at >= '$activated_at' ORDER BY started_at DESC LIMIT 1;"
+          payload="$(SQL="$sql" node -e 'process.stdout.write(JSON.stringify({sql:process.env.SQL,params:[]}))')"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' --data "$payload" "$endpoint" > activation-evidence/cron-sync.json
+          sql2="SELECT (SELECT COUNT(*) FROM core_current_members WHERE active=1 AND membership_status<>'departed') public_members,(SELECT COUNT(*) FROM core_current_source_state) source_rows,(SELECT COUNT(*) FROM core_canonical_snapshots) canonical_snapshots,(SELECT COUNT(*) FROM core_source_observations) source_observations,(SELECT COUNT(*) FROM core_sync_runs) sync_runs;"
+          payload2="$(SQL="$sql2" node -e 'process.stdout.write(JSON.stringify({sql:process.env.SQL,params:[]}))')"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' --data "$payload2" "$endpoint" > activation-evidence/d1-after-cron.json
+
+          origin="$(cat activation-evidence/origin.txt)"
+          failed=0
+          for path in status members power; do
+            code="$(curl --retry 0 --max-time 30 -sS -o "activation-evidence/${path}-postcron.body" -w '%{http_code}' "$origin/api/core/$path")"
+            echo "$code" > "activation-evidence/${path}-postcron.code"
+            [ "$code" = "200" ] || failed=1
+          done
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const result=(j)=>(j.result||[]).flatMap(x=>x.results||[]);
+          let ok=true,report={};
+          try {
+            const syncJ=JSON.parse(fs.readFileSync('activation-evidence/cron-sync.json','utf8'));
+            const afterJ=JSON.parse(fs.readFileSync('activation-evidence/d1-after-cron.json','utf8'));
+            const beforeJ=JSON.parse(fs.readFileSync('activation-evidence/d1-before.json','utf8'));
+            const sync=result(syncJ)[0]||null;
+            const after=result(afterJ)[0]||{};
+            const before=result(beforeJ)[0]||{};
+            const status=JSON.parse(fs.readFileSync('activation-evidence/status-postcron.body','utf8'));
+            const members=JSON.parse(fs.readFileSync('activation-evidence/members-postcron.body','utf8'));
+            const power=JSON.parse(fs.readFileSync('activation-evidence/power-postcron.body','utf8'));
+            const codes=['status','members','power'].map(x=>Number(fs.readFileSync(`activation-evidence/${x}-postcron.code`,'utf8')));
+            ok=Boolean(sync)&&sync.status==='ok'&&Number(after.public_members)===94&&Number(after.source_rows)>0&&codes.every(x=>x===200)&&status?.ok===true&&members?.memberCount===94&&power?.memberCount===94;
+            report={ok,sync,publicMembers:Number(after.public_members),sourceRows:Number(after.source_rows),syncRunsBefore:Number(before.sync_runs),syncRunsAfter:Number(after.sync_runs),canonicalDelta:Number(after.canonical_snapshots)-Number(before.canonical_snapshots),sourceObservationDelta:Number(after.source_observations)-Number(before.source_observations),codes,members:members?.memberCount,power:power?.memberCount,coreVersion:members?.coreVersion||null};
+          } catch(e) { ok=false; report={ok,error:e.message}; }
+          fs.writeFileSync('activation-evidence/postcron-report.json',JSON.stringify(report,null,2)+'\n');
+          console.log('POSTCRON='+JSON.stringify(report));
+          if(!ok) process.exit(2);
+          NODE
+          rc=$?
+          if [ "$failed" -ne 0 ] || [ "$rc" -ne 0 ]; then
+            echo 'Post-Cron validation failed; rolling back'
+            npx --yes wrangler@4.125.0 rollback "$ROLLBACK_VERSION" --name "$WORKER" --message "Automatic rollback: Core v0.8 Cron validation failed"
+            sleep 25
+            exit 1
+          fi
+
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" > activation-evidence/deployments-final.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" > activation-evidence/schedules-final.json
+          node - <<'NODE'
+          const fs=require('fs');const d=JSON.parse(fs.readFileSync('activation-evidence/deployments-final.json','utf8'));const s=JSON.parse(fs.readFileSync('activation-evidence/schedules-final.json','utf8'));
+          const deps=d.result?.deployments||d.result||[];const v=deps?.[0]?.versions?.slice().sort((a,b)=>Number(b.percentage??0)-Number(a.percentage??0))[0];
+          if(v?.version_id!==process.env.TARGET_VERSION||Number(v?.percentage??0)<99.9) throw new Error(`Final target not active: ${JSON.stringify(v)}`);
+          const crons=(Array.isArray(s.result)?s.result:(s.result?.schedules||[])).map(x=>x.cron||x);if(crons.length!==1||crons[0]!==process.env.EXPECTED_CRON) throw new Error(`Final Cron changed: ${JSON.stringify(crons)}`);
+          fs.writeFileSync('activation-evidence/final-state.json',JSON.stringify({activeVersion:v.version_id,percentage:Number(v.percentage??0),cron:crons[0],rollback:false},null,2)+'\n');
+          NODE
+
+      - name: Publish activation report
+        if: always()
+        shell: bash
+        run: |
+          echo '## GoMo Core test v0.8 activation' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Worker: \`$WORKER\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Target version: \`$TARGET_VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Rollback version: \`$ROLLBACK_VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo '- gomo-central touched: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- main touched: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Cron configuration modified: `false`' >> "$GITHUB_STEP_SUMMARY"
+          for f in activation-evidence/preflight.json activation-evidence/immediate-smoke.json activation-evidence/postcron-report.json activation-evidence/final-state.json; do
+            if [ -f "$f" ]; then
+              echo '```json' >> "$GITHUB_STEP_SUMMARY"
+              cat "$f" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gomo-core-test-v08-activation-evidence
+          path: activation-evidence/
+          if-no-files-found: warn
+          retention-days: 30
