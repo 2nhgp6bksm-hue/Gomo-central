@@ -135,6 +135,58 @@ test("l'etat courant conserve 94/94 membres sans agrandir l'historique identique
   assert.equal(db.scalar("SELECT max_hq FROM core_current_members WHERE name='Member 01'"), 35);
 });
 
+test("refresh filtre les doublons en memoire avant les INSERT et UPSERT D1", async (t) => {
+  const db = new LocalD1();
+  t.after(() => db.close());
+
+  await persist(db, fixture());
+  await persist(db, fixture());
+  db.prepared.length = 0;
+
+  const stable = await persist(db, fixture());
+  const sql = db.prepared.join("\n");
+  assert.equal(stable.changed, false);
+  assert.equal(stable.storage.meaningfulRows, 0);
+  assert.equal(stable.storage.statements, 1, "seule la cloture du sync reste dans le batch stable");
+  assert.equal(stable.storage.statementsSkippedAsUnchanged, 12);
+  assert.equal(stable.storage.dedupStateQueries, 4);
+  assert.equal(stable.storage.dedupStateRowsLoaded, 658);
+  assert.doesNotMatch(sql, /INSERT INTO core_canonical_snapshots/);
+  assert.doesNotMatch(sql, /INSERT INTO core_source_observations/);
+  assert.doesNotMatch(sql, /INSERT INTO core_current_members/);
+  assert.doesNotMatch(sql, /INSERT INTO core_current_source_state/);
+  assert.doesNotMatch(sql, /INSERT INTO core_member_aliases/);
+  assert.doesNotMatch(sql, /INSERT INTO core_source_links/);
+  assert.doesNotMatch(sql, /FROM core_canonical_snapshots/);
+  assert.doesNotMatch(sql, /FROM core_source_observations/);
+});
+
+test("le filtrage conserve les trois absences et la reconfirmation au retour", async (t) => {
+  const db = new LocalD1();
+  t.after(() => db.close());
+
+  await persist(db, fixture());
+  await persist(db, fixture());
+  const missing = fixture();
+  missing.members = missing.members.slice(1);
+  missing.sources.lastIntel.memberCount = 93;
+  missing.sources.lastRank.memberCount = 93;
+
+  await persist(db, missing);
+  assert.equal(db.scalar("SELECT status FROM core_member_membership WHERE gomo_id=(SELECT gomo_id FROM core_members WHERE current_name='Member 01')"), "confirmed");
+  await persist(db, missing);
+  assert.equal(db.scalar("SELECT status FROM core_member_membership WHERE gomo_id=(SELECT gomo_id FROM core_members WHERE current_name='Member 01')"), "departure_candidate");
+  await persist(db, missing);
+  assert.equal(db.scalar("SELECT active FROM core_current_members WHERE name='Member 01'"), 0);
+  assert.equal(db.scalar("SELECT membership_status FROM core_current_members WHERE name='Member 01'"), "departed");
+
+  await persist(db, fixture());
+  assert.equal(db.scalar("SELECT active FROM core_current_members WHERE name='Member 01'"), 1);
+  assert.equal(db.scalar("SELECT membership_status FROM core_current_members WHERE name='Member 01'"), "pending");
+  await persist(db, fixture());
+  assert.equal(db.scalar("SELECT membership_status FROM core_current_members WHERE name='Member 01'"), "confirmed");
+});
+
 test("members et power lisent l'etat courant, restent equivalents et utilisent le cache 5 minutes", async (t) => {
   const db = new LocalD1();
   t.after(() => db.close());

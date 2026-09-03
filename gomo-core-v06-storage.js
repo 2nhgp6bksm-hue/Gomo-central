@@ -10,20 +10,78 @@ function stableJson(value, fallback) {
   return JSON.stringify(stable(value ?? fallback));
 }
 
-async function identities(db) {
-  const r = await db.prepare("SELECT 'link' kind,source key1,source_member_id key2,gomo_id FROM core_source_links UNION ALL SELECT 'alias',normalized_alias,'',gomo_id FROM core_member_aliases").all();
+async function storageState(db) {
+  const [identityRows, memberRows, currentRows, sourceRows] = await db.batch([
+    db.prepare("SELECT 'link' kind,source key1,source_member_id key2,gomo_id, NULL alias FROM core_source_links UNION ALL SELECT 'alias',normalized_alias,'',gomo_id,alias FROM core_member_aliases"),
+    db.prepare(`SELECT m.gomo_id,m.current_name,m.normalized_name,m.active,
+      ms.status membership_status,ms.confirmation_syncs,ms.missing_syncs
+      FROM core_members m LEFT JOIN core_member_membership ms ON ms.gomo_id=m.gomo_id`),
+    db.prepare(`SELECT gomo_id,name,rank,hq,max_hq,power,hero_power,kills,avatar_url,
+      confidence,confidence_level,flags_json,field_sources_json,observed_at,
+      active,membership_status FROM core_current_members`),
+    db.prepare(`SELECT source,source_member_id,gomo_id,name,rank,hq,power,hero_power,
+      kills,avatar_url,observed_at FROM core_current_source_state`),
+  ]);
   const links = new Map();
   const aliases = new Map();
-  for (const x of r.results || []) {
+  const aliasesByMember = new Map();
+  for (const x of identityRows.results || []) {
     if (x.kind === "link") {
       links.set(`${x.key1}:${x.key2}`, x.gomo_id);
     } else {
       const a = aliases.get(x.key1) || new Set();
       a.add(x.gomo_id);
       aliases.set(x.key1, a);
+      aliasesByMember.set(`${x.gomo_id}:${x.key1}`, x.alias);
     }
   }
-  return { links, aliases };
+  return {
+    links,
+    aliases,
+    aliasesByMember,
+    members: new Map((memberRows.results || []).map((row) => [row.gomo_id, row])),
+    currentMembers: new Map((currentRows.results || []).map((row) => [row.gomo_id, row])),
+    currentSources: new Map((sourceRows.results || []).map((row) => [`${row.source}:${row.source_member_id}`, row])),
+    rowsLoaded: [identityRows, memberRows, currentRows, sourceRows]
+      .reduce((total, result) => total + Number(result.results?.length || 0), 0),
+  };
+}
+
+const same = (left, right) => left === right || (left == null && right == null);
+
+function canonicalChanged(current, row) {
+  if (!current) return true;
+  return !same(current.name, row.name)
+    || !same(current.rank, row.rank)
+    || !same(current.hq, row.hq)
+    || !same(current.power, row.power)
+    || !same(current.hero_power, row.hero)
+    || !same(current.kills, row.kills)
+    || !same(current.avatar_url, row.avatar)
+    || !same(current.confidence, row.confidence)
+    || !same(current.confidence_level, row.level)
+    || !same(current.flags_json, row.flags)
+    || !same(current.field_sources_json, row.fields);
+}
+
+function sourceChanged(current, row) {
+  if (!current) return true;
+  return !same(current.gomo_id, row.g)
+    || !same(current.name, row.name)
+    || !same(current.rank, row.rank)
+    || !same(current.hq, row.hq)
+    || !same(current.power, row.power)
+    || !same(current.hero_power, row.hero)
+    || !same(current.kills, row.kills)
+    || !same(current.avatar_url, row.avatar);
+}
+
+function nextMembership(current, presentInLastIntel) {
+  if (!presentInLastIntel) return current?.membership_status || "pending";
+  if (!current) return "pending";
+  if (current.membership_status === "confirmed") return "confirmed";
+  if (["departed", "departure_candidate"].includes(current.membership_status)) return "pending";
+  return Number(current.confirmation_syncs || 0) + 1 >= CONFIRM ? "confirmed" : "pending";
 }
 
 function gid(idx, m) {
@@ -126,10 +184,63 @@ async function persist(db, rep) {
       throw new Error("LastIntel membership source unavailable; refusing authoritative roster sync");
     }
 
-    const p = payload(rep, await identities(db), syncId, now);
-    const M = JSON.stringify(p.members);
-    const C = JSON.stringify(p.canonical);
-    const O = JSON.stringify(p.obs);
+    const state = await storageState(db);
+    const p = payload(rep, state, syncId, now);
+    const memberInserts = p.members.filter((row) => !state.members.has(row.g));
+    const memberUpdates = p.canonical.filter((row) => {
+      const current = state.members.get(row.g);
+      return !current
+        || !same(current.current_name, row.name)
+        || !same(current.normalized_name, row.n)
+        || Number(current.active) !== 1;
+    });
+    const aliasUpdates = p.members.filter((row) => !same(state.aliasesByMember.get(`${row.g}:${row.n}`), row.name));
+    const membershipUpdates = p.members.filter((row) => {
+      if (!row.li) return false;
+      const current = state.members.get(row.g);
+      return !current?.membership_status
+        || current.membership_status !== "confirmed"
+        || Number(current.missing_syncs || 0) !== 0;
+    });
+    const canonicalChanges = p.canonical.filter((row) => canonicalChanged(state.currentMembers.get(row.g), row));
+    const currentMemberUpdates = p.canonical.filter((row) => {
+      const current = state.currentMembers.get(row.g);
+      const membership = nextMembership(state.members.get(row.g), true);
+      return canonicalChanged(current, row)
+        || current?.max_hq == null
+        || (row.hq != null && Number(row.hq) > Number(current?.max_hq))
+        || Number(current?.active) !== 1
+        || !same(current?.membership_status, membership);
+    });
+    const sourceLinkUpdates = p.obs.filter((row) => !same(state.links.get(`${row.s}:${row.id}`), row.g));
+    const sourceChanges = p.obs.filter((row) => sourceChanged(state.currentSources.get(`${row.s}:${row.id}`), row));
+    const currentRoster = new Set(p.canonical.map((row) => row.g));
+    const missingMemberships = [...state.members.values()].filter((row) => (
+      row.membership_status
+      && row.membership_status !== "departed"
+      && !currentRoster.has(row.gomo_id)
+    ));
+    const departingIds = new Set(missingMemberships
+      .filter((row) => Number(row.missing_syncs || 0) + 1 >= LEAVE)
+      .map((row) => row.gomo_id));
+    const memberArchiveIds = [...state.members.values()]
+      .filter((row) => Number(row.active) !== 0 && (row.membership_status === "departed" || departingIds.has(row.gomo_id)))
+      .map((row) => row.gomo_id);
+    const currentArchiveIds = [...state.currentMembers.values()]
+      .filter((row) => {
+        const membership = state.members.get(row.gomo_id)?.membership_status;
+        const departed = membership === "departed" || departingIds.has(row.gomo_id);
+        return departed && (Number(row.active) !== 0 || row.membership_status !== "departed");
+      })
+      .map((row) => row.gomo_id);
+    const M = JSON.stringify(memberInserts);
+    const MU = JSON.stringify(memberUpdates);
+    const A = JSON.stringify(aliasUpdates);
+    const MS = JSON.stringify(membershipUpdates);
+    const C = JSON.stringify(canonicalChanges);
+    const CU = JSON.stringify(currentMemberUpdates);
+    const SL = JSON.stringify(sourceLinkUpdates);
+    const O = JSON.stringify(sourceChanges);
     const healthy = [rep.sources?.lastIntel, rep.sources?.lastRank, rep.sources?.lastWarRank].filter((x) => x?.ok).length;
     const q = [];
     const labels = [];
@@ -140,7 +251,7 @@ async function persist(db, rep) {
 
     // Keep identities for all observed rows so source history remains usable,
     // but LastRank/LastWarRank-only rows start inactive and never reactivate a departed member.
-    add("members_inserted", db.prepare(`
+    if (memberInserts.length) add("members_inserted", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                json_extract(value,'$.name') name,
@@ -153,7 +264,7 @@ async function persist(db, rep) {
     `).bind(M, now, now));
 
     // Only LastIntel-present members may refresh the current identity and active flag.
-    add("members_updated", db.prepare(`
+    if (memberUpdates.length) add("members_updated", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                json_extract(value,'$.name') name,
@@ -170,9 +281,9 @@ async function persist(db, rep) {
       WHERE core_members.current_name<>excluded.current_name
          OR core_members.normalized_name<>excluded.normalized_name
          OR core_members.active<>1
-    `).bind(C, now, now));
+    `).bind(MU, now, now));
 
-    add("aliases_updated", db.prepare(`
+    if (aliasUpdates.length) add("aliases_updated", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                json_extract(value,'$.name') name,
@@ -184,11 +295,11 @@ async function persist(db, rep) {
       ON CONFLICT(gomo_id,normalized_alias) DO UPDATE SET
         alias=excluded.alias
       WHERE core_member_aliases.alias<>excluded.alias
-    `).bind(M, now, now));
+    `).bind(A, now, now));
 
     // Confirmation is driven by LastIntel presence, not by the number of sources.
     // A LastRank-only row can therefore never progress from pending to confirmed.
-    add("memberships_updated", db.prepare(`
+    if (membershipUpdates.length) add("memberships_updated", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                CAST(json_extract(value,'$.li') AS INTEGER) li
@@ -228,11 +339,11 @@ async function persist(db, rep) {
           core_member_membership.status<>'confirmed'
           OR core_member_membership.missing_syncs<>0
         )
-    `).bind(M, now, now));
+    `).bind(MS, now, now));
 
     // Canonical/public snapshots contain only members present in LastIntel.
     // LastRank and LastWarRank still enrich fields and remain in source observations.
-    add("canonical_snapshots_inserted", db.prepare(`
+    if (canonicalChanges.length) add("canonical_snapshots_inserted", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                json_extract(value,'$.name') name,
@@ -272,7 +383,7 @@ async function persist(db, rep) {
          OR l.field_sources_json IS NOT j.fields
     `).bind(C, syncId, now));
 
-    add("current_members_updated", db.prepare(`
+    if (currentMemberUpdates.length) add("current_members_updated", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                json_extract(value,'$.name') name,
@@ -336,9 +447,9 @@ async function persist(db, rep) {
          OR core_current_members.field_sources_json IS NOT excluded.field_sources_json
          OR core_current_members.active<>1
          OR core_current_members.membership_status IS NOT excluded.membership_status
-    `).bind(C, now, syncId, now));
+    `).bind(CU, now, syncId, now));
 
-    add("source_links_updated", db.prepare(`
+    if (sourceLinkUpdates.length) add("source_links_updated", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.s') s,
                json_extract(value,'$.id') id,
@@ -350,9 +461,9 @@ async function persist(db, rep) {
       ON CONFLICT(source,source_member_id) DO UPDATE SET
         gomo_id=excluded.gomo_id
       WHERE core_source_links.gomo_id<>excluded.gomo_id
-    `).bind(O, now, now));
+    `).bind(SL, now, now));
 
-    add("source_observations_inserted", db.prepare(`
+    if (sourceChanges.length) add("source_observations_inserted", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                json_extract(value,'$.s') s,
@@ -387,7 +498,7 @@ async function persist(db, rep) {
          OR l.avatar_url IS NOT j.avatar
     `).bind(O, syncId, now));
 
-    add("current_source_state_updated", db.prepare(`
+    if (sourceChanges.length) add("current_source_state_updated", db.prepare(`
       WITH j AS(
         SELECT json_extract(value,'$.g') g,
                json_extract(value,'$.s') s,
@@ -433,9 +544,9 @@ async function persist(db, rep) {
 
     // Because LastIntel is healthy here, every identity absent from its roster
     // counts as one consecutive missing membership sync, even if LastRank still lists it.
-    add("memberships_missing_updated", db.prepare(`
-      WITH li(g) AS(
-        SELECT json_extract(value,'$.g') FROM json_each(?)
+    if (missingMemberships.length) add("memberships_missing_updated", db.prepare(`
+      WITH missing(g) AS(
+        SELECT value FROM json_each(?)
       )
       UPDATE core_member_membership
       SET confirmation_syncs=0,
@@ -447,21 +558,20 @@ async function persist(db, rep) {
           END,
           status_updated_at=?
       WHERE status<>'departed'
-        AND gomo_id NOT IN(SELECT g FROM li)
-    `).bind(C, now));
+        AND gomo_id IN(SELECT g FROM missing)
+    `).bind(JSON.stringify(missingMemberships.map((row) => row.gomo_id)), now));
 
-    add("members_archived", db.prepare(
-      "UPDATE core_members SET active=0,updated_at=? WHERE gomo_id IN(SELECT gomo_id FROM core_member_membership WHERE status='departed') AND active<>0"
-    ).bind(now));
+    if (memberArchiveIds.length) add("members_archived", db.prepare(`
+      UPDATE core_members SET active=0,updated_at=?
+      WHERE active<>0 AND gomo_id IN(SELECT value FROM json_each(?))
+    `).bind(now, JSON.stringify(memberArchiveIds)));
 
-    add("current_members_archived", db.prepare(`
+    if (currentArchiveIds.length) add("current_members_archived", db.prepare(`
       UPDATE core_current_members
       SET active=0,membership_status='departed',updated_sync_id=?,updated_at=?
-      WHERE gomo_id IN(
-        SELECT gomo_id FROM core_member_membership WHERE status='departed'
-      )
+      WHERE gomo_id IN(SELECT value FROM json_each(?))
         AND (active<>0 OR membership_status<>'departed')
-    `).bind(syncId, now));
+    `).bind(syncId, now, JSON.stringify(currentArchiveIds)));
 
     const meta = {
       hardeningVersion: V,
@@ -490,12 +600,31 @@ async function persist(db, rep) {
     ));
 
     const r = await db.batch(q);
-    const changesByStatement = Object.fromEntries(labels.map((label, index) => [label, ch(r[index])]));
+    const allLabels = [
+      "members_inserted",
+      "members_updated",
+      "aliases_updated",
+      "memberships_updated",
+      "canonical_snapshots_inserted",
+      "current_members_updated",
+      "source_links_updated",
+      "source_observations_inserted",
+      "current_source_state_updated",
+      "memberships_missing_updated",
+      "members_archived",
+      "current_members_archived",
+      "sync_completed",
+    ];
+    const changesByStatement = Object.fromEntries(allLabels.map((label) => [label, 0]));
+    labels.forEach((label, index) => { changesByStatement[label] = ch(r[index]); });
     const meaningfulRows = Object.entries(changesByStatement)
       .filter(([label]) => label !== "sync_completed")
       .reduce((total, [, changes]) => total + changes, 0);
     const metrics = {
       statements: r.length,
+      statementsSkippedAsUnchanged: allLabels.length - r.length,
+      dedupStateQueries: 4,
+      dedupStateRowsLoaded: state.rowsLoaded,
       rowsChanged: r.reduce((a, x) => a + ch(x), 0),
       meaningfulRows,
       operationalBookkeepingRows: 3,
