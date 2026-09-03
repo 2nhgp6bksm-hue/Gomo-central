@@ -17,6 +17,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROD_DB_NAME: gomo-core-db
       PROD_DB_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
       PROD_WORKER: gomo-central
     steps:
@@ -38,8 +39,10 @@ jobs:
           fi
           export CLOUDFLARE_ACCOUNT_ID
           mkdir -p preflight
-          npx --yes wrangler@4.125.0 d1 execute "$PROD_DB_ID" --remote --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('core_current_members','core_current_source_state','core_sync_runs') ORDER BY name;" > preflight/tables.json
-          npx --yes wrangler@4.125.0 d1 execute "$PROD_DB_ID" --remote --json --command "SELECT COUNT(*) AS active_members FROM core_current_members WHERE active=1;" > preflight/members.json
+          npx --yes wrangler@4.125.0 d1 list --json > preflight/d1-list.json
+          node -e 'const fs=require("fs");const a=JSON.parse(fs.readFileSync("preflight/d1-list.json"));const d=a.find(x=>x.name===process.env.PROD_DB_NAME);if(!d)throw Error("Production D1 not found");const id=d.uuid||d.id;if(id!==process.env.PROD_DB_ID)throw Error(`Production D1 ID mismatch: ${id}`)'
+          npx --yes wrangler@4.125.0 d1 execute "$PROD_DB_NAME" --remote --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('core_current_members','core_current_source_state','core_sync_runs') ORDER BY name;" > preflight/tables.json
+          npx --yes wrangler@4.125.0 d1 execute "$PROD_DB_NAME" --remote --json --command "SELECT COUNT(*) AS active_members FROM core_current_members WHERE active=1;" > preflight/members.json
           node - <<'NODE'
           const fs=require('fs');
           const unpack=(p)=>{const j=JSON.parse(fs.readFileSync(p,'utf8'));const arr=Array.isArray(j)?j:[j];return arr.flatMap(x=>x?.results||x?.result?.results||[])};
@@ -49,7 +52,7 @@ jobs:
           const rows=unpack('preflight/members.json');
           const count=Number(rows[0]?.active_members);
           if(count!==94) throw new Error(`Expected 94 active members, got ${count}`);
-          const report={worker:process.env.PROD_WORKER,databaseId:process.env.PROD_DB_ID,tables,activeMembers:count,applicationCommit:'fdd03626c1b624e774eb9d2c9d0f40241c864429',readOnly:true};
+          const report={worker:process.env.PROD_WORKER,database:process.env.PROD_DB_NAME,databaseId:process.env.PROD_DB_ID,tables,activeMembers:count,applicationCommit:'fdd03626c1b624e774eb9d2c9d0f40241c864429',readOnly:true};
           fs.writeFileSync('preflight/report.json',JSON.stringify(report,null,2)+'\n');
           console.log(JSON.stringify(report));
           NODE
