@@ -50,7 +50,7 @@ jobs:
               "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$name/versions?per_page=5" > "audit/${safe}.versions.json"
           done < audit/names.txt
           node - <<'NODE'
-          const fs=require('fs'),path=require('path');
+          const fs=require('fs');
           const names=fs.readFileSync('audit/names.txt','utf8').trim().split(/\n/).filter(Boolean);
           const out=[];
           for(const name of names){
@@ -59,9 +59,12 @@ jobs:
             const settings=read('settings');
             const schedules=read('schedules');
             const versions=read('versions');
-            const bindings=(settings?.result?.bindings||[]).map(b=>({name:b.name,type:b.type,database_id:b.id||b.database_id||null,database_name:b.database_name||null,service:b.service||null,environment:b.environment||null}));
-            const crons=(schedules?.result||[]).map(x=>x.cron||x);
-            const versionList=(versions?.result||[]).map(v=>({id:v.id,created_on:v.created_on,annotations:v.annotations||null}));
+            const bindingsRaw=Array.isArray(settings?.result?.bindings)?settings.result.bindings:[];
+            const bindings=bindingsRaw.map(b=>({name:b.name,type:b.type,database_id:b.id||b.database_id||null,database_name:b.database_name||null,service:b.service||null,environment:b.environment||null}));
+            const scheduleRaw=Array.isArray(schedules?.result)?schedules.result:Array.isArray(schedules?.result?.schedules)?schedules.result.schedules:[];
+            const crons=scheduleRaw.map(x=>x?.cron||x).filter(Boolean);
+            const versionRaw=Array.isArray(versions?.result)?versions.result:Array.isArray(versions?.result?.items)?versions.result.items:[];
+            const versionList=versionRaw.map(v=>({id:v.id,created_on:v.created_on,annotations:v.annotations||null}));
             out.push({name,settingsOk:settings?.success===true,bindings,crons,versions:versionList});
           }
           fs.writeFileSync('audit/summary.json',JSON.stringify(out,null,2)+'\n');
