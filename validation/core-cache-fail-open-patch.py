@@ -1,0 +1,160 @@
+from pathlib import Path
+
+app = Path("gomo-core-entry-v07.js")
+text = app.read_text()
+
+
+def replace_once(old: str, new: str, label: str) -> None:
+    global text
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"{label}: expected exactly 1 match, got {count}")
+    text = text.replace(old, new, 1)
+
+
+replace_once(
+    'const V = "0.8.0-read-optimization-test";\nconst DEFAULT_CACHE_SECONDS = 600;',
+    'const V = "0.8.0-read-optimization-test";\nconst CACHE_EPOCH = "2026-09-03-fail-open-v1";\nconst DEFAULT_CACHE_SECONDS = 600;',
+    "cache epoch",
+)
+
+replace_once(
+    '  key.search = `?coreVersion=${encodeURIComponent(V)}`;\n  return new Request(key.toString(), { method: "GET" });\n}\n',
+    '  key.search = `?coreVersion=${encodeURIComponent(V)}&cacheEpoch=${encodeURIComponent(CACHE_EPOCH)}`;\n  return new Request(key.toString(), { method: "GET" });\n}\n\nfunction cacheFailure(operation, error) {\n  console.warn(JSON.stringify({\n    event: "gomo_core_cache_failure",\n    operation,\n    failOpen: true,\n    error: error instanceof Error ? error.message : String(error),\n  }));\n}\n',
+    "cache key/helper",
+)
+
+replace_once(
+    '  const invalidation = Promise.all([...origins].flatMap((origin) => (\n    paths.map((pathname) => cache.delete(cacheKeyFor(origin, pathname)))\n  )));\n',
+    '  const invalidation = Promise.all([...origins].flatMap((origin) => (\n    paths.map(async (pathname) => {\n      try {\n        await cache.delete(cacheKeyFor(origin, pathname));\n      } catch (error) {\n        cacheFailure("delete", error);\n      }\n    })\n  )));\n',
+    "cache delete fail-open",
+)
+
+replace_once(
+    '  const cache = caches.default;\n  const key = cacheKey(request);\n  const hit = await cache.match(key);\n  if (hit) {\n',
+    '  const cache = typeof caches !== "undefined" ? caches.default : null;\n  const key = cacheKey(request);\n  let hit;\n  if (cache?.match) {\n    try {\n      hit = await cache.match(key);\n    } catch (error) {\n      cacheFailure("match", error);\n    }\n  }\n  if (hit) {\n',
+    "cache match fail-open",
+)
+
+replace_once(
+    '    ctx.waitUntil(cache.put(key, cacheable.clone()));\n    return headify(request, maybeNotModified(request, cacheable));\n',
+    '    if (cache?.put) {\n      const write = Promise.resolve()\n        .then(() => cache.put(key, cacheable.clone()))\n        .catch((error) => { cacheFailure("put", error); });\n      if (ctx?.waitUntil) ctx.waitUntil(write);\n      else await write;\n    }\n    return headify(request, maybeNotModified(request, cacheable));\n',
+    "cache put fail-open",
+)
+
+app.write_text(text)
+
+test_file = Path("tests/gomo-core-v07-integration.test.js")
+test_text = test_file.read_text()
+
+old_import = 'import { VERIFIED_TRAIN_LEGACY_ALIASES } from "../gomo-core-entry-v07.js";'
+new_import = 'import { VERIFIED_TRAIN_LEGACY_ALIASES, invalidateCurrentApiCache } from "../gomo-core-entry-v07.js";'
+if test_text.count(old_import) != 1:
+    raise SystemExit("test import match failed")
+test_text = test_text.replace(old_import, new_import, 1)
+
+old_cache = '''class MemoryCache {
+  constructor() { this.values = new Map(); }
+  async match(request) {
+    const value = this.values.get(new Request(request).url);
+    return value ? value.clone() : undefined;
+  }
+  async put(request, response) {
+    this.values.set(new Request(request).url, response.clone());
+  }
+}
+'''
+new_cache = '''class MemoryCache {
+  constructor({ failMatch = false, failPut = false, failDelete = false } = {}) {
+    this.values = new Map();
+    this.failMatch = failMatch;
+    this.failPut = failPut;
+    this.failDelete = failDelete;
+    this.lastMatchUrl = null;
+  }
+  async match(request) {
+    this.lastMatchUrl = new Request(request).url;
+    if (this.failMatch) throw new Error("cache_match_test_failure");
+    const value = this.values.get(this.lastMatchUrl);
+    return value ? value.clone() : undefined;
+  }
+  async put(request, response) {
+    if (this.failPut) throw new Error("cache_put_test_failure");
+    this.values.set(new Request(request).url, response.clone());
+  }
+  async delete(request) {
+    if (this.failDelete) throw new Error("cache_delete_test_failure");
+    return this.values.delete(new Request(request).url);
+  }
+}
+'''
+if test_text.count(old_cache) != 1:
+    raise SystemExit("MemoryCache block match failed")
+test_text = test_text.replace(old_cache, new_cache, 1)
+
+append = r'''
+
+test("la clé de cache utilise un nouvel epoch isolé", async () => {
+  const cache = new MemoryCache();
+  globalThis.caches = { default: cache };
+  const ctx = context();
+  const response = await core.fetch(
+    new Request(`${CORE_ORIGIN}/api/core/power`),
+    environment(),
+    ctx,
+  );
+  await ctx.flush();
+
+  assert.equal(response.status, 200);
+  assert.match(cache.lastMatchUrl, /cacheEpoch=2026-09-03-fail-open-v1/);
+});
+
+test("une panne cache.match reste fail-open et sert la D1", async () => {
+  globalThis.caches = { default: new MemoryCache({ failMatch: true }) };
+  const ctx = context();
+  const response = await core.fetch(
+    new Request(`${CORE_ORIGIN}/api/core/power`),
+    environment(),
+    ctx,
+  );
+  const body = await response.json();
+  await ctx.flush();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.memberCount, 1);
+  assert.equal(body.members[0].name, "AVILLAI");
+});
+
+test("une panne cache.put ne fait pas échouer la réponse", async () => {
+  globalThis.caches = { default: new MemoryCache({ failPut: true }) };
+  const ctx = context();
+  const response = await core.fetch(
+    new Request(`${CORE_ORIGIN}/api/core/power`),
+    environment(),
+    ctx,
+  );
+  const body = await response.json();
+  await ctx.flush();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.memberCount, 1);
+});
+
+test("une panne cache.delete ne fait pas échouer l'invalidation", async () => {
+  globalThis.caches = { default: new MemoryCache({ failDelete: true }) };
+  const ctx = context();
+  await invalidateCurrentApiCache(
+    ctx,
+    {},
+    new Request(`${CORE_ORIGIN}/api/core/refresh`),
+  );
+  await ctx.flush();
+  assert.ok(true);
+});
+'''
+
+if 'test("la clé de cache utilise un nouvel epoch isolé"' in test_text:
+    raise SystemExit("cache fail-open tests already present")
+
+test_text += append
+test_file.write_text(test_text)
