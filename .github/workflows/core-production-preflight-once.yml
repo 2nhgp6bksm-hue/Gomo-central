@@ -1,0 +1,66 @@
+name: One-shot Core production preflight read-only
+
+on:
+  push:
+    branches:
+      - test/core-d1-read-optimization
+    paths:
+      - .github/workflows/core-production-preflight-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROD_DB_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
+      PROD_WORKER: gomo-central
+    steps:
+      - name: Checkout validated application
+        uses: actions/checkout@v4
+        with:
+          ref: fdd03626c1b624e774eb9d2c9d0f40241c864429
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Read-only production D1 preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          export CLOUDFLARE_ACCOUNT_ID
+          mkdir -p preflight
+          npx --yes wrangler@4.125.0 d1 execute "$PROD_DB_ID" --remote --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('core_current_members','core_current_source_state','core_sync_runs') ORDER BY name;" > preflight/tables.json
+          npx --yes wrangler@4.125.0 d1 execute "$PROD_DB_ID" --remote --json --command "SELECT COUNT(*) AS active_members FROM core_current_members WHERE active=1;" > preflight/members.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const unpack=(p)=>{const j=JSON.parse(fs.readFileSync(p,'utf8'));const arr=Array.isArray(j)?j:[j];return arr.flatMap(x=>x?.results||x?.result?.results||[])};
+          const tables=unpack('preflight/tables.json').map(x=>x.name).filter(Boolean).sort();
+          const expected=['core_current_members','core_current_source_state','core_sync_runs'];
+          if(JSON.stringify(tables)!==JSON.stringify(expected)) throw new Error(`Missing current-state tables: ${JSON.stringify(tables)}`);
+          const rows=unpack('preflight/members.json');
+          const count=Number(rows[0]?.active_members);
+          if(count!==94) throw new Error(`Expected 94 active members, got ${count}`);
+          const report={worker:process.env.PROD_WORKER,databaseId:process.env.PROD_DB_ID,tables,activeMembers:count,applicationCommit:'fdd03626c1b624e774eb9d2c9d0f40241c864429',readOnly:true};
+          fs.writeFileSync('preflight/report.json',JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(report));
+          NODE
+
+      - name: Publish preflight
+        if: always()
+        shell: bash
+        run: |
+          echo '## Core production preflight — read only' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f preflight/report.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat preflight/report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
