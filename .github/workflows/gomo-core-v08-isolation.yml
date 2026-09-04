@@ -1,4 +1,4 @@
-name: Isolate gomo-core-test on dedicated D1
+name: Deploy isolated gomo-core-test on dedicated D1
 
 on:
   push:
@@ -8,27 +8,25 @@ on:
       - .github/workflows/gomo-core-v08-isolation.yml
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: gomo-core-v08-d1-isolation
   cancel-in-progress: false
 
 env:
-  BASELINE_COMMIT: f20b95b4212f659c52f364e6df32a6bb33712912
   TEST_BRANCH: test/core-d1-read-optimization
   TEST_WORKER_NAME: gomo-core-test
   TEST_DATABASE_NAME: gomo-core-v08-read-test-db
+  TEST_DATABASE_ID: 45ca2537-70d2-409c-9db1-2fa1772c0a2d
   PRODUCTION_DATABASE_NAME: gomo-core-db
   PRODUCTION_DATABASE_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
-  CURRENT_SAFE_TEST_DATABASE_ID: bfb37928-febc-4ae6-8075-da89cc40d4d5
   WRANGLER_CONFIG: wrangler.jsonc
-  GENERATED_CONFIG: validation/gomo-core-v08-isolated.generated.json
 
 jobs:
-  isolate-test-worker:
+  deploy-isolated-test-worker:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -38,31 +36,29 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
 
-      - name: Safety gate — test branch only
+      - name: Safety gate — isolated test only
         shell: bash
         run: |
           set -euo pipefail
           test "$GITHUB_REF_NAME" = "$TEST_BRANCH"
-          test "$(git merge-base HEAD "$BASELINE_COMMIT")" = "$BASELINE_COMMIT"
-          unexpected="$(git diff --name-only "$BASELINE_COMMIT"..HEAD | grep -Ev '^\.github/workflows/gomo-core-v08-isolation\.yml$' || true)"
-          if [ -n "$unexpected" ]; then
-            echo "::error::Unexpected files changed after safety baseline: $unexpected"
-            exit 1
-          fi
           node - <<'NODE'
           const fs = require('fs');
           const c = JSON.parse(fs.readFileSync(process.env.WRANGLER_CONFIG, 'utf8'));
           if (c.name !== process.env.TEST_WORKER_NAME) throw new Error(`Unexpected Worker: ${c.name}`);
+          if (c.main !== 'gomo-core-entry-v071.js') throw new Error(`Unexpected entry point: ${c.main}`);
+          if (c.build) throw new Error('Custom build must stay disabled; tests run separately');
           const d1 = c.d1_databases?.[0];
           if (!d1 || d1.binding !== 'CORE_DB') throw new Error('CORE_DB binding missing');
+          if (d1.database_name !== process.env.TEST_DATABASE_NAME || d1.database_id !== process.env.TEST_DATABASE_ID) {
+            throw new Error(`Unexpected test D1: ${JSON.stringify(d1)}`);
+          }
           if (d1.database_id === process.env.PRODUCTION_DATABASE_ID || d1.database_name === process.env.PRODUCTION_DATABASE_NAME) {
-            throw new Error('Production D1 is still referenced');
+            throw new Error('Production D1 forbidden');
           }
-          if (d1.database_id !== process.env.CURRENT_SAFE_TEST_DATABASE_ID) {
-            throw new Error(`Unexpected temporary test D1: ${d1.database_id}`);
-          }
+          const crons = c.triggers?.crons || [];
+          if (crons.length !== 1 || crons[0] !== '15 * * * *') throw new Error(`Unexpected Cron config: ${JSON.stringify(crons)}`);
           NODE
           grep -q 'const V = "0.8.0-read-optimization-test"' gomo-core-entry-v07.js
 
@@ -71,7 +67,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: Run local regression checks
+      - name: Run regression suite before deploy
         shell: bash
         run: |
           set -euo pipefail
@@ -79,132 +75,45 @@ jobs:
           node --check gomo-core-entry-v07.js
           node --check gomo-core-entry-v071.js
 
-      - name: Resolve Cloudflare account
+      - name: Resolve Cloudflare account and verify dedicated D1
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
-            echo "::error::Missing CFPREVIEW secret"
-            exit 1
-          fi
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
           if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
             accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
             account_id="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
             test -n "$account_id"
             echo "CLOUDFLARE_ACCOUNT_ID=$account_id" >> "$GITHUB_ENV"
           fi
-
-      - name: Create or reuse dedicated test D1
-        id: d1
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p validation-results-isolation
-          npx --yes wrangler@4.125.0 d1 list --json > validation-results-isolation/d1-before.json
-          matches="$(node -e 'const a=require("./validation-results-isolation/d1-before.json");process.stdout.write(String(a.filter(x=>x.name===process.env.TEST_DATABASE_NAME).length))')"
-          created=false
-          if [ "$matches" = "0" ]; then
-            npx --yes wrangler@4.125.0 d1 create "$TEST_DATABASE_NAME" > validation-results-isolation/d1-create.txt
-            created=true
-          elif [ "$matches" != "1" ]; then
-            echo "::error::Expected zero or one D1 named $TEST_DATABASE_NAME, found $matches"
-            exit 1
-          fi
-          npx --yes wrangler@4.125.0 d1 list --json > validation-results-isolation/d1-after.json
-          database_id="$(node -e 'const a=require("./validation-results-isolation/d1-after.json");const m=a.filter(x=>x.name===process.env.TEST_DATABASE_NAME);if(m.length!==1)throw new Error(`Expected exactly one dedicated D1, got ${m.length}`);const id=m[0].uuid||m[0].id;if(!id)throw new Error("Missing D1 id");process.stdout.write(id)')"
-          test "$database_id" != "$PRODUCTION_DATABASE_ID"
-          test "$TEST_DATABASE_NAME" != "$PRODUCTION_DATABASE_NAME"
-          echo "database_id=$database_id" >> "$GITHUB_OUTPUT"
-          echo "created=$created" >> "$GITHUB_OUTPUT"
-
-      - name: Generate isolated Wrangler configuration
-        env:
-          TEST_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
-        shell: bash
-        run: |
-          set -euo pipefail
+          npx --yes wrangler@4.125.0 d1 list --json > /tmp/d1-list.json
           node - <<'NODE'
-          const fs = require('fs');
-          const src = JSON.parse(fs.readFileSync(process.env.WRANGLER_CONFIG, 'utf8'));
-          if (src.name !== process.env.TEST_WORKER_NAME) throw new Error('Refusing unexpected Worker');
-          src.d1_databases = [{
-            binding: 'CORE_DB',
-            database_name: process.env.TEST_DATABASE_NAME,
-            database_id: process.env.TEST_DATABASE_ID,
-          }];
-          const d1 = src.d1_databases[0];
-          if (d1.database_id === process.env.PRODUCTION_DATABASE_ID || d1.database_name === process.env.PRODUCTION_DATABASE_NAME) {
-            throw new Error('Refusing production D1');
-          }
-          fs.writeFileSync(process.env.GENERATED_CONFIG, JSON.stringify(src, null, 2) + '\n');
+          const list = require('/tmp/d1-list.json');
+          const m = list.filter(x => x.name === process.env.TEST_DATABASE_NAME);
+          if (m.length !== 1) throw new Error(`Expected exactly one dedicated D1, got ${m.length}`);
+          const id = m[0].uuid || m[0].id;
+          if (id !== process.env.TEST_DATABASE_ID) throw new Error(`Dedicated D1 ID mismatch: ${id}`);
+          if (id === process.env.PRODUCTION_DATABASE_ID) throw new Error('Production D1 forbidden');
           NODE
 
-      - name: Initialize schema only if D1 was newly created
-        if: steps.d1.outputs.created == 'true'
+      - name: Deploy isolated gomo-core-test
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes wrangler@4.125.0 d1 execute "$TEST_DATABASE_NAME" --remote --file migrations/0001_gomo_core.sql --config "$GENERATED_CONFIG"
-          npx --yes wrangler@4.125.0 d1 execute "$TEST_DATABASE_NAME" --remote --file migrations/0002_gomo_core_hardening.sql --config "$GENERATED_CONFIG"
-          npx --yes wrangler@4.125.0 d1 execute "$TEST_DATABASE_NAME" --remote --file migrations/0003_gomo_core_current_state.sql --config "$GENERATED_CONFIG"
+          npx --yes wrangler@4.125.0 deploy --config "$WRANGLER_CONFIG"
 
-      - name: Permanently bind test branch config to dedicated D1
-        env:
-          TEST_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          node - <<'NODE'
-          const fs = require('fs');
-          const p = process.env.WRANGLER_CONFIG;
-          const c = JSON.parse(fs.readFileSync(p, 'utf8'));
-          c.d1_databases = [{
-            binding: 'CORE_DB',
-            database_name: process.env.TEST_DATABASE_NAME,
-            database_id: process.env.TEST_DATABASE_ID,
-          }];
-          if (c.d1_databases[0].database_id === process.env.PRODUCTION_DATABASE_ID) throw new Error('Refusing production D1');
-          fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
-          NODE
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$WRANGLER_CONFIG"
-          if ! git diff --cached --quiet; then
-            git commit -m "test(core): bind gomo-core-test to dedicated v0.8 D1"
-            git push origin HEAD:"$TEST_BRANCH"
-          fi
-
-      - name: Deploy gomo-core-test with dedicated D1 and existing Cron
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx --yes wrangler@4.125.0 deploy --config "$GENERATED_CONFIG" | tee validation-results-isolation/deploy.txt
-
-      - name: Publish isolation summary
+      - name: Publish isolation result
         if: always()
-        env:
-          TEST_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
-          D1_CREATED: ${{ steps.d1.outputs.created }}
         shell: bash
         run: |
           {
-            echo "## GoMo Core v0.8 test isolation"
+            echo "## GoMo Core v0.8 isolated test deploy"
             echo
             echo "- Branch: \`$TEST_BRANCH\`"
             echo "- Worker: \`$TEST_WORKER_NAME\`"
-            echo "- Dedicated D1: \`$TEST_DATABASE_NAME\`"
-            echo "- Dedicated D1 ID: \`$TEST_DATABASE_ID\`"
-            echo "- D1 created by this run: \`$D1_CREATED\`"
+            echo "- D1: \`$TEST_DATABASE_NAME\`"
+            echo "- D1 ID: \`$TEST_DATABASE_ID\`"
             echo "- Production D1 targeted: \`false\`"
             echo "- Manual refresh executed: \`false\`"
-            echo "- Cron: existing hourly \`:15\` configuration kept"
+            echo "- Cron kept: \`15 * * * *\`"
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload isolation evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gomo-core-v08-isolation-evidence
-          path: validation-results-isolation/
-          if-no-files-found: warn
-          retention-days: 30
