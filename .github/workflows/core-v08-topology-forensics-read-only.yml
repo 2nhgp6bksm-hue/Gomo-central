@@ -1,0 +1,147 @@
+name: Core v0.8 topology forensics — READ ONLY
+
+on:
+  push:
+    branches:
+      - prepare/core-v08-production-2026-09-07
+    paths:
+      - .github/workflows/core-v08-topology-forensics-read-only.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  forensics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROD_WORKER: gomo-central
+      PROD_DB_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
+      TEST_DB_ID: 45ca2537-70d2-409c-9db1-2fa1772c0a2d
+    steps:
+      - name: Checkout preparation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Collect Git history evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p topology-forensics
+          git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          git log --all --date=iso-strict --pretty=format:'%H|%ad|%an|%s' -n 500 > topology-forensics/git-all.log
+          git log origin/test/core-d1-read-optimization --date=iso-strict --pretty=format:'%H|%ad|%an|%s' -n 250 > topology-forensics/git-test.log
+          grep -Ei 'prod|production|promot|rollback|deploy|gomo-central|d1|core' topology-forensics/git-test.log > topology-forensics/git-test-relevant.log || true
+
+      - name: Resolve account and collect Cloudflare read-only history
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" 'https://api.cloudflare.com/client/v4/accounts?per_page=50')"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+            echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+          fi
+          export CLOUDFLARE_ACCOUNT_ID
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$PROD_WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/settings" > topology-forensics/settings-current.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" > topology-forensics/schedules-current.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" > topology-forensics/deployments.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/versions?per_page=100" > topology-forensics/versions.json
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const dir='topology-forensics';
+          const dep=JSON.parse(fs.readFileSync(`${dir}/deployments.json`,'utf8'));
+          const ver=JSON.parse(fs.readFileSync(`${dir}/versions.json`,'utf8'));
+          const deps=Array.isArray(dep.result)?dep.result:Array.isArray(dep.result?.deployments)?dep.result.deployments:[];
+          const vers=Array.isArray(ver.result)?ver.result:Array.isArray(ver.result?.items)?ver.result.items:[];
+          const ids=new Set();
+          for(const d of deps){
+            if(d?.version_id) ids.add(d.version_id);
+            if(d?.id && /[0-9a-f-]{36}/i.test(d.id)){}
+            for(const v of (d?.versions||[])) ids.add(v?.version_id||v?.id);
+          }
+          for(const v of vers) ids.add(v?.id||v?.version_id);
+          ['39ba06b8-957e-4a0c-b802-19c898b4c933','7f93df13-eb14-41a9-9e3f-c269781c1195'].forEach(x=>ids.add(x));
+          fs.writeFileSync(`${dir}/version-ids.txt`,[...ids].filter(Boolean).join('\n')+'\n');
+          const compactDeps=deps.map(d=>({id:d.id||null,created_on:d.created_on||d.created_at||null,source:d.source||null,annotations:d.annotations||null,versions:(d.versions||[]).map(v=>({id:v.version_id||v.id||null,percentage:v.percentage??v.traffic??null}))}));
+          fs.writeFileSync(`${dir}/deployments-compact.json`,JSON.stringify(compactDeps,null,2)+'\n');
+          NODE
+
+          while IFS= read -r id; do
+            [ -n "$id" ] || continue
+            curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/versions/$id" > "topology-forensics/version-$id.json" || true
+          done < topology-forensics/version-ids.txt
+
+      - name: Collect GitHub Actions history read-only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs?branch=test%2Fcore-d1-read-optimization&per_page=100" > topology-forensics/actions-test.json
+
+      - name: Build forensic report
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const dir='topology-forensics';
+          const safeRead=p=>{try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch{return null}};
+          const findBindings=o=>{
+            const out=[]; const seen=new Set();
+            const walk=x=>{
+              if(!x||typeof x!=='object'||seen.has(x))return; seen.add(x);
+              if(Array.isArray(x)){for(const y of x)walk(y);return;}
+              if(typeof x.type==='string' && (x.name||x.binding) && ['d1','plain_text','service','ai','assets'].includes(x.type)) out.push(x);
+              for(const v of Object.values(x)) walk(v);
+            }; walk(o); return out;
+          };
+          const ids=fs.readFileSync(`${dir}/version-ids.txt`,'utf8').trim().split(/\n/).filter(Boolean);
+          const versions=[];
+          for(const id of ids){
+            const j=safeRead(`${dir}/version-${id}.json`);
+            const r=j?.result||j;
+            const bindings=findBindings(r);
+            const d1=bindings.filter(b=>b.type==='d1'&&(b.name==='CORE_DB'||b.binding==='CORE_DB')).map(b=>b.id||b.database_id||b.databaseId||null).filter(Boolean);
+            const plain={};
+            for(const b of bindings.filter(b=>b.type==='plain_text')) plain[b.name||b.binding]=b.text??b.value??null;
+            const annotations=r?.annotations||r?.metadata?.annotations||null;
+            versions.push({id,ok:j?.success!==false,created_on:r?.created_on||r?.created_at||null,annotations,coreDbIds:[...new Set(d1)],coreMode:plain.GOMO_CORE_MODE??null,currentReads:plain.CORE_CURRENT_READS??null,bindingTypes:[...new Set(bindings.map(b=>`${b.name||b.binding}:${b.type}`))].sort()});
+          }
+          const settings=safeRead(`${dir}/settings-current.json`);
+          const curBindings=settings?.result?.bindings||[];
+          const curD1=curBindings.find(b=>b.type==='d1'&&b.name==='CORE_DB');
+          const current={coreDbId:curD1?.id||curD1?.database_id||null,coreMode:curBindings.find(b=>b.type==='plain_text'&&b.name==='GOMO_CORE_MODE')?.text??null,currentReads:curBindings.find(b=>b.type==='plain_text'&&b.name==='CORE_CURRENT_READS')?.text??null};
+          const actions=safeRead(`${dir}/actions-test.json`)?.workflow_runs||[];
+          const actionRuns=actions.map(r=>({id:r.id,name:r.name,display_title:r.display_title,head_sha:r.head_sha,status:r.status,conclusion:r.conclusion,event:r.event,created_at:r.created_at,updated_at:r.updated_at,html_url:r.html_url})).filter(r=>/core|prod|cloudflare|d1/i.test(`${r.name} ${r.display_title}`));
+          const git=fs.readFileSync(`${dir}/git-test-relevant.log`,'utf8').trim().split(/\n/).filter(Boolean).slice(0,200);
+          const prodId=process.env.PROD_DB_ID,testId=process.env.TEST_DB_ID;
+          const classified=versions.map(v=>({...v,d1Class:v.coreDbIds.includes(prodId)?'production-db':v.coreDbIds.includes(testId)?'dedicated-test-db':v.coreDbIds.length?'other-db':'not-visible-in-version-detail'}));
+          const report={noDeploy:true,current,productionDbId:prodId,testDbId:testId,versions:classified,actionRuns,gitRelevant:git};
+          fs.writeFileSync(`${dir}/REPORT.json`,JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify({noDeploy:true,current,versions:classified.map(v=>({id:v.id,created_on:v.created_on,annotations:v.annotations,d1Class:v.d1Class,coreDbIds:v.coreDbIds,coreMode:v.coreMode})),actionRuns:actionRuns.slice(0,40),gitRelevant:git.slice(0,80)},null,2));
+          NODE
+
+      - name: Publish forensic summary
+        if: always()
+        shell: bash
+        run: |
+          echo '## Core v0.8 topology forensics — READ ONLY' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Production deployment executed: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Worker settings changed: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- D1 writes/migrations/backfills: `false`' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f topology-forensics/REPORT.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat topology-forensics/REPORT.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
