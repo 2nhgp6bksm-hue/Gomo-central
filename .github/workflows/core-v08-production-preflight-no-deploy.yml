@@ -1,0 +1,146 @@
+name: Core v0.8 production preflight — NO DEPLOY
+
+on:
+  push:
+    branches:
+      - prepare/core-v08-production-2026-09-07
+    paths:
+      - .github/workflows/core-v08-production-preflight-no-deploy.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-v08-production-preflight-no-deploy
+  cancel-in-progress: false
+
+env:
+  CANDIDATE_COMMIT: 6472e5a320e8981b5b954ff7f4b922299151970c
+  PROD_WORKER: gomo-central
+  PROD_DB_NAME: gomo-core-db
+  PROD_DB_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
+  EXPECTED_CRON: 15 * * * *
+
+jobs:
+  preflight-no-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout exact validated Core candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_COMMIT }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Local candidate validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_COMMIT"
+          npm test
+          node --check gomo-core-entry-v07.js
+          node --check gomo-core-entry-v071.js
+
+      - name: Read-only production state and D1 preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+            test -n "$CLOUDFLARE_ACCOUNT_ID"
+            echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+          fi
+          export CLOUDFLARE_ACCOUNT_ID
+          mkdir -p production-preflight-no-deploy
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$PROD_WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/settings" > production-preflight-no-deploy/settings.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" > production-preflight-no-deploy/schedules.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" > production-preflight-no-deploy/deployments.json
+          npx --yes wrangler@4.125.0 d1 list --json > production-preflight-no-deploy/d1-list.json
+          npx --yes wrangler@4.125.0 d1 execute "$PROD_DB_NAME" --remote --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('core_current_members','core_current_source_state','core_sync_runs') ORDER BY name;" > production-preflight-no-deploy/tables.json
+          npx --yes wrangler@4.125.0 d1 execute "$PROD_DB_NAME" --remote --json --command "SELECT COUNT(*) AS active_members FROM core_current_members WHERE active=1;" > production-preflight-no-deploy/members.json
+
+      - name: Verify production safety invariants and generate dry-run config
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const dir='production-preflight-no-deploy';
+          const settings=JSON.parse(fs.readFileSync(`${dir}/settings.json`,'utf8'));
+          const schedules=JSON.parse(fs.readFileSync(`${dir}/schedules.json`,'utf8'));
+          const deployments=JSON.parse(fs.readFileSync(`${dir}/deployments.json`,'utf8'));
+          const d1list=JSON.parse(fs.readFileSync(`${dir}/d1-list.json`,'utf8'));
+          const unpack=(p)=>{const j=JSON.parse(fs.readFileSync(p,'utf8'));const a=Array.isArray(j)?j:[j];return a.flatMap(x=>x?.results||x?.result?.results||[])};
+          if(!settings.success) throw new Error('Production settings unavailable');
+          if(!schedules.success) throw new Error('Production schedules unavailable');
+          if(!deployments.success) throw new Error('Production deployments unavailable');
+          const db=d1list.find(x=>x.name===process.env.PROD_DB_NAME);
+          const dbid=db?.uuid||db?.id;
+          if(dbid!==process.env.PROD_DB_ID) throw new Error(`Production D1 mismatch: ${dbid}`);
+          const tables=unpack(`${dir}/tables.json`).map(x=>x.name).sort();
+          const expectedTables=['core_current_members','core_current_source_state','core_sync_runs'];
+          if(JSON.stringify(tables)!==JSON.stringify(expectedTables)) throw new Error(`Missing production tables: ${JSON.stringify(tables)}`);
+          const activeMembers=Number(unpack(`${dir}/members.json`)[0]?.active_members);
+          if(activeMembers!==94) throw new Error(`Expected 94 active production members, got ${activeMembers}`);
+          const bindings=Array.isArray(settings.result?.bindings)?settings.result.bindings:[];
+          const d1=bindings.filter(b=>b.type==='d1');
+          if(d1.length!==1||d1[0].name!=='CORE_DB'||String(d1[0].id||d1[0].database_id)!==process.env.PROD_DB_ID) throw new Error(`Unexpected production CORE_DB: ${JSON.stringify(d1)}`);
+          const services=bindings.filter(b=>b.type==='service');
+          const serviceNames=new Set(services.map(b=>b.name));
+          if(!serviceNames.has('GOMO_ASSISTANT')||!serviceNames.has('SHINY')) throw new Error(`Missing production service binding: ${JSON.stringify(services)}`);
+          const ai=bindings.filter(b=>b.type==='ai');
+          if(ai.length!==1||ai[0].name!=='AI') throw new Error(`Unexpected AI binding: ${JSON.stringify(ai)}`);
+          const plain={}; for(const b of bindings.filter(b=>b.type==='plain_text')) plain[b.name]=b.text;
+          if(String(plain.CORE_CURRENT_READS)!=='1') throw new Error(`CORE_CURRENT_READS must be 1, got ${plain.CORE_CURRENT_READS}`);
+          const raw=Array.isArray(schedules.result)?schedules.result:Array.isArray(schedules.result?.schedules)?schedules.result.schedules:[];
+          const crons=raw.map(x=>x?.cron||x).filter(Boolean);
+          if(crons.length!==1||crons[0]!==process.env.EXPECTED_CRON) throw new Error(`Unexpected production Cron: ${JSON.stringify(crons)}`);
+          const depRaw=Array.isArray(deployments.result)?deployments.result:Array.isArray(deployments.result?.deployments)?deployments.result.deployments:[];
+          if(!depRaw.length) throw new Error('No production deployment available for rollback');
+          const active=depRaw.find(d=>Array.isArray(d.versions)&&d.versions.some(v=>Number(v.percentage??v.traffic??0)>=99.9))||depRaw[0];
+          const versions=Array.isArray(active?.versions)?active.versions:[];
+          const prev=versions.slice().sort((a,b)=>Number(b.percentage??b.traffic??0)-Number(a.percentage??a.traffic??0))[0];
+          const previousVersion=prev?.version_id||prev?.id||active?.version_id||active?.id;
+          if(!previousVersion) throw new Error('Cannot determine rollback version');
+          const config={
+            name:process.env.PROD_WORKER,
+            main:'gomo-core-entry-v071.js',
+            compatibility_date:'2026-08-07',
+            compatibility_flags:['nodejs_compat'],
+            vars:plain,
+            d1_databases:[{binding:'CORE_DB',database_name:process.env.PROD_DB_NAME,database_id:process.env.PROD_DB_ID}],
+            triggers:{crons:[process.env.EXPECTED_CRON]},
+            assets:{directory:'.',binding:'ASSETS',run_worker_first:['/','/index.html','/api/*','/core','/core/*','/fallback.json','/gestion-train','/gestion-train/*','/vs-planner','/vs-planner/*','/sw.js','/shiny-radar','/shiny-radar/*']},
+            services:services.map(b=>({binding:b.name,service:b.service,...(b.environment?{environment:b.environment}:{})})),
+            ai:{binding:'AI'}
+          };
+          fs.writeFileSync(`${dir}/production.generated.json`,JSON.stringify(config,null,2)+'\n');
+          fs.writeFileSync(`${dir}/report.json`,JSON.stringify({ok:true,noDeploy:true,candidateCommit:process.env.CANDIDATE_COMMIT,worker:process.env.PROD_WORKER,database:process.env.PROD_DB_NAME,databaseId:process.env.PROD_DB_ID,activeMembers,cron:crons[0],previousVersion,services:services.map(b=>b.name).sort(),coreCurrentReads:plain.CORE_CURRENT_READS},null,2)+'\n');
+          NODE
+
+      - name: Wrangler production dry-run only
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.125.0 deploy --config production-preflight-no-deploy/production.generated.json --dry-run --outdir .wrangler-production-no-deploy
+
+      - name: Publish NO DEPLOY report
+        if: always()
+        shell: bash
+        run: |
+          echo '## Core v0.8 production preflight — NO DEPLOY' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Deployment executed: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Migration/backfill/manual refresh: `false`' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f production-preflight-no-deploy/report.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat production-preflight-no-deploy/report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
