@@ -1,0 +1,84 @@
+name: Core v0.8 active deployment audit — NO DEPLOY
+
+on:
+  push:
+    branches:
+      - prepare/core-v08-production-2026-09-07
+    paths:
+      - .github/workflows/core-v08-active-deployment-audit-no-deploy.yml
+
+permissions:
+  contents: read
+
+jobs:
+  active-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read active deployments and public Core status
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          export CLOUDFLARE_ACCOUNT_ID
+          mkdir -p active-audit-no-deploy
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" > active-audit-no-deploy/subdomain.json
+          for worker in gomo-central gomo-central-site gomo-core-test; do
+            base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$worker"
+            curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" > "active-audit-no-deploy/$worker.deployments.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const sub=JSON.parse(fs.readFileSync('active-audit-no-deploy/subdomain.json','utf8'));
+          if(!sub.success||!sub.result?.subdomain) throw new Error('Workers subdomain unavailable');
+          fs.writeFileSync('active-audit-no-deploy/subdomain.txt',sub.result.subdomain+'\n');
+          for(const worker of ['gomo-central','gomo-central-site','gomo-core-test']){
+            const j=JSON.parse(fs.readFileSync(`active-audit-no-deploy/${worker}.deployments.json`,'utf8'));
+            if(!j.success) throw new Error(`${worker} deployments unavailable`);
+            const arr=Array.isArray(j.result)?j.result:Array.isArray(j.result?.deployments)?j.result.deployments:[];
+            const active=arr.find(d=>Array.isArray(d.versions)&&d.versions.some(v=>Number(v.percentage??v.traffic??0)>=99.9))||arr[0];
+            const versions=Array.isArray(active?.versions)?active.versions:[];
+            const v=versions.slice().sort((a,b)=>Number(b.percentage??b.traffic??0)-Number(a.percentage??a.traffic??0))[0];
+            const id=v?.version_id||v?.id||active?.version_id||active?.id||null;
+            const pct=Number(v?.percentage??v?.traffic??100);
+            fs.writeFileSync(`active-audit-no-deploy/${worker}.active.json`,JSON.stringify({id,percentage:pct,deploymentId:active?.id||null},null,2)+'\n');
+          }
+          NODE
+          subdomain="$(cat active-audit-no-deploy/subdomain.txt)"
+          for worker in gomo-central gomo-central-site gomo-core-test; do
+            origin="https://${worker}.${subdomain}.workers.dev"
+            code="$(curl --retry 0 -sS -o "active-audit-no-deploy/$worker.status.body" -w '%{http_code}' "$origin/api/core/status" || true)"
+            printf '%s\n' "$code" > "active-audit-no-deploy/$worker.status.code"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const out={noDeploy:true,workers:{}};
+          for(const worker of ['gomo-central','gomo-central-site','gomo-core-test']){
+            const active=JSON.parse(fs.readFileSync(`active-audit-no-deploy/${worker}.active.json`,'utf8'));
+            const code=Number(fs.readFileSync(`active-audit-no-deploy/${worker}.status.code`,'utf8').trim()||0);
+            let status=null,preview='';
+            try{status=JSON.parse(fs.readFileSync(`active-audit-no-deploy/${worker}.status.body`,'utf8'));}catch{preview=fs.readFileSync(`active-audit-no-deploy/${worker}.status.body`,'utf8').slice(0,200)}
+            out.workers[worker]={activeVersion:active,httpStatus:code,status:status?{ok:status.ok,coreVersion:status.coreVersion||null,mode:status.mode||null,members:status.lastSuccessfulSync?.members??status.members??null,dataPath:status.dataPath||null,productionUntouched:status.safety?.productionUntouched??null}:null,bodyPreview:status?null:preview};
+          }
+          fs.writeFileSync('active-audit-no-deploy/report.json',JSON.stringify(out,null,2)+'\n');
+          console.log(JSON.stringify(out,null,2));
+          NODE
+
+      - name: Publish active audit
+        if: always()
+        shell: bash
+        run: |
+          echo '## Core active deployment audit — NO DEPLOY' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Deployment executed: `false`' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f active-audit-no-deploy/report.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat active-audit-no-deploy/report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
