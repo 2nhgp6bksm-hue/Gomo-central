@@ -1,0 +1,77 @@
+name: Core v0.8 worker audit — NO DEPLOY
+
+on:
+  push:
+    branches:
+      - prepare/core-v08-production-2026-09-07
+    paths:
+      - .github/workflows/core-v08-worker-audit-no-deploy.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit-no-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Read-only Cloudflare worker audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          export CLOUDFLARE_ACCOUNT_ID
+          mkdir -p worker-audit-no-deploy
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" > worker-audit-no-deploy/scripts.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('worker-audit-no-deploy/scripts.json','utf8'));
+          if(!j.success) throw new Error('workers/scripts failed');
+          const names=(j.result||[]).map(x=>x.id||x.name).filter(Boolean).filter(n=>/gomo|core|central/i.test(n)).sort();
+          fs.writeFileSync('worker-audit-no-deploy/names.txt',names.join('\n')+'\n');
+          NODE
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            safe="$(printf '%s' "$name" | tr -c 'A-Za-z0-9._-' '_')"
+            base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$name"
+            curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/settings" > "worker-audit-no-deploy/${safe}.settings.json"
+            curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" > "worker-audit-no-deploy/${safe}.schedules.json"
+            curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/versions?per_page=5" > "worker-audit-no-deploy/${safe}.versions.json"
+          done < worker-audit-no-deploy/names.txt
+          node - <<'NODE'
+          const fs=require('fs');
+          const names=fs.readFileSync('worker-audit-no-deploy/names.txt','utf8').trim().split(/\n/).filter(Boolean);
+          const out=[];
+          for(const name of names){
+            const safe=name.replace(/[^A-Za-z0-9._-]/g,'_');
+            const read=(suffix)=>JSON.parse(fs.readFileSync(`worker-audit-no-deploy/${safe}.${suffix}.json`,'utf8'));
+            const settings=read('settings'); const schedules=read('schedules'); const versions=read('versions');
+            const bindings=(settings.result?.bindings||[]).map(b=>({binding:b.name,type:b.type,databaseId:b.id||b.database_id||null,service:b.service||null,text:b.type==='plain_text'&&['CORE_CURRENT_READS','GOMO_CORE_MODE'].includes(b.name)?b.text:null}));
+            const raw=Array.isArray(schedules.result)?schedules.result:Array.isArray(schedules.result?.schedules)?schedules.result.schedules:[];
+            const crons=raw.map(x=>x?.cron||x).filter(Boolean);
+            const vr=Array.isArray(versions.result)?versions.result:Array.isArray(versions.result?.items)?versions.result.items:[];
+            const versionList=vr.slice(0,5).map(v=>({id:v.id||v.version_id||null,created_on:v.created_on||null,annotations:v.annotations||null}));
+            out.push({name,bindings,crons,versions:versionList});
+          }
+          fs.writeFileSync('worker-audit-no-deploy/report.json',JSON.stringify(out,null,2)+'\n');
+          console.log(JSON.stringify(out,null,2));
+          NODE
+
+      - name: Publish NO DEPLOY audit
+        if: always()
+        shell: bash
+        run: |
+          echo '## Core worker audit — NO DEPLOY' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Deployment executed: `false`' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f worker-audit-no-deploy/report.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat worker-audit-no-deploy/report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
