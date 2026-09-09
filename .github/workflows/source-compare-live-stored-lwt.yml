@@ -1,0 +1,31 @@
+name: GoMo live source comparison using stored LastWar Tools
+
+on:
+  push:
+    branches:
+      - test/lastwar-tools-comparison
+    paths:
+      - .github/source-compare-live.trigger
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout isolated comparison branch
+        uses: actions/checkout@v4
+        with:
+          ref: test/lastwar-tools-comparison
+      - name: Compare stored LastWar Tools with fresh free LastIntel and LastRank
+        run: node tests/source-compare-stored-lwt.mjs
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gomo-source-live-stored-lwt-report
+          path: /tmp/gomo-source-live-report.json
+          if-no-files-found: error
+          retention-days: 7
