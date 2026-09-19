@@ -1,0 +1,287 @@
+name: One-shot pause gomo-core-test Cron
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gomo-core-test-cron-pause-once
+  cancel-in-progress: false
+
+jobs:
+  pause-cron-once:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      ACCOUNT_ID: 8c513559f775c0cca653268ab2f29c0d
+      TEST_WORKER: gomo-core-test
+      TEST_VERSION: 054617d5-baa6-4dc3-9866-a87f61c19b2e
+      TEST_DEPLOYMENT: 33cf2723-5a6b-434c-a407-dc45ce35d586
+      TEST_DB_NAME: gomo-core-v08-read-test-db
+      TEST_DB_ID: 45ca2537-70d2-409c-9db1-2fa1772c0a2d
+      EXPECTED_CRON: 15 * * * *
+      PROD_WORKER: gomo-central
+      PROD_VERSION: 8cc05aa0-ca62-4d37-b176-81eb180728be
+      PROD_DEPLOYMENT: 10b48eba-6c47-4057-9343-911efbb020e4
+      PROD_DB_NAME: gomo-core-db
+      PROD_DB_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
+
+    steps:
+      - name: Exact read-only safety precheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          mkdir -p cron-pause-evidence
+          api="https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID"
+          auth=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+
+          curl -fsS "${auth[@]}" "$api/workers/scripts/$TEST_WORKER/schedules" > cron-pause-evidence/test-schedules-before.json
+          curl -fsS "${auth[@]}" "$api/workers/scripts/$TEST_WORKER/deployments" > cron-pause-evidence/test-deployments-before.json
+          curl -fsS "${auth[@]}" "$api/workers/scripts/$TEST_WORKER/versions/$TEST_VERSION" > cron-pause-evidence/test-version-before.json
+
+          curl -fsS "${auth[@]}" "$api/workers/scripts/$PROD_WORKER/schedules" > cron-pause-evidence/prod-schedules-before.json
+          curl -fsS "${auth[@]}" "$api/workers/scripts/$PROD_WORKER/deployments" > cron-pause-evidence/prod-deployments-before.json
+          curl -fsS "${auth[@]}" "$api/workers/scripts/$PROD_WORKER/versions/$PROD_VERSION" > cron-pause-evidence/prod-version-before.json
+
+          curl -fsS "${auth[@]}" "$api/d1/database?per_page=100" > cron-pause-evidence/d1-list-before.json
+          curl -fsS "https://$TEST_WORKER.gjp86wh7p2.workers.dev/api/core/status" > cron-pause-evidence/test-status-before.json
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const dir = 'cron-pause-evidence';
+          const read = name => JSON.parse(fs.readFileSync(`${dir}/${name}`, 'utf8'));
+          const result = value => value?.result ?? value;
+          const schedules = name => {
+            const value = result(read(name));
+            const list = Array.isArray(value) ? value : Array.isArray(value?.schedules) ? value.schedules : [];
+            return list.map(item => item?.cron ?? item).filter(Boolean);
+          };
+          const active = name => {
+            const value = result(read(name));
+            const list = Array.isArray(value) ? value : Array.isArray(value?.deployments) ? value.deployments : [];
+            if (!list.length) throw new Error(`No deployment in ${name}`);
+            const deployment = list[0];
+            const version = (deployment.versions || []).slice().sort((a,b) =>
+              Number(b.percentage ?? b.traffic ?? 0) - Number(a.percentage ?? a.traffic ?? 0)
+            )[0];
+            return {
+              deploymentId: deployment.id ?? null,
+              versionId: version?.version_id ?? version?.id ?? null,
+              traffic: Number(version?.percentage ?? version?.traffic ?? 0)
+            };
+          };
+          const coreDb = name => {
+            const document = read(name);
+            if (!document.success) throw new Error(`Version lookup failed: ${name}`);
+            const found = [], seen = new Set();
+            const walk = value => {
+              if (!value || typeof value !== 'object' || seen.has(value)) return;
+              seen.add(value);
+              if (Array.isArray(value)) {
+                for (const item of value) walk(item);
+                return;
+              }
+              if (value.type && value.name) found.push(value);
+              for (const child of Object.values(value)) walk(child);
+            };
+            walk(document);
+            const db = found.find(item => item.type === 'd1' && item.name === 'CORE_DB');
+            return db ? (db.id ?? db.database_id ?? null) : null;
+          };
+          const d1Value = result(read('d1-list-before.json'));
+          const d1List = Array.isArray(d1Value) ? d1Value : Array.isArray(d1Value?.items) ? d1Value.items : [];
+          const d1Name = id => d1List.find(item => (item.uuid ?? item.id) === id)?.name ?? null;
+
+          const testCrons = schedules('test-schedules-before.json');
+          const prodCrons = schedules('prod-schedules-before.json');
+          const testActive = active('test-deployments-before.json');
+          const prodActive = active('prod-deployments-before.json');
+          const testDbId = coreDb('test-version-before.json');
+          const prodDbId = coreDb('prod-version-before.json');
+
+          if (testCrons.length !== 1 || testCrons[0] !== process.env.EXPECTED_CRON) {
+            throw new Error(`STOP: expected exactly one test Cron "${process.env.EXPECTED_CRON}", found ${JSON.stringify(testCrons)}`);
+          }
+          if (prodCrons.length !== 0) throw new Error(`STOP: gomo-central Cron mismatch: ${JSON.stringify(prodCrons)}`);
+          if (testActive.deploymentId !== process.env.TEST_DEPLOYMENT ||
+              testActive.versionId !== process.env.TEST_VERSION ||
+              testActive.traffic !== 100) throw new Error(`STOP: gomo-core-test active deployment mismatch: ${JSON.stringify(testActive)}`);
+          if (prodActive.deploymentId !== process.env.PROD_DEPLOYMENT ||
+              prodActive.versionId !== process.env.PROD_VERSION ||
+              prodActive.traffic !== 100) throw new Error(`STOP: gomo-central active deployment mismatch: ${JSON.stringify(prodActive)}`);
+          if (testDbId !== process.env.TEST_DB_ID || d1Name(testDbId) !== process.env.TEST_DB_NAME) {
+            throw new Error(`STOP: gomo-core-test D1 mismatch: ${d1Name(testDbId)} / ${testDbId}`);
+          }
+          if (prodDbId !== process.env.PROD_DB_ID || d1Name(prodDbId) !== process.env.PROD_DB_NAME) {
+            throw new Error(`STOP: gomo-central D1 mismatch: ${d1Name(prodDbId)} / ${prodDbId}`);
+          }
+
+          const status = read('test-status-before.json');
+          const lastSync = status?.lastSuccessfulSync?.completedAt ?? status?.last_successful_sync?.completed_at ?? null;
+          const precheck = {
+            conform: true,
+            cronBefore: testCrons,
+            test: {...testActive, dbName: d1Name(testDbId), dbId: testDbId},
+            production: {...prodActive, crons: prodCrons, dbName: d1Name(prodDbId), dbId: prodDbId},
+            lastSyncBefore: lastSync
+          };
+          fs.writeFileSync(`${dir}/PRECHECK.json`, JSON.stringify(precheck, null, 2) + '\n');
+          console.log('PRECHECK=CONFORME');
+          console.log(`TEST_CRON_BEFORE=${testCrons.join(',')}`);
+          console.log(`TEST_VERSION=${testActive.versionId}`);
+          console.log(`TEST_DEPLOYMENT=${testActive.deploymentId}`);
+          console.log(`TEST_D1=${d1Name(testDbId)} / ${testDbId}`);
+          console.log(`PROD_VERSION=${prodActive.versionId}`);
+          console.log(`PROD_CRONS=${prodCrons.length}`);
+          NODE
+
+      - name: Remove only the verified gomo-core-test Cron
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$TEST_WORKER/schedules"
+          curl -fsS -X PUT             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data '[]'             "$api" > cron-pause-evidence/update-response.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const response = JSON.parse(fs.readFileSync('cron-pause-evidence/update-response.json', 'utf8'));
+          const value = response?.result?.schedules ?? response?.result ?? [];
+          if (!response.success || !Array.isArray(value) || value.length !== 0) {
+            throw new Error('Cloudflare schedule update failed or returned a non-empty schedule list');
+          }
+          console.log('CLOUDFLARE_CRON_DELETE=SUCCESS');
+          NODE
+
+      - name: Read-only post-delete verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          api="https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID"
+          auth=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+
+          curl -fsS "${auth[@]}" "$api/workers/scripts/$TEST_WORKER/schedules" > cron-pause-evidence/test-schedules-after.json
+          curl -fsS "${auth[@]}" "$api/workers/scripts/$TEST_WORKER/deployments" > cron-pause-evidence/test-deployments-after.json
+          curl -fsS "${auth[@]}" "$api/workers/scripts/$TEST_WORKER/versions/$TEST_VERSION" > cron-pause-evidence/test-version-after.json
+
+          curl -fsS "${auth[@]}" "$api/workers/scripts/$PROD_WORKER/schedules" > cron-pause-evidence/prod-schedules-after.json
+          curl -fsS "${auth[@]}" "$api/workers/scripts/$PROD_WORKER/deployments" > cron-pause-evidence/prod-deployments-after.json
+          curl -fsS "${auth[@]}" "$api/workers/scripts/$PROD_WORKER/versions/$PROD_VERSION" > cron-pause-evidence/prod-version-after.json
+
+          curl -fsS "${auth[@]}" "$api/d1/database?per_page=100" > cron-pause-evidence/d1-list-after.json
+          curl -fsS "https://$TEST_WORKER.gjp86wh7p2.workers.dev/api/core/status" > cron-pause-evidence/test-status-after.json
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const dir = 'cron-pause-evidence';
+          const read = name => JSON.parse(fs.readFileSync(`${dir}/${name}`, 'utf8'));
+          const result = value => value?.result ?? value;
+          const schedules = name => {
+            const value = result(read(name));
+            const list = Array.isArray(value) ? value : Array.isArray(value?.schedules) ? value.schedules : [];
+            return list.map(item => item?.cron ?? item).filter(Boolean);
+          };
+          const active = name => {
+            const value = result(read(name));
+            const list = Array.isArray(value) ? value : Array.isArray(value?.deployments) ? value.deployments : [];
+            if (!list.length) throw new Error(`No deployment in ${name}`);
+            const deployment = list[0];
+            const version = (deployment.versions || []).slice().sort((a,b) =>
+              Number(b.percentage ?? b.traffic ?? 0) - Number(a.percentage ?? a.traffic ?? 0)
+            )[0];
+            return {
+              deploymentId: deployment.id ?? null,
+              versionId: version?.version_id ?? version?.id ?? null,
+              traffic: Number(version?.percentage ?? version?.traffic ?? 0)
+            };
+          };
+          const coreDb = name => {
+            const document = read(name);
+            if (!document.success) throw new Error(`Version lookup failed: ${name}`);
+            const found = [], seen = new Set();
+            const walk = value => {
+              if (!value || typeof value !== 'object' || seen.has(value)) return;
+              seen.add(value);
+              if (Array.isArray(value)) {
+                for (const item of value) walk(item);
+                return;
+              }
+              if (value.type && value.name) found.push(value);
+              for (const child of Object.values(value)) walk(child);
+            };
+            walk(document);
+            const db = found.find(item => item.type === 'd1' && item.name === 'CORE_DB');
+            return db ? (db.id ?? db.database_id ?? null) : null;
+          };
+          const d1Value = result(read('d1-list-after.json'));
+          const d1List = Array.isArray(d1Value) ? d1Value : Array.isArray(d1Value?.items) ? d1Value.items : [];
+          const d1Name = id => d1List.find(item => (item.uuid ?? item.id) === id)?.name ?? null;
+
+          const pre = read('PRECHECK.json');
+          const testCrons = schedules('test-schedules-after.json');
+          const prodCrons = schedules('prod-schedules-after.json');
+          const testActive = active('test-deployments-after.json');
+          const prodActive = active('prod-deployments-after.json');
+          const testDbId = coreDb('test-version-after.json');
+          const prodDbId = coreDb('prod-version-after.json');
+          const status = read('test-status-after.json');
+          const lastSyncAfter = status?.lastSuccessfulSync?.completedAt ?? status?.last_successful_sync?.completed_at ?? null;
+
+          if (testCrons.length !== 0) throw new Error(`Test Cron remains: ${JSON.stringify(testCrons)}`);
+          if (prodCrons.length !== 0) throw new Error(`Production Cron changed: ${JSON.stringify(prodCrons)}`);
+          if (testActive.deploymentId !== process.env.TEST_DEPLOYMENT ||
+              testActive.versionId !== process.env.TEST_VERSION ||
+              testActive.traffic !== 100) throw new Error(`Test deployment changed: ${JSON.stringify(testActive)}`);
+          if (prodActive.deploymentId !== process.env.PROD_DEPLOYMENT ||
+              prodActive.versionId !== process.env.PROD_VERSION ||
+              prodActive.traffic !== 100) throw new Error(`Production deployment changed: ${JSON.stringify(prodActive)}`);
+          if (testDbId !== process.env.TEST_DB_ID || d1Name(testDbId) !== process.env.TEST_DB_NAME) {
+            throw new Error(`Test D1 changed: ${d1Name(testDbId)} / ${testDbId}`);
+          }
+          if (prodDbId !== process.env.PROD_DB_ID || d1Name(prodDbId) !== process.env.PROD_DB_NAME) {
+            throw new Error(`Production D1 changed: ${d1Name(prodDbId)} / ${prodDbId}`);
+          }
+          if (lastSyncAfter !== pre.lastSyncBefore) {
+            throw new Error(`Synchronization timestamp changed during operation: ${pre.lastSyncBefore} -> ${lastSyncAfter}`);
+          }
+
+          const report = {
+            precheck: 'CONFORME',
+            cronBefore: pre.cronBefore,
+            cloudflareDelete: 'REUSSI',
+            cronAfter: testCrons,
+            test: {...testActive, newDeploymentCreated: false, dbName: d1Name(testDbId), dbId: testDbId},
+            lastSyncBefore: pre.lastSyncBefore,
+            lastSyncAfter,
+            newSyncTriggered: false,
+            production: {...prodActive, crons: prodCrons, dbName: d1Name(prodDbId), dbId: prodDbId},
+            productionWorkerModified: false,
+            productionD1Modified: false,
+            testD1VoluntarilyModified: false,
+            tokenDisplayed: false
+          };
+          fs.writeFileSync(`${dir}/REPORT.json`, JSON.stringify(report, null, 2) + '\n');
+          console.log(JSON.stringify(report, null, 2));
+          NODE
+
+      - name: Publish sanitized result
+        if: always()
+        shell: bash
+        run: |
+          echo '## One-shot gomo-core-test Cron pause' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Worker deployment/upload/rollback: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- D1 write command: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- gomo-central write request: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Token displayed: `false`' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f cron-pause-evidence/REPORT.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat cron-pause-evidence/REPORT.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          elif [ -f cron-pause-evidence/PRECHECK.json ]; then
+            echo 'Precheck succeeded, but the operation or post-check failed.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Precheck failed: no Cloudflare write was attempted.' >> "$GITHUB_STEP_SUMMARY"
+          fi
