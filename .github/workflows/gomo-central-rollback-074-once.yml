@@ -1,0 +1,139 @@
+name: One-shot targeted gomo-central rollback to Core 0.7.4
+
+on:
+  push:
+    branches:
+      - audit/cloudflare-token-whoami-2026-09-19
+    paths:
+      - .github/workflows/gomo-central-rollback-074-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  rollback-once:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WORKER: gomo-central
+      TARGET_VERSION: 8cc05aa0-ca62-4d37-b176-81eb180728be
+      PROD_DB_NAME: gomo-core-db
+      PROD_DB_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
+    steps:
+      - name: Read-only safety preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          mkdir -p rollback-evidence
+          accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" 'https://api.cloudflare.com/client/v4/accounts?per_page=50')"
+          account_id="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          echo "CLOUDFLARE_ACCOUNT_ID=$account_id" >> "$GITHUB_ENV"
+          api="https://api.cloudflare.com/client/v4/accounts/$account_id/workers/scripts/$WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/deployments" > rollback-evidence/deployments-before.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/schedules" > rollback-evidence/schedules-before.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/versions/$TARGET_VERSION" > rollback-evidence/target-version.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('rollback-evidence/target-version.json','utf8'));
+          if(!j.success) throw new Error('Target version unavailable');
+          const seen=new Set(), bindings=[];
+          const walk=x=>{if(!x||typeof x!=='object'||seen.has(x))return;seen.add(x);if(Array.isArray(x)){for(const y of x)walk(y);return;}if(x.type&&x.name)bindings.push(x);for(const v of Object.values(x))walk(v)};
+          walk(j);
+          const db=bindings.find(b=>b.type==='d1'&&b.name==='CORE_DB');
+          if((db?.id||db?.database_id)!==process.env.PROD_DB_ID) throw new Error('Target CORE_DB does not match production D1');
+          NODE
+
+      - name: Authorized targeted rollback only
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@latest rollback 8cc05aa0-ca62-4d37-b176-81eb180728be \
+            --name gomo-central \
+            --message "Restore stable Core 0.7.4 after unintended Git deployment"
+
+      - name: Read-only post-rollback verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 8
+          account_id="$CLOUDFLARE_ACCOUNT_ID"
+          account_api="https://api.cloudflare.com/client/v4/accounts/$account_id"
+          worker_api="$account_api/workers/scripts/$WORKER"
+          auth=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          curl -fsS "${auth[@]}" "$worker_api/deployments" > rollback-evidence/deployments-after.json
+          curl -fsS "${auth[@]}" "$worker_api/schedules" > rollback-evidence/schedules-after.json
+          curl -fsS "${auth[@]}" "$worker_api/versions/$TARGET_VERSION" > rollback-evidence/active-version.json
+          curl -fsS "${auth[@]}" "$account_api/workers/subdomain" > rollback-evidence/subdomain.json
+          npx --yes wrangler@latest d1 list --json > rollback-evidence/d1-list.json
+          npx --yes wrangler@latest d1 execute "$PROD_DB_NAME" --remote --json --command "SELECT sync_id,started_at,completed_at,status,reconciled_members FROM core_sync_runs ORDER BY COALESCE(completed_at,started_at) DESC LIMIT 1;" > rollback-evidence/d1-latest.json
+          npx --yes wrangler@latest d1 execute "$PROD_DB_NAME" --remote --json --command "SELECT COUNT(*) AS total_members,SUM(CASE WHEN active=1 THEN 1 ELSE 0 END) AS active_members FROM core_current_members;" > rollback-evidence/d1-members.json
+
+          subdomain="$(node -e 'const j=require("./rollback-evidence/subdomain.json");if(!j.success||!j.result?.subdomain)process.exit(1);process.stdout.write(j.result.subdomain)')"
+          origin="https://$WORKER.$subdomain.workers.dev"
+          for endpoint in status members power; do
+            curl --retry 0 -sS -o "rollback-evidence/$endpoint.json" -w '%{http_code}' "$origin/api/core/$endpoint" > "rollback-evidence/$endpoint.code"
+          done
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
+          const apiResult=j=>j?.result??j;
+          const rows=j=>{const r=apiResult(j);if(Array.isArray(r)){if(r[0]?.results)return r[0].results;return r;}return r?.results||[]};
+          const depsRaw=apiResult(read('rollback-evidence/deployments-after.json'));
+          const deps=Array.isArray(depsRaw)?depsRaw:Array.isArray(depsRaw?.deployments)?depsRaw.deployments:[];
+          const active=deps[0];
+          const activeVersion=(active?.versions||[]).slice().sort((a,b)=>Number(b.percentage??b.traffic??0)-Number(a.percentage??a.traffic??0))[0];
+          const versionId=activeVersion?.version_id||activeVersion?.id||null;
+          const traffic=Number(activeVersion?.percentage??activeVersion?.traffic??0);
+          if(versionId!==process.env.TARGET_VERSION||traffic!==100) throw new Error(`Unexpected active deployment: ${versionId} at ${traffic}%`);
+
+          const version=read('rollback-evidence/active-version.json');
+          const found=[],seen=new Set();
+          const walk=x=>{if(!x||typeof x!=='object'||seen.has(x))return;seen.add(x);if(Array.isArray(x)){for(const y of x)walk(y);return;}if(x.type&&x.name)found.push(x);for(const v of Object.values(x))walk(v)};
+          walk(version);
+          const allow=new Set(['GOMO_CORE_MODE','CORE_CURRENT_READS','CORE_PUBLIC_CACHE_SECONDS','CORE_PUBLIC_CACHE_ORIGINS']);
+          const bindings=found.map(b=>({name:b.name,type:b.type,databaseId:b.id||b.database_id||null,service:b.service||null,environment:b.environment||null,value:b.type==='plain_text'&&allow.has(b.name)?(b.text??b.value??null):null,secretPresent:b.type==='secret_text'?true:null}));
+          const schedulesRaw=apiResult(read('rollback-evidence/schedules-after.json'));
+          const schedules=Array.isArray(schedulesRaw)?schedulesRaw:Array.isArray(schedulesRaw?.schedules)?schedulesRaw.schedules:[];
+          const d1Raw=read('rollback-evidence/d1-list.json');
+          const d1List=Array.isArray(d1Raw)?d1Raw:apiResult(d1Raw)||[];
+          const db=d1List.find(x=>x.name===process.env.PROD_DB_NAME)||null;
+          const body=name=>{try{return read(`rollback-evidence/${name}.json`)}catch{return null}};
+          const countMembers=j=>Array.isArray(j)?j.length:Array.isArray(j?.members)?j.members.length:Array.isArray(j?.data)?j.data.length:(j?.membersCount??j?.count??null);
+          const report={
+            rollback:true,
+            versionId,
+            deploymentId:active?.id||null,
+            deploymentCreatedOn:active?.created_on||active?.created_at||null,
+            traffic,
+            bindings,
+            cron:schedules.map(x=>x?.cron||x).filter(Boolean),
+            database:db?{name:db.name,id:db.uuid||db.id}:null,
+            status:{http:Number(fs.readFileSync('rollback-evidence/status.code','utf8')),body:body('status')},
+            members:{http:Number(fs.readFileSync('rollback-evidence/members.code','utf8')),count:countMembers(body('members'))},
+            power:{http:Number(fs.readFileSync('rollback-evidence/power.code','utf8')),count:countMembers(body('power'))},
+            d1Latest:rows(read('rollback-evidence/d1-latest.json'))[0]||null,
+            d1Members:rows(read('rollback-evidence/d1-members.json'))[0]||null,
+            adminKeyPresent:bindings.some(b=>b.name==='GOMO_CORE_ADMIN_KEY'&&b.type==='secret_text')
+          };
+          fs.writeFileSync('rollback-evidence/REPORT.json',JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(report,null,2));
+          NODE
+
+      - name: Publish sanitized rollback report
+        if: always()
+        shell: bash
+        run: |
+          echo '## Targeted gomo-central rollback report' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Git automatic deployment re-enabled: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Cron changed: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- D1 write command executed: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- gomo-core-test touched: `false`' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f rollback-evidence/REPORT.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat rollback-evidence/REPORT.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
