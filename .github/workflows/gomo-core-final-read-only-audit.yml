@@ -1,0 +1,220 @@
+name: GoMo Core final Cloudflare audit — READ ONLY
+
+on:
+  push:
+    branches:
+      - audit/cloudflare-token-whoami-2026-09-19
+    paths:
+      - .github/workflows/gomo-core-final-read-only-audit.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROD_WORKER: gomo-central
+      TEST_WORKER: gomo-core-test
+      PROD_DB_NAME: gomo-core-db
+      PROD_DB_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
+      TEST_DB_NAME: gomo-core-v08-read-test-db
+      TEST_DB_ID: 45ca2537-70d2-409c-9db1-2fa1772c0a2d
+    steps:
+      - name: Collect Cloudflare state with GET and SELECT only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          mkdir -p audit/workers audit/databases
+
+          npx --yes wrangler@latest whoami > audit/whoami.txt
+          accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" 'https://api.cloudflare.com/client/v4/accounts?per_page=50')"
+          printf '%s' "$accounts" > audit/accounts.json
+          account_id="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          export CLOUDFLARE_ACCOUNT_ID="$account_id"
+
+          api="https://api.cloudflare.com/client/v4/accounts/$account_id"
+          auth=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          curl -fsS "${auth[@]}" "$api/workers/subdomain" > audit/subdomain.json
+          curl -fsS "${auth[@]}" "$api/workers/scripts" > audit/scripts.json
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('audit/scripts.json','utf8'));
+          if(!j.success) throw new Error('Unable to list Workers');
+          const names=(j.result||[]).map(x=>x.id||x.name).filter(Boolean).sort();
+          fs.writeFileSync('audit/worker-names.txt',names.join('\n')+'\n');
+          NODE
+
+          while IFS= read -r worker; do
+            [ -n "$worker" ] || continue
+            safe="$(printf '%s' "$worker" | tr -c 'A-Za-z0-9._-' '_')"
+            base="$api/workers/scripts/$worker"
+            curl -fsS "${auth[@]}" "$base/settings" > "audit/workers/$safe.settings.json"
+            curl -fsS "${auth[@]}" "$base/schedules" > "audit/workers/$safe.schedules.json"
+            if [ "$worker" = "$PROD_WORKER" ] || [ "$worker" = "$TEST_WORKER" ]; then
+              curl -fsS "${auth[@]}" "$base/deployments" > "audit/workers/$safe.deployments.json"
+              curl -fsS "${auth[@]}" "$base/versions?per_page=100" > "audit/workers/$safe.versions.json"
+            fi
+          done < audit/worker-names.txt
+
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const worker of [process.env.PROD_WORKER,process.env.TEST_WORKER]){
+            const safe=worker.replace(/[^A-Za-z0-9._-]/g,'_');
+            const dep=JSON.parse(fs.readFileSync(`audit/workers/${safe}.deployments.json`,'utf8'));
+            const ver=JSON.parse(fs.readFileSync(`audit/workers/${safe}.versions.json`,'utf8'));
+            const deps=Array.isArray(dep.result)?dep.result:Array.isArray(dep.result?.deployments)?dep.result.deployments:[];
+            const vers=Array.isArray(ver.result)?ver.result:Array.isArray(ver.result?.items)?ver.result.items:[];
+            const ids=new Set();
+            for(const d of deps){
+              if(d?.version_id) ids.add(d.version_id);
+              for(const v of d?.versions||[]) ids.add(v?.version_id||v?.id);
+            }
+            for(const v of vers) ids.add(v?.id||v?.version_id);
+            if(worker===process.env.PROD_WORKER){
+              ids.add('8cc05aa0-ca62-4d37-b176-81eb180728be');
+              ids.add('d2b458c1-6b0f-4648-9120-8ca56eb90bf6');
+            }
+            fs.writeFileSync(`audit/workers/${safe}.version-ids.txt`,[...ids].filter(Boolean).join('\n')+'\n');
+          }
+          NODE
+
+          for worker in "$PROD_WORKER" "$TEST_WORKER"; do
+            safe="$(printf '%s' "$worker" | tr -c 'A-Za-z0-9._-' '_')"
+            base="$api/workers/scripts/$worker"
+            while IFS= read -r version; do
+              [ -n "$version" ] || continue
+              curl -sS "${auth[@]}" "$base/versions/$version" > "audit/workers/$safe.version-$version.json"
+              curl -sS "${auth[@]}" "$base/versions/$version/content" > "audit/workers/$safe.content-$version.bin"
+            done < "audit/workers/$safe.version-ids.txt"
+          done
+
+          subdomain="$(node -e 'const j=require("./audit/subdomain.json");if(!j.success||!j.result?.subdomain)process.exit(1);process.stdout.write(j.result.subdomain)')"
+          for worker in "$PROD_WORKER" "$TEST_WORKER"; do
+            safe="$(printf '%s' "$worker" | tr -c 'A-Za-z0-9._-' '_')"
+            curl --retry 0 -sS -o "audit/workers/$safe.status.json" -w '%{http_code}' "https://$worker.$subdomain.workers.dev/api/core/status" > "audit/workers/$safe.status-code.txt" || true
+          done
+
+          npx --yes wrangler@latest d1 list --json > audit/databases/list.json
+          for db in "$PROD_DB_NAME" "$TEST_DB_NAME"; do
+            safe="$(printf '%s' "$db" | tr -c 'A-Za-z0-9._-' '_')"
+            npx --yes wrangler@latest d1 info "$db" --json > "audit/databases/$safe.info.json"
+            npx --yes wrangler@latest d1 execute "$db" --remote --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'core_%' ORDER BY name;" > "audit/databases/$safe.tables.json"
+            npx --yes wrangler@latest d1 execute "$db" --remote --json --command "SELECT COUNT(*) AS sync_runs FROM core_sync_runs;" > "audit/databases/$safe.sync-count.json"
+            npx --yes wrangler@latest d1 execute "$db" --remote --json --command "SELECT sync_id,started_at,completed_at,status,lastintel_status,lastrank_status,lastintel_members,lastrank_members,reconciled_members FROM core_sync_runs ORDER BY COALESCE(completed_at,started_at) DESC LIMIT 1;" > "audit/databases/$safe.sync-latest.json"
+            npx --yes wrangler@latest d1 execute "$db" --remote --json --command "SELECT sync_id,started_at,completed_at,status,reconciled_members FROM core_sync_runs ORDER BY COALESCE(completed_at,started_at) DESC LIMIT 10;" > "audit/databases/$safe.sync-recent.json"
+            npx --yes wrangler@latest d1 execute "$db" --remote --json --command "SELECT COUNT(*) AS total_members,SUM(CASE WHEN active=1 THEN 1 ELSE 0 END) AS active_members FROM core_current_members;" > "audit/databases/$safe.members.json"
+            npx --yes wrangler@latest d1 execute "$db" --remote --json --command "PRAGMA table_info(core_sync_runs);" > "audit/databases/$safe.sync-schema.json"
+          done
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const dir='audit';
+          const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
+          const safeRead=p=>{try{return read(p)}catch{return null}};
+          const apiResult=j=>j?.result??j;
+          const rows=j=>{
+            const r=apiResult(j);
+            if(Array.isArray(r)){
+              if(r[0]?.results) return r[0].results;
+              return r;
+            }
+            return r?.results||[];
+          };
+          const bindingSummary=(obj)=>{
+            const found=[]; const seen=new Set();
+            const walk=x=>{
+              if(!x||typeof x!=='object'||seen.has(x)) return; seen.add(x);
+              if(Array.isArray(x)){for(const y of x)walk(y);return;}
+              const type=x.type; const name=x.name||x.binding;
+              if(type&&name) found.push(x);
+              for(const v of Object.values(x)) walk(v);
+            };
+            walk(obj);
+            const allow=new Set(['GOMO_CORE_MODE','CORE_CURRENT_READS','CORE_PUBLIC_CACHE_SECONDS','CORE_PUBLIC_CACHE_ORIGINS']);
+            const out=[]; const keys=new Set();
+            for(const b of found){
+              const name=b.name||b.binding; const type=b.type;
+              const key=`${name}:${type}`; if(keys.has(key)) continue; keys.add(key);
+              out.push({name,type,databaseId:b.id||b.database_id||null,databaseName:b.database_name||null,service:b.service||null,environment:b.environment||null,value:type==='plain_text'&&allow.has(name)?(b.text??b.value??null):null,secretPresent:type==='secret_text'?true:null});
+            }
+            return out;
+          };
+          const parseDeployments=j=>{
+            const r=apiResult(j);
+            const a=Array.isArray(r)?r:Array.isArray(r?.deployments)?r.deployments:[];
+            return a.map(d=>({deploymentId:d.id||null,createdOn:d.created_on||d.created_at||null,source:d.source||null,annotations:d.annotations||null,versions:(d.versions||[]).map(v=>({versionId:v.version_id||v.id||null,percentage:Number(v.percentage??v.traffic??0)}))}));
+          };
+          const parseVersions=j=>{
+            const r=apiResult(j);
+            const a=Array.isArray(r)?r:Array.isArray(r?.items)?r.items:[];
+            return a.map(v=>({versionId:v.id||v.version_id||null,createdOn:v.created_on||v.created_at||null,annotations:v.annotations||null}));
+          };
+          const scripts=apiResult(read(`${dir}/scripts.json`))||[];
+          const allWorkers=[];
+          for(const x of scripts){
+            const name=x.id||x.name; if(!name) continue;
+            const safe=name.replace(/[^A-Za-z0-9._-]/g,'_');
+            const settings=safeRead(`${dir}/workers/${safe}.settings.json`);
+            const schedules=safeRead(`${dir}/workers/${safe}.schedules.json`);
+            const sr=apiResult(schedules);
+            const raw=Array.isArray(sr)?sr:Array.isArray(sr?.schedules)?sr.schedules:[];
+            allWorkers.push({name,bindings:bindingSummary(settings),crons:raw.map(v=>v?.cron||v).filter(Boolean)});
+          }
+          const workers={};
+          for(const name of [process.env.PROD_WORKER,process.env.TEST_WORKER]){
+            const safe=name.replace(/[^A-Za-z0-9._-]/g,'_');
+            const deployments=parseDeployments(read(`${dir}/workers/${safe}.deployments.json`));
+            const versions=parseVersions(read(`${dir}/workers/${safe}.versions.json`));
+            const current=allWorkers.find(w=>w.name===name)||null;
+            const details={};
+            const ids=fs.readFileSync(`${dir}/workers/${safe}.version-ids.txt`,'utf8').trim().split(/\n/).filter(Boolean);
+            for(const id of ids){
+              const detail=safeRead(`${dir}/workers/${safe}.version-${id}.json`);
+              const contentPath=`${dir}/workers/${safe}.content-${id}.bin`;
+              let content=''; try{content=fs.readFileSync(contentPath).toString('utf8')}catch{}
+              details[id]={available:detail?.success!==false&&!!detail,createdOn:detail?.result?.created_on||detail?.result?.created_at||null,annotations:detail?.result?.annotations||null,bindings:bindingSummary(detail),contentCore074:/0\.7\.4/.test(content),contentCore08:/0\.8(?:\.|["'])/.test(content)};
+            }
+            const code=Number(fs.readFileSync(`${dir}/workers/${safe}.status-code.txt`,'utf8').trim()||0);
+            const status=safeRead(`${dir}/workers/${safe}.status.json`);
+            workers[name]={httpStatus:code,publicStatus:status,bindings:current?.bindings||[],crons:current?.crons||[],deployments:deployments.slice(0,20),versions:versions.slice(0,30),versionDetails:details};
+          }
+          const dbList=read(`${dir}/databases/list.json`);
+          const list=Array.isArray(dbList)?dbList:apiResult(dbList)||[];
+          const databases={};
+          for(const [name,expectedId] of [[process.env.PROD_DB_NAME,process.env.PROD_DB_ID],[process.env.TEST_DB_NAME,process.env.TEST_DB_ID]]){
+            const safe=name.replace(/[^A-Za-z0-9._-]/g,'_');
+            const listed=list.find(d=>d.name===name)||null;
+            const info=safeRead(`${dir}/databases/${safe}.info.json`);
+            const recent=rows(read(`${dir}/databases/${safe}.sync-recent.json`));
+            const times=recent.map(x=>Date.parse(x.completed_at||x.started_at)).filter(Number.isFinite);
+            const gaps=[]; for(let i=0;i<times.length-1;i++) gaps.push(Math.round((times[i]-times[i+1])/60000));
+            databases[name]={expectedId,exists:!!listed,listed,info,tables:rows(read(`${dir}/databases/${safe}.tables.json`)).map(x=>x.name),syncRuns:rows(read(`${dir}/databases/${safe}.sync-count.json`))[0]?.sync_runs??null,latestSync:rows(read(`${dir}/databases/${safe}.sync-latest.json`))[0]||null,recentSyncs:recent,members:rows(read(`${dir}/databases/${safe}.members.json`))[0]||null,recentGapMinutes:gaps,hourlyPattern:gaps.length>=3&&gaps.slice(0,5).every(x=>x>=55&&x<=65)};
+          }
+          const targetIds=new Set([process.env.PROD_DB_ID,process.env.TEST_DB_ID]);
+          const possibleWriters=allWorkers.filter(w=>w.bindings.some(b=>b.type==='d1'&&targetIds.has(b.databaseId))).map(w=>({name:w.name,d1:w.bindings.filter(b=>b.type==='d1'&&targetIds.has(b.databaseId)),crons:w.crons}));
+          const accounts=apiResult(read(`${dir}/accounts.json`))||[];
+          const report={readOnly:true,account:accounts.map(a=>({name:a.name,id:a.id})),authenticated:/logged in/i.test(fs.readFileSync(`${dir}/whoami.txt`,'utf8')),workers,databases,possibleWriters};
+          fs.writeFileSync(`${dir}/REPORT.json`,JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(report,null,2));
+          NODE
+
+      - name: Publish sanitized final audit report
+        if: always()
+        shell: bash
+        run: |
+          echo '## GoMo Core final Cloudflare audit — READ ONLY' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Cloudflare modified: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- D1 writes: `false`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Deployment/rollback: `false`' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f audit/REPORT.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat audit/REPORT.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
