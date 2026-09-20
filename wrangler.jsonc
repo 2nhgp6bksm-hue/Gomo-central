@@ -27,11 +27,6 @@
       "database_id": "45ca2537-70d2-409c-9db1-2fa1772c0a2d"
     }
   ],
-  "triggers": {
-    "crons": [
-      "15 * * * *"
-    ]
-  },
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
