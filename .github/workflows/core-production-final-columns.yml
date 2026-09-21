@@ -1,0 +1,42 @@
+name: Core production final columns indexes GET-only
+on:
+  push:
+    branches: [audit/core-production-final-columns-2026-09-21]
+permissions:
+  contents: read
+jobs:
+  final-read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB: gomo-core-db
+    steps:
+      - name: Resolve account
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+      - name: Current members columns SELECT only
+        run: npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "PRAGMA table_info('core_current_members');"
+      - name: Current source columns SELECT only
+        run: npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "PRAGMA table_info('core_current_source_state');"
+      - name: Current members indexes SELECT only
+        run: npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "PRAGMA index_list('core_current_members');"
+      - name: Current source indexes SELECT only
+        run: npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "PRAGMA index_list('core_current_source_state');"
+      - name: Public GET checks only
+        run: |
+          set -euo pipefail
+          for ep in status members power; do
+            code="$(curl -sS -o "$ep.json" -w '%{http_code}' "https://gomo-central.gjp86wh7p2.workers.dev/api/core/$ep?audit=final-columns-20260921")"
+            echo "$ep HTTP $code"
+            test "$code" = 200
+          done
+          jq '{coreVersion,mode,lastSuccessfulSync}' status.json
+          jq '{coreVersion,syncId,members:(.members|length)}' members.json
+          jq '{coreVersion,syncId,members:(.members|length)}' power.json
