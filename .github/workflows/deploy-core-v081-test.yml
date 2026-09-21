@@ -1,0 +1,78 @@
+name: Deploy Core v0.8.1 test only
+
+on:
+  push:
+    branches:
+      - deploy/core-v081-test-2026-09-21
+
+concurrency:
+  group: deploy-core-v081-test
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact validated candidate
+        uses: actions/checkout@v4
+        with:
+          ref: bfee327512b4a9790722d5ae202fdf590eda1b1a
+
+      - name: Guard exact candidate
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "bfee327512b4a9790722d5ae202fdf590eda1b1a"
+          grep -q '"name": "gomo-core-test"' wrangler.jsonc
+          grep -q '"database_name": "gomo-core-v08-read-test-db"' wrangler.jsonc
+          grep -q '"database_id": "45ca2537-70d2-409c-9db1-2fa1772c0a2d"' wrangler.jsonc
+          grep -q '"GOMO_CORE_MODE": "test"' wrangler.jsonc
+          grep -q '"CORE_CURRENT_READS": "1"' wrangler.jsonc
+          if grep -q '"triggers"' wrangler.jsonc; then echo "Unexpected triggers config"; exit 1; fi
+
+      - name: Tests
+        run: npm test
+
+      - name: Syntax checks
+        run: |
+          set -euo pipefail
+          node --check gomo-core-entry-lastwarrank.js
+          node --check gomo-core-entry-v07.js
+          node --check gomo-core-v06-storage.js
+          node --check gomo-core-d1-observability.js
+
+      - name: Require Cloudflare token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+        run: test -n "$CLOUDFLARE_API_TOKEN" || { echo "CFPREVIEW unavailable"; exit 1; }
+
+      - name: Deploy once to gomo-core-test
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@latest deploy
+
+      - name: Public post-deploy check — GET only
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error https://gomo-core-test.gjp86wh7p2.workers.dev/api/core/status -o status.json
+          node - <<'NODE'
+          const s=require('./status.json');
+          if(s.coreVersion!=="0.8.1-fail-stable-test") throw new Error("Unexpected Core version");
+          if(s.mode!=="shared-data-test") throw new Error("Unexpected mode");
+          if(s.safety?.currentStateReads!==true) throw new Error("Current-state reads disabled");
+          if(s.lastSuccessfulSync?.syncId!=="sync6_1790017187790_09d8d164") throw new Error("syncId changed");
+          if(s.lastSuccessfulSync?.completedAt!=="2026-09-21T18:59:48.096Z") throw new Error("lastSuccessfulSync changed");
+          if(s.lastSuccessfulSync?.members!==93) throw new Error("Unexpected member count");
+          console.log(JSON.stringify({
+            coreVersion:s.coreVersion,
+            mode:s.mode,
+            currentStateReads:s.safety?.currentStateReads,
+            syncId:s.lastSuccessfulSync?.syncId,
+            completedAt:s.lastSuccessfulSync?.completedAt,
+            members:s.lastSuccessfulSync?.members
+          },null,2));
+          NODE
