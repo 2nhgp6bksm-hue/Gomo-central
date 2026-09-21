@@ -1,0 +1,32 @@
+name: Core v0.8.1 single guarded refresh
+on:
+  push:
+    branches: [ops/core-v081-one-shot-2026-09-21]
+concurrency:
+  group: core-v081-single-refresh
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  refresh-once:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require admin secret
+        env:
+          ADMIN_KEY: ${{ secrets.GOMO_CORE_ADMIN_KEY }}
+        run: test -n "$ADMIN_KEY"
+      - name: Guard current test state
+        run: |
+          curl --fail --silent --show-error 'https://gomo-core-test.gjp86wh7p2.workers.dev/api/core/status?guard=v081' -o before.json
+          node -e 'const s=require("./before.json"); if(s.coreVersion!=="0.8.1-fail-stable-test"||s.mode!=="shared-data-test"||s.safety?.currentStateReads!==true||s.lastSuccessfulSync?.syncId!=="sync6_1790017187790_09d8d164"||s.lastSuccessfulSync?.completedAt!=="2026-09-21T18:59:48.096Z"||s.lastSuccessfulSync?.members!==93) process.exit(1)'
+      - name: ONE authorized refresh no retry
+        env:
+          ADMIN_KEY: ${{ secrets.GOMO_CORE_ADMIN_KEY }}
+        run: |
+          curl --fail-with-body --silent --show-error --connect-timeout 20 --max-time 180 -X POST -H "Authorization: Bearer $ADMIN_KEY" 'https://gomo-core-test.gjp86wh7p2.workers.dev/api/core/refresh' -o refresh.json
+          jq 'del(.secret,.token,.key)' refresh.json
+      - name: Read resulting state
+        if: always()
+        run: |
+          curl --fail --silent --show-error 'https://gomo-core-test.gjp86wh7p2.workers.dev/api/core/status?after=v081' -o after.json
+          jq '{coreVersion,mode,lastSuccessfulSync,safety:{currentStateReads:.safety.currentStateReads}}' after.json
