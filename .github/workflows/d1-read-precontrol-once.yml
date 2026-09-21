@@ -16,12 +16,12 @@ concurrency:
 
 jobs:
   d1-read-precontrol:
-    if: github.event.before == '04dac95de1df50045b357b75a1f321773c2754e6'
+    if: github.event.before == '88e410450439eb8e66dc494bedecc80fd84e31a7'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ACCOUNT_ID: 8c513559f775c0cca653268ab2f29c0d
       WORKER_NAME: gomo-core-test
       DATABASE_NAME: gomo-core-v08-read-test-db
       DATABASE_ID: 45ca2537-70d2-409c-9db1-2fa1772c0a2d
@@ -36,7 +36,7 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           echo "Cloudflare token secret: CFPREVIEW"
-          echo "Cloudflare account id secret: CLOUDFLARE_ACCOUNT_ID"
+          echo "Cloudflare account id source: known fixed identifier (not a secret)"
 
       - name: Read-only pre-state verification
         shell: bash
