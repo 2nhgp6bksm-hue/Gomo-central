@@ -1,5 +1,5 @@
 name: Core v0.8 one-shot refresh
-# rerun after admin secret alignment 2026-09-21
+# new identifiable run after Runtime secret installation 2026-09-21 21h
 
 on:
   push:
