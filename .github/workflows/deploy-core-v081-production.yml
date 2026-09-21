@@ -41,7 +41,7 @@ jobs:
           node --check gomo-core-entry-v07.js
           node --check gomo-core-v06-storage.js
           node --check gomo-core-d1-observability.js
-          node -e 'const c=require("./wrangler.production.jsonc"); if(c.name!=="gomo-central")process.exit(1); if(c.d1_databases?.[0]?.database_id!=="ac1b5094-c1f9-4706-b29b-8507e6f85a92")process.exit(1); if(c.vars?.CORE_CURRENT_READS!=="1")process.exit(1); if(c.triggers!==undefined||c.crons!==undefined)process.exit(1)'
+          node -e 'const fs=require("fs"); const c=JSON.parse(fs.readFileSync("wrangler.production.jsonc","utf8")); if(c.name!=="gomo-central")process.exit(1); if(c.d1_databases?.[0]?.database_id!=="ac1b5094-c1f9-4706-b29b-8507e6f85a92")process.exit(1); if(c.vars?.CORE_CURRENT_READS!=="1")process.exit(1); if(c.triggers!==undefined||c.crons!==undefined)process.exit(1)'
 
       - name: Resolve Cloudflare account
         shell: bash
