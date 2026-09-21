@@ -1,0 +1,29 @@
+name: Audit Core v0.8.1 post-deploy GET only
+
+on:
+  push:
+    branches:
+      - audit/core-v081-postdeploy-2026-09-21
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Public status GET only
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error 'https://gomo-core-test.gjp86wh7p2.workers.dev/api/core/status?audit=v081-postdeploy-20260921' -o status.json
+          jq '{
+            coreVersion,
+            mode,
+            schedule,
+            lastSuccessfulSync: {
+              syncId: .lastSuccessfulSync.syncId,
+              completedAt: .lastSuccessfulSync.completedAt,
+              members: .lastSuccessfulSync.members
+            },
+            safety: {currentStateReads: .safety.currentStateReads}
+          }' status.json
