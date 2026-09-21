@@ -1,0 +1,54 @@
+name: Audit residual status-before asset GET-only
+on:
+  push:
+    branches: [audit/core-v081-status-before-residue-2026-09-22]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect residual public path GET only
+        run: |
+          set -euo pipefail
+          url='https://gomo-central.gjp86wh7p2.workers.dev/status-before.json?residue-audit=20260922-v2'
+          curl -sS -D "$RUNNER_TEMP/h" -o "$RUNNER_TEMP/b" "$url"
+          code="$(awk 'toupper($1) ~ /^HTTP\// {c=$2} END{print c}' "$RUNNER_TEMP/h")"
+          bytes="$(wc -c < "$RUNNER_TEMP/b" | tr -d ' ')"
+          echo "HTTP=$code bytes=$bytes"
+          grep -Ei '^(content-type|cache-control|etag|cf-cache-status|age|last-modified):' "$RUNNER_TEMP/h" || true
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const raw=fs.readFileSync(process.env.RUNNER_TEMP+'/b');
+          const out={sha256:crypto.createHash('sha256').update(raw).digest('hex'),bytes:raw.length,json:false};
+          try{
+            const j=JSON.parse(raw.toString('utf8')); out.json=true;
+            out.keys=Object.keys(j).sort();
+            out.coreVersion=j.coreVersion||null;
+            out.mode=j.mode||null;
+            out.syncId=j.lastSuccessfulSync?.syncId||null;
+            out.members=j.lastSuccessfulSync?.members??null;
+          }catch{}
+          console.log(JSON.stringify(out,null,2));
+          NODE
+      - name: Capture current deployment GET only
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/gomo-central"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" -o "$RUNNER_TEMP/d.json"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/s.json"
+          node - <<'NODE'
+          const d=require(process.env.RUNNER_TEMP+'/d.json'),s=require(process.env.RUNNER_TEMP+'/s.json');
+          const ds=Array.isArray(d.result)?d.result:(d.result?.deployments||[]);
+          const x=ds[0],v=x?.versions?.find(v=>Number(v.percentage)===100);
+          const ss=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
+          console.log(JSON.stringify({deployment:x?.id||null,version:v?.version_id||null,traffic:v?.percentage??null,crons:ss.map(x=>x.cron||x).filter(Boolean)},null,2));
+          NODE
