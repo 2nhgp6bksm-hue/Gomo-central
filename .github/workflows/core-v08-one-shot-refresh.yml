@@ -1,0 +1,54 @@
+name: Core v0.8 one-shot refresh
+
+on:
+  push:
+    branches:
+      - deploy/core-v08-final-test-2026-09-20
+
+concurrency:
+  group: core-v08-one-shot-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh-once:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require admin secret
+        env:
+          ADMIN_KEY: ${{ secrets.GOMO_CORE_ADMIN_KEY }}
+        run: |
+          test -n "$ADMIN_KEY" || { echo "GOMO_CORE_ADMIN_KEY unavailable"; exit 1; }
+
+      - name: Precheck public status
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error https://gomo-core-test.gjp86wh7p2.workers.dev/api/core/status -o before.json
+          node -e '
+            const s=require("./before.json");
+            if(s.version!=="0.8.0-read-optimization-test") throw new Error("Unexpected Core version");
+            if(s.mode!=="shared-data-test") throw new Error("Unexpected mode");
+            if(s.currentStateReads!==true) throw new Error("Current-state reads disabled");
+            if(s.lastSync!=="2026-09-19T19:15:39.551Z") throw new Error("lastSync changed; stop");
+          '
+
+      - name: ONE authorized refresh — no retry
+        env:
+          ADMIN_KEY: ${{ secrets.GOMO_CORE_ADMIN_KEY }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            --connect-timeout 20 --max-time 180 \
+            -X POST \
+            -H "Authorization: Bearer $ADMIN_KEY" \
+            https://gomo-core-test.gjp86wh7p2.workers.dev/api/core/refresh \
+            -o refresh.json
+          cat refresh.json | jq 'del(.secret,.token,.key)'
+
+      - name: Read status after
+        if: always()
+        run: |
+          curl --fail --silent --show-error https://gomo-core-test.gjp86wh7p2.workers.dev/api/core/status -o after.json || exit 0
+          jq '{version,mode,currentStateReads,lastSync,syncId,members,sources,storage}' after.json
