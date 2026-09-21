@@ -1,0 +1,91 @@
+name: One-shot read-only R3 schema inspection
+
+on:
+  push:
+    branches:
+      - audit/d1-read-precontrol-2026-09-21
+    paths:
+      - .github/workflows/d1-r3-history-audit-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gomo-core-d1-r3-history-audit-once
+  cancel-in-progress: false
+
+jobs:
+  d1-r3-schema:
+    if: github.event.before == '9ef0d5fad588c1507b9faf7a2813cab76ebcbff2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: 8c513559f775c0cca653268ab2f29c0d
+      DATABASE_NAME: gomo-core-v08-read-test-db
+
+    steps:
+      - name: Validate authentication without revealing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "Cloudflare token secret: CFPREVIEW"
+
+      - name: Inspect only authorized table definitions
+        shell: bash
+        run: |
+          set -euo pipefail
+          sql="SELECT name, sql
+          FROM sqlite_master
+          WHERE type = 'table'
+            AND name IN (
+              'core_members',
+              'core_member_membership',
+              'core_canonical_snapshots',
+              'core_daily_member_rollups'
+            );"
+
+          npx --yes wrangler@4 d1 execute "$DATABASE_NAME" \
+            --remote \
+            --command "$sql" \
+            --json > /tmp/schema-result.json
+
+          node <<'NODE'
+          const fs = require("node:fs");
+          const payload = JSON.parse(fs.readFileSync("/tmp/schema-result.json", "utf8"));
+          const nodes = [];
+          (function walk(value) {
+            if (Array.isArray(value)) for (const item of value) walk(item);
+            else if (value && typeof value === "object") {
+              nodes.push(value);
+              for (const item of Object.values(value)) walk(item);
+            }
+          })(payload);
+
+          const allowed = new Set([
+            "core_members", "core_member_membership",
+            "core_canonical_snapshots", "core_daily_member_rollups"
+          ]);
+          const rows = nodes
+            .filter((item) => allowed.has(item.name) && typeof item.sql === "string")
+            .map((item) => ({ name: item.name, sql: item.sql }));
+          const unique = [...new Map(rows.map((row) => [row.name, row])).values()]
+            .sort((a, b) => a.name.localeCompare(b.name));
+          const metas = nodes.filter((item) =>
+            Object.prototype.hasOwnProperty.call(item, "rows_read") ||
+            Object.prototype.hasOwnProperty.call(item, "rows_written")
+          );
+          const rowsRead = metas.reduce((sum, item) => sum + Number(item.rows_read || 0), 0);
+          const rowsWritten = metas.reduce((sum, item) => sum + Number(item.rows_written || 0), 0);
+
+          if (unique.length !== 4) throw new Error(`Expected four table definitions, received ${unique.length}`);
+          if (rowsWritten !== 0) throw new Error(`Unexpected D1 rows_written: ${rowsWritten}`);
+
+          console.log(JSON.stringify({
+            tables: unique,
+            rows_read: rowsRead,
+            rows_written: rowsWritten
+          }, null, 2));
+          NODE
