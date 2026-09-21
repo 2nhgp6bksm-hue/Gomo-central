@@ -28,14 +28,12 @@ jobs:
           curl --fail --silent --show-error https://gomo-core-test.gjp86wh7p2.workers.dev/api/core/status -o before.json
           node -e '
             const s=require("./before.json");
-            const version=s.core?.version ?? s.version;
-            const mode=s.mode ?? s.core?.mode;
-            const currentReads=s.storage?.currentStateReads ?? s.core?.currentStateReads ?? s.currentStateReads;
-            const lastSync=s.storage?.lastSync ?? s.core?.lastSync ?? s.lastSync;
-            if(version!=="0.8.0-read-optimization-test") throw new Error("Unexpected Core version");
-            if(mode!=="shared-data-test") throw new Error("Unexpected mode");
-            if(currentReads!==true) throw new Error("Current-state reads disabled");
-            if(lastSync!=="2026-09-19T19:15:39.551Z") throw new Error("lastSync changed; stop");
+            if(s.coreVersion!=="0.8.0-read-optimization-test") throw new Error("Unexpected Core version");
+            if(s.mode!=="shared-data-test") throw new Error("Unexpected mode");
+            if(s.safety?.currentStateReads!==true) throw new Error("Current-state reads disabled");
+            if(s.lastSuccessfulSync?.completedAt!=="2026-09-19T19:15:39.551Z") throw new Error("lastSync changed; stop");
+            if(s.lastSuccessfulSync?.syncId!=="sync6_1789845338890_3472cd22") throw new Error("syncId changed; stop");
+            if(s.lastSuccessfulSync?.members!==93) throw new Error("Unexpected stored member count");
           '
 
       - name: ONE authorized refresh — no retry
@@ -55,4 +53,4 @@ jobs:
         if: always()
         run: |
           curl --fail --silent --show-error https://gomo-core-test.gjp86wh7p2.workers.dev/api/core/status -o after.json || exit 0
-          jq '{version,mode,currentStateReads,lastSync,syncId,members,sources,storage}' after.json
+          jq '{coreVersion,mode,lastSuccessfulSync,safety:{currentStateReads:.safety.currentStateReads}}' after.json
