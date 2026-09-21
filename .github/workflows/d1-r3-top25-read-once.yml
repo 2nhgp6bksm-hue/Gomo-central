@@ -1,0 +1,201 @@
+name: One-shot read-only final R3 activity dataset
+
+on:
+  push:
+    branches:
+      - audit/d1-read-precontrol-2026-09-21
+    paths:
+      - .github/workflows/d1-r3-top25-read-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gomo-core-d1-r3-top25-read-once
+  cancel-in-progress: false
+
+jobs:
+  d1-r3-top25-read:
+    if: github.event.before == '1c6b47eb31d92d070a407272301090d932da2fc7'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: 8c513559f775c0cca653268ab2f29c0d
+      DATABASE_NAME: gomo-core-v08-read-test-db
+
+    steps:
+      - name: Validate authentication without revealing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Execute the single consolidated read-only dataset query
+        shell: bash
+        run: |
+          set -euo pipefail
+          sql="WITH bounded AS (
+            SELECT
+              id,
+              gomo_id,
+              rank,
+              hq,
+              power,
+              hero_power,
+              kills,
+              observed_at
+            FROM core_canonical_snapshots
+            WHERE observed_at < '2026-09-20T00:00:00.000Z'
+          ),
+          latest_ranked AS (
+            SELECT
+              b.*,
+              ROW_NUMBER() OVER (
+                PARTITION BY b.gomo_id
+                ORDER BY b.observed_at DESC, b.id DESC
+              ) AS rn
+            FROM bounded AS b
+          ),
+          current_r3 AS (
+            SELECT
+              m.gomo_id,
+              m.current_name,
+              l.id AS j0_id,
+              l.rank AS j0_rank,
+              l.hq AS j0_hq,
+              l.power AS j0_power,
+              l.hero_power AS j0_hero_power,
+              l.kills AS j0_kills,
+              l.observed_at AS j0_observed_at
+            FROM core_members AS m
+            JOIN core_member_membership AS mm
+              ON mm.gomo_id = m.gomo_id
+            JOIN latest_ranked AS l
+              ON l.gomo_id = m.gomo_id AND l.rn = 1
+            WHERE m.active = 1
+              AND mm.status = 'confirmed'
+              AND l.rank = 'R3'
+          ),
+          targets AS (
+            SELECT
+              gomo_id,
+              'j7' AS target,
+              DATE(j0_observed_at, '-7 day') AS target_day
+            FROM current_r3
+
+            UNION ALL
+
+            SELECT
+              gomo_id,
+              'j14' AS target,
+              DATE(j0_observed_at, '-14 day') AS target_day
+            FROM current_r3
+          ),
+          candidate_ranked AS (
+            SELECT
+              t.gomo_id,
+              t.target,
+              t.target_day,
+              b.id,
+              b.rank,
+              b.hq,
+              b.power,
+              b.hero_power,
+              b.kills,
+              b.observed_at,
+              ROW_NUMBER() OVER (
+                PARTITION BY t.gomo_id, t.target
+                ORDER BY
+                  ABS(JULIANDAY(DATE(b.observed_at)) - JULIANDAY(t.target_day)),
+                  b.observed_at DESC,
+                  b.id DESC
+              ) AS rn
+            FROM targets AS t
+            JOIN bounded AS b
+              ON b.gomo_id = t.gomo_id
+             AND DATE(b.observed_at)
+                 BETWEEN DATE(t.target_day, '-1 day')
+                     AND DATE(t.target_day, '+1 day')
+          ),
+          selected AS (
+            SELECT *
+            FROM candidate_ranked
+            WHERE rn = 1
+          )
+          SELECT
+            c.current_name AS player,
+            c.gomo_id,
+            c.j0_id,
+            c.j0_rank,
+            c.j0_hq,
+            c.j0_power,
+            c.j0_hero_power,
+            c.j0_kills,
+            c.j0_observed_at,
+            j7.id AS j7_id,
+            j7.rank AS j7_rank,
+            j7.hq AS j7_hq,
+            j7.power AS j7_power,
+            j7.hero_power AS j7_hero_power,
+            j7.kills AS j7_kills,
+            j7.observed_at AS j7_observed_at,
+            j14.id AS j14_id,
+            j14.rank AS j14_rank,
+            j14.hq AS j14_hq,
+            j14.power AS j14_power,
+            j14.hero_power AS j14_hero_power,
+            j14.kills AS j14_kills,
+            j14.observed_at AS j14_observed_at
+          FROM current_r3 AS c
+          LEFT JOIN selected AS j7
+            ON j7.gomo_id = c.gomo_id AND j7.target = 'j7'
+          LEFT JOIN selected AS j14
+            ON j14.gomo_id = c.gomo_id AND j14.target = 'j14'
+          ORDER BY c.current_name COLLATE NOCASE;"
+
+          npx --yes wrangler@4 d1 execute "$DATABASE_NAME" \
+            --remote \
+            --command "$sql" \
+            --json > /tmp/final-r3-dataset.json
+
+          node <<'NODE'
+          const fs = require("node:fs");
+          const payload = JSON.parse(fs.readFileSync("/tmp/final-r3-dataset.json", "utf8"));
+          const nodes = [];
+          (function walk(value) {
+            if (Array.isArray(value)) for (const item of value) walk(item);
+            else if (value && typeof value === "object") {
+              nodes.push(value);
+              for (const item of Object.values(value)) walk(item);
+            }
+          })(payload);
+
+          const rows = nodes.filter((item) =>
+            typeof item.player === "string" &&
+            typeof item.gomo_id === "string" &&
+            item.j0_rank === "R3"
+          );
+          const unique = [...new Map(rows.map((row) => [row.gomo_id, row])).values()]
+            .sort((a, b) => a.player.localeCompare(b.player));
+          const metas = nodes.filter((item) =>
+            Object.prototype.hasOwnProperty.call(item, "rows_read") ||
+            Object.prototype.hasOwnProperty.call(item, "rows_written")
+          );
+          const rowsRead = metas.reduce((sum, item) => sum + Number(item.rows_read || 0), 0);
+          const rowsWritten = metas.reduce((sum, item) => sum + Number(item.rows_written || 0), 0);
+
+          if (unique.length !== 77) throw new Error(`Expected 77 current R3, received ${unique.length}`);
+          if (unique.some((row) => !row.j7_observed_at || !row.j14_observed_at)) {
+            throw new Error("At least one R3 lacks an authorized J-7 or J-14 snapshot");
+          }
+          if (rowsWritten !== 0) throw new Error(`Unexpected D1 rows_written: ${rowsWritten}`);
+
+          console.log(JSON.stringify({
+            row_count: unique.length,
+            rows: unique,
+            rows_read: rowsRead,
+            rows_written: rowsWritten
+          }, null, 2));
+          NODE
