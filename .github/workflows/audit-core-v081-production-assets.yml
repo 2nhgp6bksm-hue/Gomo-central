@@ -1,0 +1,44 @@
+name: Audit Core v0.8.1 published temporary assets GET-only
+on:
+  push:
+    branches: [audit/core-v081-production-assets-2026-09-22]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe known temporary assets GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://gomo-central.gjp86wh7p2.workers.dev'
+          for file in deployments-before.json schedules-before.json status-before.json; do
+            code="$(curl -sS -o "$file.body" -D "$file.headers" -w '%{http_code}' "$base/$file?audit=asset-check-20260922")"
+            bytes="$(wc -c < "$file.body" | tr -d ' ')"
+            ctype="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/{sub(/\r$/,""); print substr($0,index($0,":")+2)}' "$file.headers" | tail -1)"
+            echo "$file HTTP=$code bytes=$bytes content-type=$ctype"
+            if [ "$code" = "200" ]; then
+              node - "$file" "$file.body" <<'NODE'
+          const fs=require('fs');
+          const [name,path]=process.argv.slice(2);
+          const raw=fs.readFileSync(path,'utf8');
+          let summary={file:name,parseableJson:false};
+          try {
+            const j=JSON.parse(raw);
+            summary.parseableJson=true;
+            if(name==='deployments-before.json'){
+              const arr=Array.isArray(j?.result)?j.result:(j?.result?.deployments||[]);
+              summary={...summary,success:j?.success===true,deployments:arr.slice(0,5).map(x=>({id:x.id||null,created_on:x.created_on||null,versions:(x.versions||[]).map(v=>({version_id:v.version_id||null,percentage:v.percentage??null})),source:x.source||null}))};
+            } else if(name==='schedules-before.json'){
+              const arr=Array.isArray(j?.result)?j.result:(j?.result?.schedules||[]);
+              summary={...summary,success:j?.success===true,scheduleCount:arr.length,crons:arr.map(x=>x.cron||null).filter(Boolean)};
+            } else if(name==='status-before.json'){
+              summary={...summary,coreVersion:j?.coreVersion||null,mode:j?.mode||null,syncId:j?.lastSuccessfulSync?.syncId||null,members:j?.lastSuccessfulSync?.members??null};
+            }
+          } catch {}
+          console.log(JSON.stringify(summary,null,2));
+          NODE
+            fi
+          done
