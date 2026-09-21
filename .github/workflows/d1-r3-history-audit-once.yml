@@ -1,4 +1,4 @@
-name: One-shot read-only R3 schema inspection
+name: One-shot read-only current R3 extraction
 
 on:
   push:
@@ -15,8 +15,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  d1-r3-schema:
-    if: github.event.before == '9ef0d5fad588c1507b9faf7a2813cab76ebcbff2'
+  d1-current-r3:
+    if: github.event.before == 'e9300be512e0bd8828265895a7149cc133bea016'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -31,30 +31,109 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-          echo "Cloudflare token secret: CFPREVIEW"
 
-      - name: Inspect only authorized table definitions
+      - name: Extract only current R3 and requested rank checks
         shell: bash
         run: |
           set -euo pipefail
-          sql="SELECT name, sql
-          FROM sqlite_master
-          WHERE type = 'table'
-            AND name IN (
-              'core_members',
-              'core_member_membership',
-              'core_canonical_snapshots',
-              'core_daily_member_rollups'
-            );"
+          sql="WITH latest AS (
+            SELECT
+              s.gomo_id,
+              s.rank,
+              s.hq,
+              s.power,
+              s.hero_power,
+              s.kills,
+              s.observed_at,
+              ROW_NUMBER() OVER (
+                PARTITION BY s.gomo_id
+                ORDER BY s.observed_at DESC, s.id DESC
+              ) AS rn
+            FROM core_canonical_snapshots AS s
+          ),
+          current_roster AS (
+            SELECT
+              m.gomo_id,
+              m.current_name,
+              l.rank,
+              l.hq,
+              l.power,
+              l.hero_power,
+              l.kills,
+              l.observed_at
+            FROM core_members AS m
+            JOIN core_member_membership AS mm
+              ON mm.gomo_id = m.gomo_id
+            LEFT JOIN latest AS l
+              ON l.gomo_id = m.gomo_id AND l.rn = 1
+            WHERE m.active = 1
+              AND mm.status = 'confirmed'
+          ),
+          requested(label) AS (
+            VALUES
+              ('DrJackykali'),
+              ('1xnikx'),
+              ('Wogiman'),
+              ('Weakl'),
+              ('B4RR4CVD4')
+          )
+          SELECT
+            'rank_count' AS kind,
+            COALESCE(rank, '(NULL)') AS c1,
+            CAST(COUNT(*) AS TEXT) AS c2,
+            NULL AS c3, NULL AS c4, NULL AS c5,
+            NULL AS c6, NULL AS c7, NULL AS c8, NULL AS c9
+          FROM current_roster
+          GROUP BY rank
+
+          UNION ALL
+
+          SELECT
+            'r3_current' AS kind,
+            current_name AS c1,
+            gomo_id AS c2,
+            rank AS c3,
+            CAST(hq AS TEXT) AS c4,
+            CAST(power AS TEXT) AS c5,
+            CAST(hero_power AS TEXT) AS c6,
+            CAST(kills AS TEXT) AS c7,
+            observed_at AS c8,
+            NULL AS c9
+          FROM current_roster
+          WHERE rank = 'R3'
+
+          UNION ALL
+
+          SELECT
+            'special_check' AS kind,
+            r.label AS c1,
+            m.current_name AS c2,
+            m.gomo_id AS c3,
+            CAST(m.active AS TEXT) AS c4,
+            mm.status AS c5,
+            l.rank AS c6,
+            l.observed_at AS c7,
+            NULL AS c8,
+            NULL AS c9
+          FROM requested AS r
+          LEFT JOIN core_members AS m
+            ON REPLACE(LOWER(m.current_name), ' ', '') =
+               REPLACE(LOWER(r.label), ' ', '')
+          LEFT JOIN core_member_membership AS mm
+            ON mm.gomo_id = m.gomo_id
+          LEFT JOIN latest AS l
+            ON l.gomo_id = m.gomo_id AND l.rn = 1
+
+          ORDER BY kind, c1;"
 
           npx --yes wrangler@4 d1 execute "$DATABASE_NAME" \
             --remote \
             --command "$sql" \
-            --json > /tmp/schema-result.json
+            --json > /tmp/r3-result.json
 
           node <<'NODE'
           const fs = require("node:fs");
-          const payload = JSON.parse(fs.readFileSync("/tmp/schema-result.json", "utf8"));
+          const payload = JSON.parse(fs.readFileSync("/tmp/r3-result.json", "utf8"));
           const nodes = [];
           (function walk(value) {
             if (Array.isArray(value)) for (const item of value) walk(item);
@@ -63,29 +142,15 @@ jobs:
               for (const item of Object.values(value)) walk(item);
             }
           })(payload);
-
-          const allowed = new Set([
-            "core_members", "core_member_membership",
-            "core_canonical_snapshots", "core_daily_member_rollups"
-          ]);
-          const rows = nodes
-            .filter((item) => allowed.has(item.name) && typeof item.sql === "string")
-            .map((item) => ({ name: item.name, sql: item.sql }));
-          const unique = [...new Map(rows.map((row) => [row.name, row])).values()]
-            .sort((a, b) => a.name.localeCompare(b.name));
+          const rows = nodes.filter((item) =>
+            ["rank_count", "r3_current", "special_check"].includes(item.kind)
+          );
           const metas = nodes.filter((item) =>
             Object.prototype.hasOwnProperty.call(item, "rows_read") ||
             Object.prototype.hasOwnProperty.call(item, "rows_written")
           );
           const rowsRead = metas.reduce((sum, item) => sum + Number(item.rows_read || 0), 0);
           const rowsWritten = metas.reduce((sum, item) => sum + Number(item.rows_written || 0), 0);
-
-          if (unique.length !== 4) throw new Error(`Expected four table definitions, received ${unique.length}`);
           if (rowsWritten !== 0) throw new Error(`Unexpected D1 rows_written: ${rowsWritten}`);
-
-          console.log(JSON.stringify({
-            tables: unique,
-            rows_read: rowsRead,
-            rows_written: rowsWritten
-          }, null, 2));
+          console.log(JSON.stringify({ rows, rows_read: rowsRead, rows_written: rowsWritten }, null, 2));
           NODE
