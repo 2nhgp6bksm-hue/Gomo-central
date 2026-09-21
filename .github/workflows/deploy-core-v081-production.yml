@@ -1,0 +1,147 @@
+name: Deploy Core v0.8.1 production code only
+
+on:
+  push:
+    branches: [deploy/core-v081-production-2026-09-22]
+
+concurrency:
+  group: deploy-core-v081-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WORKER: gomo-central
+      EXPECTED_VERSION: 8cc05aa0-ca62-4d37-b176-81eb180728be
+      EXPECTED_DEPLOYMENT: 10b48eba-6c47-4057-9343-911efbb020e4
+      EXPECTED_SYNC: sync6_1789370115343_1d930c76
+    steps:
+      - name: Checkout exact production candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 2adc9e70891567a95be8cd9c194b3d45fc094a44
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "2adc9e70891567a95be8cd9c194b3d45fc094a44"
+          node validation/core-v081-production-config-guard.mjs
+          npm test
+          node --check gomo-core-entry-lastwarrank.js
+          node --check gomo-core-entry-v07.js
+          node --check gomo-core-v06-storage.js
+          node --check gomo-core-d1-observability.js
+          node -e 'const c=require("./wrangler.production.jsonc"); if(c.name!=="gomo-central")process.exit(1); if(c.d1_databases?.[0]?.database_id!=="ac1b5094-c1f9-4706-b29b-8507e6f85a92")process.exit(1); if(c.vars?.CORE_CURRENT_READS!=="1")process.exit(1); if(c.triggers!==undefined||c.crons!==undefined)process.exit(1)'
+
+      - name: Resolve Cloudflare account
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+
+      - name: Production preflight GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" -o deployments-before.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o schedules-before.json
+          node - <<'NODE'
+          const d=require('./deployments-before.json');
+          const s=require('./schedules-before.json');
+          if(!d.success||!s.success) throw Error('Cloudflare preflight failed');
+          const deployments=Array.isArray(d.result)?d.result:(d.result?.deployments||[]);
+          const current=deployments[0];
+          const version=current?.versions?.find(v=>Number(v.percentage)===100)?.version_id;
+          const schedules=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
+          if(current?.id!==process.env.EXPECTED_DEPLOYMENT) throw Error('Production deployment changed; STOP');
+          if(version!==process.env.EXPECTED_VERSION) throw Error('Production version changed; STOP');
+          if(schedules.length!==0) throw Error('Production Cron is not empty; STOP');
+          console.log(JSON.stringify({deployment:current.id,version,traffic:100,crons:[]},null,2));
+          NODE
+          curl -fsS "https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?predeploy=v081-20260922" -o status-before.json
+          node - <<'NODE'
+          const s=require('./status-before.json');
+          if(s.coreVersion!=="0.7.4-test") throw Error('Unexpected current Core version');
+          if(s.lastSuccessfulSync?.syncId!==process.env.EXPECTED_SYNC) throw Error('Production sync changed; STOP');
+          if(s.lastSuccessfulSync?.members!==94) throw Error('Unexpected production member count');
+          console.log(JSON.stringify({coreVersion:s.coreVersion,syncId:s.lastSuccessfulSync.syncId,members:s.lastSuccessfulSync.members},null,2));
+          NODE
+
+      - name: Deploy exactly once to gomo-central
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.136.1 deploy --config wrangler.production.jsonc
+
+      - name: Post-deploy GET checks only
+        shell: bash
+        run: |
+          set -euo pipefail
+          for ep in status members power; do
+            code="$(curl -sS -o "$ep-after.json" -w '%{http_code}' "https://gomo-central.gjp86wh7p2.workers.dev/api/core/$ep?postdeploy=v081-20260922")"
+            echo "$ep HTTP $code"
+            test "$code" = 200
+          done
+          node - <<'NODE'
+          const status=require('./status-after.json');
+          const members=require('./members-after.json');
+          const power=require('./power-after.json');
+          if(status.coreVersion!=="0.8.1-fail-stable-test") throw Error('Unexpected deployed Core version');
+          if(status.safety?.currentStateReads!==true) throw Error('CORE_CURRENT_READS is not active');
+          if(status.lastSuccessfulSync?.syncId!==process.env.EXPECTED_SYNC) throw Error('A synchronization occurred; STOP');
+          if(status.lastSuccessfulSync?.members!==94) throw Error('Stored successful sync member count changed');
+          if(!Array.isArray(members.members)||members.members.length!==94) throw Error('Expected 94 public members');
+          if(!Array.isArray(power.members)||power.members.length!==94) throw Error('Expected 94 public power members');
+          console.log(JSON.stringify({
+            coreVersion:status.coreVersion,
+            currentStateReads:status.safety?.currentStateReads,
+            syncId:status.lastSuccessfulSync?.syncId,
+            storedMembers:status.lastSuccessfulSync?.members,
+            publicMembers:members.members.length,
+            publicPowerMembers:power.members.length
+          },null,2));
+          NODE
+
+      - name: Capture new deployment and verify Cron remains absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" -o deployments-after.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o schedules-after.json
+          node - <<'NODE'
+          const d=require('./deployments-after.json');
+          const s=require('./schedules-after.json');
+          if(!d.success||!s.success) throw Error('Cloudflare post-deploy metadata failed');
+          const deployments=Array.isArray(d.result)?d.result:(d.result?.deployments||[]);
+          const current=deployments[0];
+          const live=current?.versions?.find(v=>Number(v.percentage)===100);
+          const schedules=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
+          if(!current?.id||!live?.version_id) throw Error('New deployment metadata unavailable');
+          if(current.id===process.env.EXPECTED_DEPLOYMENT) throw Error('No new deployment detected');
+          if(schedules.length!==0) throw Error('Cron unexpectedly present after deployment');
+          console.log(JSON.stringify({
+            newDeploymentId:current.id,
+            newVersionId:live.version_id,
+            traffic:live.percentage,
+            crons:[],
+            rollbackVersion:process.env.EXPECTED_VERSION,
+            rollbackDeployment:process.env.EXPECTED_DEPLOYMENT
+          },null,2));
+          NODE
