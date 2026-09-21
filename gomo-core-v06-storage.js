@@ -667,6 +667,9 @@ async function persist(db, rep) {
       changesByStatement,
       canonicalRows: p.canonical.length,
       observationRows: p.obs.length,
+      // Snapshot the D1 result metadata already returned by executed queries.
+      // No extra query or observability table is introduced.
+      d1Observability: db.d1Observability?.snapshot?.() || null,
     };
 
     await db.prepare(`

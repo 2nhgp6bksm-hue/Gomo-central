@@ -16,9 +16,10 @@ import {
   enrichCoreMembersWithAvatars,
   handleCoreMemberAvatar,
 } from "./gomo-core-avatars.js";
+import { createInstrumentedD1 } from "./gomo-core-d1-observability.js";
 
-const V = "0.8.0-read-optimization-test";
-const CACHE_EPOCH = "2026-09-03-fail-open-v1";
+const V = "0.8.1-fail-stable-test";
+const CACHE_EPOCH = "2026-09-21-fail-stable-v1";
 const DEFAULT_CACHE_SECONDS = 600;
 const CURRENT_API_CACHE_SECONDS = 300;
 const REPORT_RETENTION_DAYS = 7;
@@ -491,14 +492,25 @@ async function maintenance(db, syncId) {
 }
 
 async function runSync(request, env, ctx) {
-  await schemaV07(env.CORE_DB);
-  const rep = await report(request, env, ctx);
-  const saved = await persist(env.CORE_DB, rep);
+  const instrumented = createInstrumentedD1(env.CORE_DB);
+  const syncEnv = { ...env, CORE_DB: instrumented.database };
+  await schemaV07(syncEnv.CORE_DB);
+  const rep = await report(request, syncEnv, ctx);
+  const saved = await persist(syncEnv.CORE_DB, rep);
   if (saved.changed) {
-    await savePublicReport(env.CORE_DB, saved.syncId, rep);
+    await savePublicReport(syncEnv.CORE_DB, saved.syncId, rep);
     await invalidateCurrentApiCache(ctx, env, request);
   }
-  return { rep, saved };
+  return {
+    rep,
+    saved: {
+      ...saved,
+      storage: {
+        ...saved.storage,
+        d1Observability: instrumented.observability.snapshot(),
+      },
+    },
+  };
 }
 
 async function refresh(request, env, ctx) {

@@ -85,7 +85,12 @@ function freshnessChoice(baseValue, baseSource, candidates) {
     .filter((item) => item?.value != null && Number.isFinite(Number(item.value)))
     .map((item) => ({ ...item, iso: validIso(item.observedAt) }));
 
-  const dated = usable.filter((item) => item.iso);
+  // A cached LastWarRank value is evidence, not fresh telemetry. Prefer any
+  // usable live source even when the cached timestamp is newer.
+  const live = usable.filter((item) => !item.stale);
+  const eligible = live.length ? live : usable;
+
+  const dated = eligible.filter((item) => item.iso);
   if (dated.length) {
     dated.sort((a, b) => Date.parse(b.iso) - Date.parse(a.iso));
     const best = dated[0];
@@ -93,8 +98,8 @@ function freshnessChoice(baseValue, baseSource, candidates) {
   }
 
   return {
-    value: baseValue ?? usable[0]?.value ?? null,
-    source: baseSource ?? usable[0]?.source ?? null,
+    value: baseValue ?? eligible[0]?.value ?? null,
+    source: baseSource ?? eligible[0]?.source ?? null,
     observedAt: null,
   };
 }
@@ -145,8 +150,61 @@ function sourceObservedAt(sourceSummary, fallback) {
   return validIso(sourceSummary?.updatedAt) || validIso(fallback) || null;
 }
 
+async function loadLastGoodLastWarRank(db, failure = {}) {
+  if (!db) {
+    return {
+      ok: false,
+      status: "error",
+      stale: false,
+      error: failure.error || "LastWarRank indisponible",
+      httpStatus: failure.httpStatus ?? null,
+      page: { observedAt: null },
+      roster: { extractedMembers: 0, members: [] },
+      lastGoodAt: null,
+      lastGoodSnapshot: null,
+    };
+  }
+
+  // Deliberately one targeted read: the current-state table already contains
+  // only the last accepted observation for each LastWarRank member.
+  const result = await db.prepare(`
+    SELECT source_member_id,name,rank,hq,power,hero_power,kills,avatar_url,observed_at
+    FROM core_current_source_state
+    WHERE source='lastwarrank'
+    ORDER BY observed_at DESC,source_member_id
+  `).all();
+  const rows = result?.results || [];
+  const members = rows.map((row) => ({
+    sourceId: row.source_member_id,
+    name: row.name,
+    rank: row.rank ?? null,
+    hq: row.hq ?? null,
+    power: row.power ?? null,
+    heroPower: row.hero_power ?? null,
+    kills: row.kills ?? null,
+    avatarUrl: row.avatar_url ?? null,
+    observedAt: validIso(row.observed_at),
+    stale: true,
+  }));
+  const lastGoodAt = members.map((member) => member.observedAt).find(Boolean) || null;
+
+  return {
+    ok: false,
+    status: "error",
+    stale: members.length > 0,
+    error: failure.error || "LastWarRank indisponible",
+    httpStatus: failure.httpStatus ?? null,
+    page: { observedAt: lastGoodAt },
+    roster: { extractedMembers: members.length, members },
+    lastGoodAt,
+    lastGoodSnapshot: members.length ? { observedAt: lastGoodAt, memberCount: members.length } : null,
+  };
+}
+
 function reconcileWithLastWarRank(core, lastWarRank) {
-  const lwrAvailable = Boolean(lastWarRank?.ok);
+  const lwrLive = Boolean(lastWarRank?.ok && !lastWarRank?.stale);
+  const lwrStale = Boolean(!lwrLive && lastWarRank?.stale);
+  const lwrAvailable = lwrLive || lwrStale;
   const lwrMembers = lwrAvailable && Array.isArray(lastWarRank?.roster?.members)
     ? lastWarRank.roster.members
     : [];
@@ -232,13 +290,13 @@ function reconcileWithLastWarRank(core, lastWarRank) {
     const power = freshnessChoice(member?.canonical?.power, member?.fieldSources?.power, [
       { source: "lastIntel", value: li?.power, observedAt: li?.observedAt || liTime },
       { source: "lastRank", value: lr?.power, observedAt: lr?.observedAt || lrTime },
-      { source: "lastWarRank", value: lwr?.power, observedAt: lwrTime },
+      { source: "lastWarRank", value: lwr?.power, observedAt: lwr?.observedAt || lwrTime, stale: lwrStale },
     ]);
 
     const heroPower = freshnessChoice(member?.canonical?.heroPower, member?.fieldSources?.heroPower, [
       { source: "lastIntel", value: li?.heroPower, observedAt: li?.observedAt || liTime },
       { source: "lastRank", value: lr?.heroPower, observedAt: lr?.observedAt || lrTime },
-      { source: "lastWarRank", value: lwr?.heroPower, observedAt: lwrTime },
+      { source: "lastWarRank", value: lwr?.heroPower, observedAt: lwr?.observedAt || lwrTime, stale: lwrStale },
     ]);
 
     const canonical = {
@@ -273,7 +331,8 @@ function reconcileWithLastWarRank(core, lastWarRank) {
           heroPower: lwr.heroPower ?? null,
           kills: null,
           avatarUrl: null,
-          observedAt: lwrTime,
+          observedAt: validIso(lwr.observedAt) || lwrTime,
+          stale: lwrStale,
         } : null,
       },
       comparison: {
@@ -315,8 +374,10 @@ function reconcileWithLastWarRank(core, lastWarRank) {
     },
     sources: {
       ...(core?.sources || {}),
-      lastWarRank: lwrAvailable ? {
+      lastWarRank: lwrLive ? {
         ok: true,
+        status: "ok",
+        stale: false,
         memberCount: lwrMembers.length,
         updatedAt: lwrTime,
         totalPower: lastWarRank?.alliance?.totalPower ?? null,
@@ -324,8 +385,16 @@ function reconcileWithLastWarRank(core, lastWarRank) {
         error: null,
       } : {
         ok: false,
+        status: "error",
+        stale: lwrStale,
         memberCount: 0,
-        updatedAt: null,
+        lastGoodMembers: lwrMembers.length,
+        lastGoodAt: lwrStale ? lwrTime : null,
+        lastGoodSnapshot: lwrStale ? {
+          observedAt: lwrTime,
+          memberCount: lwrMembers.length,
+        } : null,
+        updatedAt: lwrStale ? lwrTime : null,
         totalPower: null,
         armyKills: null,
         error: lastWarRank?.error || "LastWarRank indisponible",
@@ -334,7 +403,8 @@ function reconcileWithLastWarRank(core, lastWarRank) {
     summary: {
       ...(core?.summary || {}),
       unionMembers: members.length,
-      lastWarRankMembers: lwrMembers.length,
+      lastWarRankMembers: lwrLive ? lwrMembers.length : 0,
+      lastWarRankLastGoodMembers: lwrStale ? lwrMembers.length : 0,
       matchedLastWarRank,
       ambiguousLastWarRank,
       lastWarRankOnly: lastWarRankOnly.length,
@@ -371,7 +441,10 @@ async function buildThreeSourceReport(request, env, ctx) {
 
   const lastWarRank = lwrResult.response.ok && lwrResult.data?.ok
     ? lwrResult.data
-    : { ok: false, error: lwrResult.data?.error || `LastWarRank HTTP ${lwrResult.response.status}` };
+    : await loadLastGoodLastWarRank(env.CORE_DB, {
+      error: lwrResult.data?.error || `LastWarRank HTTP ${lwrResult.response.status}`,
+      httpStatus: lwrResult.response.status,
+    });
 
   return reconcileWithLastWarRank(coreResult.data, lastWarRank);
 }
@@ -614,3 +687,5 @@ export default {
     })());
   },
 };
+
+export { buildThreeSourceReport, freshnessChoice, loadLastGoodLastWarRank, reconcileWithLastWarRank };

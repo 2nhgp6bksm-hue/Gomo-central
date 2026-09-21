@@ -162,7 +162,7 @@ test("la route membres v0.7 publie le contrat avatar central complet", async () 
   await ctx.flush();
 
   assert.equal(response.status, 200);
-  assert.equal(body.coreVersion, "0.8.0-read-optimization-test");
+  assert.equal(body.coreVersion, "0.8.1-fail-stable-test");
   assert.equal(body.avatarContractVersion, 1);
   assert.equal(body.avatarStats.matched, 1);
   assert.equal(body.avatarStats.ambiguous, 0);
@@ -210,7 +210,7 @@ test("la clé de cache utilise un nouvel epoch isolé", async () => {
   await ctx.flush();
 
   assert.equal(response.status, 200);
-  assert.match(cache.lastMatchUrl, /cacheEpoch=2026-09-03-fail-open-v1/);
+  assert.match(cache.lastMatchUrl, /cacheEpoch=2026-09-21-fail-stable-v1/);
 });
 
 test("une panne cache.match reste fail-open et sert la D1", async () => {
