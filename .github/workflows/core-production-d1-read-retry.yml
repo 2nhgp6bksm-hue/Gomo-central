@@ -1,0 +1,40 @@
+name: Core production D1 read-only retry
+on:
+  push:
+    branches: [audit/core-production-d1-read-retry-2026-09-21]
+permissions:
+  contents: read
+jobs:
+  d1-read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB: gomo-core-db
+      DBID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
+    steps:
+      - name: Resolve account and verify D1
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database" -o d1.json
+          node -e 'const j=require("./d1.json"); const d=(j.result||[]).find(x=>x.name===process.env.DB); if(!d)throw Error("D1 missing"); if((d.uuid||d.id)!==process.env.DBID)throw Error("D1 ID mismatch"); console.log(JSON.stringify({name:d.name,id:d.uuid||d.id},null,2))'
+      - name: Schema objects SELECT only
+        run: npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT type,name,tbl_name FROM sqlite_master WHERE (name LIKE 'core_%' OR tbl_name LIKE 'core_%') AND type IN ('table','index','trigger') ORDER BY type,name;"
+      - name: Source state counts SELECT only
+        run: npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT source,COUNT(*) n FROM core_current_source_state GROUP BY source ORDER BY source;"
+      - name: Current member counts SELECT only
+        run: npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT COUNT(*) total,SUM(CASE WHEN active=1 THEN 1 ELSE 0 END) active FROM core_current_members;"
+      - name: Membership counts SELECT only
+        run: npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT status,COUNT(*) n FROM core_member_membership GROUP BY status ORDER BY status;"
+      - name: Trigger count SELECT only
+        run: npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT COUNT(*) trigger_count FROM sqlite_master WHERE type='trigger' AND (name LIKE 'core_%' OR tbl_name LIKE 'core_%');"
+      - name: Current table columns SELECT only
+        run: npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT 'core_current_members' table_name,cid,name,type,notnull,pk FROM pragma_table_info('core_current_members') UNION ALL SELECT 'core_current_source_state',cid,name,type,notnull,pk FROM pragma_table_info('core_current_source_state') ORDER BY table_name,cid;"
+      - name: Current indexes SELECT only
+        run: npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT 'core_current_members' table_name,name,origin,partial FROM pragma_index_list('core_current_members') UNION ALL SELECT 'core_current_source_state',name,origin,partial FROM pragma_index_list('core_current_source_state') ORDER BY table_name,name;"
