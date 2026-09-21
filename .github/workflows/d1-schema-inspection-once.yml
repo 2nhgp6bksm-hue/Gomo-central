@@ -1,4 +1,4 @@
-name: One-shot read-only D1 schema inspection
+name: One-shot read-only D1 membership counts
 
 on:
   push:
@@ -11,12 +11,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: gomo-core-d1-schema-inspection-once
+  group: gomo-core-d1-membership-counts-once
   cancel-in-progress: false
 
 jobs:
-  d1-schema-inspection:
-    if: github.event.before == '91d0bb0c3dfc47ccf4f86070077b52839ca08c26'
+  d1-membership-counts:
+    if: github.event.before == 'f637121b8020d258b1b08b5078e34be25c011e6f'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -33,23 +33,41 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           echo "Cloudflare token secret: CFPREVIEW"
 
-      - name: Execute only the authorized sqlite_master SELECT
+      - name: Execute only aggregate membership counts
         shell: bash
         run: |
           set -euo pipefail
-          sql="SELECT name, sql
-          FROM sqlite_master
-          WHERE type = 'table'
-            AND name IN ('core_members', 'core_member_membership');"
+          sql="SELECT
+            COUNT(*) AS total_core_members,
+            COUNT(DISTINCT gomo_id) AS distinct_players,
+            COUNT(CASE WHEN active = 1 THEN 1 END) AS active_members,
+            COUNT(CASE WHEN active = 0 THEN 1 END) AS inactive_members
+          FROM core_members;
+
+          SELECT
+            COUNT(*) AS total_core_member_membership,
+            COUNT(CASE WHEN status = 'pending' THEN 1 END) AS pending_memberships,
+            COUNT(CASE WHEN status = 'confirmed' THEN 1 END) AS confirmed_memberships,
+            COUNT(CASE WHEN status = 'departure_candidate' THEN 1 END) AS departure_candidate_memberships,
+            COUNT(CASE WHEN status = 'departed' THEN 1 END) AS departed_memberships
+          FROM core_member_membership;
+
+          SELECT
+            COUNT(*) AS joined_memberships,
+            COUNT(CASE WHEN m.active = 1 AND mm.status = 'confirmed' THEN 1 END) AS active_confirmed,
+            COUNT(CASE WHEN m.active = 1 AND mm.status <> 'confirmed' THEN 1 END) AS active_not_confirmed,
+            COUNT(CASE WHEN m.active = 0 AND mm.status = 'confirmed' THEN 1 END) AS inactive_confirmed
+          FROM core_members AS m
+          JOIN core_member_membership AS mm ON mm.gomo_id = m.gomo_id;"
 
           npx --yes wrangler@4 d1 execute "$DATABASE_NAME" \
             --remote \
             --command "$sql" \
-            --json > /tmp/schema-result.json
+            --json > /tmp/count-result.json
 
           node <<'NODE'
           const fs = require("node:fs");
-          const payload = JSON.parse(fs.readFileSync("/tmp/schema-result.json", "utf8"));
+          const payload = JSON.parse(fs.readFileSync("/tmp/count-result.json", "utf8"));
           const nodes = [];
           (function walk(value) {
             if (Array.isArray(value)) for (const item of value) walk(item);
@@ -59,11 +77,18 @@ jobs:
             }
           })(payload);
 
-          const rows = nodes
-            .filter((item) => typeof item.name === "string" && typeof item.sql === "string")
-            .filter((item) => ["core_members", "core_member_membership"].includes(item.name));
-          const unique = [...new Map(rows.map((row) => [row.name, { name: row.name, sql: row.sql }])).values()]
-            .sort((a, b) => a.name.localeCompare(b.name));
+          const wanted = [
+            "total_core_members", "distinct_players", "active_members", "inactive_members",
+            "total_core_member_membership", "pending_memberships", "confirmed_memberships",
+            "departure_candidate_memberships", "departed_memberships",
+            "joined_memberships", "active_confirmed", "active_not_confirmed", "inactive_confirmed"
+          ];
+          const counts = {};
+          for (const node of nodes) {
+            for (const key of wanted) {
+              if (Object.prototype.hasOwnProperty.call(node, key)) counts[key] = Number(node[key]);
+            }
+          }
           const metas = nodes.filter((item) =>
             Object.prototype.hasOwnProperty.call(item, "rows_read") ||
             Object.prototype.hasOwnProperty.call(item, "rows_written")
@@ -71,12 +96,13 @@ jobs:
           const rowsRead = metas.reduce((sum, item) => sum + Number(item.rows_read || 0), 0);
           const rowsWritten = metas.reduce((sum, item) => sum + Number(item.rows_written || 0), 0);
 
-          if (unique.length !== 2) throw new Error("Expected exactly two target table definitions");
+          if (wanted.some((key) => !Number.isInteger(counts[key]))) {
+            throw new Error("One or more required aggregate counts are missing");
+          }
           if (rowsWritten !== 0) throw new Error(`Unexpected D1 rows_written: ${rowsWritten}`);
 
           console.log(JSON.stringify({
-            query: "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name IN ('core_members', 'core_member_membership');",
-            tables: unique,
+            counts,
             rows_read: rowsRead,
             rows_written: rowsWritten
           }, null, 2));
