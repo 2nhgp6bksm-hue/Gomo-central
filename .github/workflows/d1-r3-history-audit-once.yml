@@ -1,4 +1,4 @@
-name: One-shot read-only R3 history coverage summary
+name: One-shot read-only R3 window coverage
 
 on:
   push:
@@ -15,8 +15,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  d1-r3-history-summary:
-    if: github.event.before == '2d70984844f5abd0711c70768e86a8c46e07fe40'
+  d1-r3-window-coverage:
+    if: github.event.before == '790460dbafb3d3ea7ccbea455ef1a19d38fcfa3d'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -32,7 +32,7 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
 
-      - name: Aggregate history only for current R3 identifiers
+      - name: Measure only J0 J-7 and J-14 coverage for current R3
         shell: bash
         run: |
           set -euo pipefail
@@ -115,57 +115,112 @@ jobs:
               ('gomo_9cda0dee-0993-4b38-9cdf-042929a8ffa2'),
               ('gomo_126a3463-0974-4a7a-adeb-c52cd9188cd4'),
               ('gomo_aeac283d-1d88-4b64-b622-48376d8b4605')
+          ),
+          days AS (
+            SELECT
+              s.gomo_id,
+              SUBSTR(s.observed_at, 1, 10) AS day,
+              MAX(CASE WHEN s.hero_power IS NOT NULL THEN 1 ELSE 0 END) AS has_hero,
+              MAX(CASE WHEN s.kills IS NOT NULL THEN 1 ELSE 0 END) AS has_kills
+            FROM core_canonical_snapshots AS s
+            JOIN current_r3 AS c ON c.gomo_id = s.gomo_id
+            GROUP BY s.gomo_id, SUBSTR(s.observed_at, 1, 10)
+          ),
+          j0 AS (
+            SELECT MAX(day) AS day FROM days
+          ),
+          candidates AS (
+            SELECT
+              d.gomo_id,
+              'j7' AS target,
+              d.day,
+              ROW_NUMBER() OVER (
+                PARTITION BY d.gomo_id
+                ORDER BY
+                  ABS(JULIANDAY(d.day) - JULIANDAY(DATE(j0.day, '-7 day'))),
+                  d.day DESC
+              ) AS rn
+            FROM days AS d
+            CROSS JOIN j0
+            WHERE d.day BETWEEN DATE(j0.day, '-8 day') AND DATE(j0.day, '-6 day')
+
+            UNION ALL
+
+            SELECT
+              d.gomo_id,
+              'j14' AS target,
+              d.day,
+              ROW_NUMBER() OVER (
+                PARTITION BY d.gomo_id
+                ORDER BY
+                  ABS(JULIANDAY(d.day) - JULIANDAY(DATE(j0.day, '-14 day'))),
+                  d.day DESC
+              ) AS rn
+            FROM days AS d
+            CROSS JOIN j0
+            WHERE d.day BETWEEN DATE(j0.day, '-15 day') AND DATE(j0.day, '-13 day')
+          ),
+          selected AS (
+            SELECT gomo_id, target, day
+            FROM candidates
+            WHERE rn = 1
+          ),
+          coverage AS (
+            SELECT
+              c.gomo_id,
+              m.current_name,
+              j0.day AS j0_day,
+              MAX(CASE WHEN s.target = 'j7' THEN s.day END) AS j7_day,
+              MAX(CASE WHEN s.target = 'j14' THEN s.day END) AS j14_day,
+              MIN(d.day) AS min_day,
+              MAX(d.day) AS max_day,
+              COUNT(DISTINCT CASE WHEN d.has_hero = 1 THEN d.day END) AS hero_days,
+              COUNT(DISTINCT CASE WHEN d.has_kills = 1 THEN d.day END) AS kills_days
+            FROM current_r3 AS c
+            JOIN core_members AS m ON m.gomo_id = c.gomo_id
+            CROSS JOIN j0
+            LEFT JOIN days AS d ON d.gomo_id = c.gomo_id
+            LEFT JOIN selected AS s ON s.gomo_id = c.gomo_id
+            GROUP BY c.gomo_id, m.current_name, j0.day
           )
           SELECT
-            'daily_day' AS kind,
-            r.day AS c1,
-            CAST(COUNT(DISTINCT r.gomo_id) AS TEXT) AS c2,
-            NULL AS c3, NULL AS c4, NULL AS c5,
-            NULL AS c6, NULL AS c7, NULL AS c8
-          FROM core_daily_member_rollups AS r
-          JOIN current_r3 AS c ON c.gomo_id = r.gomo_id
-          GROUP BY r.day
+            'coverage_summary' AS kind,
+            MIN(min_day) AS c1,
+            MAX(max_day) AS c2,
+            CAST((SELECT COUNT(DISTINCT day) FROM days) AS TEXT) AS c3,
+            MAX(j0_day) AS c4,
+            CAST((SELECT COUNT(DISTINCT gomo_id) FROM days WHERE day = (SELECT day FROM j0)) AS TEXT) AS c5,
+            CAST(COUNT(CASE WHEN j7_day IS NOT NULL THEN 1 END) AS TEXT) AS c6,
+            CAST(COUNT(CASE WHEN j14_day IS NOT NULL THEN 1 END) AS TEXT) AS c7,
+            CAST(COUNT(CASE WHEN hero_days >= 2 THEN 1 END) AS TEXT) AS c8,
+            CAST(COUNT(CASE WHEN kills_days >= 2 THEN 1 END) AS TEXT) AS c9
+          FROM coverage
 
           UNION ALL
 
           SELECT
-            'daily_summary' AS kind,
-            MIN(r.day) AS c1,
-            MAX(r.day) AS c2,
-            CAST(COUNT(DISTINCT r.day) AS TEXT) AS c3,
-            CAST(COUNT(*) AS TEXT) AS c4,
-            CAST(COUNT(DISTINCT r.gomo_id) AS TEXT) AS c5,
-            CAST(COUNT(DISTINCT CASE WHEN r.power IS NOT NULL THEN r.gomo_id END) AS TEXT) AS c6,
-            CAST(COUNT(DISTINCT CASE WHEN r.hq IS NOT NULL THEN r.gomo_id END) AS TEXT) AS c7,
-            CAST(COUNT(DISTINCT CASE WHEN r.hero_power IS NOT NULL THEN r.gomo_id END) AS TEXT) AS c8
-          FROM core_daily_member_rollups AS r
-          JOIN current_r3 AS c ON c.gomo_id = r.gomo_id
-
-          UNION ALL
-
-          SELECT
-            'canonical_summary' AS kind,
-            MIN(SUBSTR(s.observed_at, 1, 10)) AS c1,
-            MAX(SUBSTR(s.observed_at, 1, 10)) AS c2,
-            CAST(COUNT(DISTINCT SUBSTR(s.observed_at, 1, 10)) AS TEXT) AS c3,
-            CAST(COUNT(*) AS TEXT) AS c4,
-            CAST(COUNT(DISTINCT s.gomo_id) AS TEXT) AS c5,
-            CAST(COUNT(DISTINCT CASE WHEN s.power IS NOT NULL THEN s.gomo_id END) AS TEXT) AS c6,
-            CAST(COUNT(DISTINCT CASE WHEN s.hero_power IS NOT NULL THEN s.gomo_id END) AS TEXT) AS c7,
-            CAST(COUNT(DISTINCT CASE WHEN s.kills IS NOT NULL THEN s.gomo_id END) AS TEXT) AS c8
-          FROM core_canonical_snapshots AS s
-          JOIN current_r3 AS c ON c.gomo_id = s.gomo_id
+            'player_coverage' AS kind,
+            current_name AS c1,
+            gomo_id AS c2,
+            j0_day AS c3,
+            j7_day AS c4,
+            j14_day AS c5,
+            min_day AS c6,
+            max_day AS c7,
+            CAST(hero_days AS TEXT) AS c8,
+            CAST(kills_days AS TEXT) AS c9
+          FROM coverage
 
           ORDER BY kind, c1;"
 
           npx --yes wrangler@4 d1 execute "$DATABASE_NAME" \
             --remote \
             --command "$sql" \
-            --json > /tmp/history-summary.json
+            --json > /tmp/window-result.json
 
           node <<'NODE'
           const fs = require("node:fs");
-          const payload = JSON.parse(fs.readFileSync("/tmp/history-summary.json", "utf8"));
+          const payload = JSON.parse(fs.readFileSync("/tmp/window-result.json", "utf8"));
           const nodes = [];
           (function walk(value) {
             if (Array.isArray(value)) for (const item of value) walk(item);
@@ -175,7 +230,7 @@ jobs:
             }
           })(payload);
           const rows = nodes.filter((item) =>
-            ["daily_day", "daily_summary", "canonical_summary"].includes(item.kind)
+            ["coverage_summary", "player_coverage"].includes(item.kind)
           );
           const metas = nodes.filter((item) =>
             Object.prototype.hasOwnProperty.call(item, "rows_read") ||
