@@ -1,0 +1,32 @@
+name: Core status shape diagnostic
+
+on:
+  push:
+    branches:
+      - deploy/core-v08-final-test-2026-09-20
+
+permissions:
+  contents: read
+
+jobs:
+  status-shape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET status and print field paths only
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error https://gomo-core-test.gjp86wh7p2.workers.dev/api/core/status -o status.json
+          node - <<'NODE'
+          const x=require('./status.json');
+          function walk(v,p='',d=0){
+            if(d>6 || v===null) return;
+            if(Array.isArray(v)){ console.log((p||'$')+'[]'); if(v.length) walk(v[0],(p||'$')+'[]',d+1); return; }
+            if(typeof v!=='object') return;
+            for(const k of Object.keys(v)){
+              const q=p?p+'.'+k:k;
+              console.log(q);
+              walk(v[k],q,d+1);
+            }
+          }
+          walk(x);
+          NODE
