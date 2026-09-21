@@ -1,0 +1,113 @@
+name: Final Core production live preflight read-only
+on:
+  push:
+    branches: [audit/core-production-live-final-2026-09-21]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROD_DB_NAME: gomo-core-db
+      PROD_DB_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
+      PROD_WORKER: gomo-central
+    steps:
+      - name: Cloudflare production metadata GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          export CLOUDFLARE_ACCOUNT_ID
+          mkdir -p audit
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$PROD_WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/settings" > audit/settings.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" > audit/schedules.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" > audit/deployments.json
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/versions?per_page=5" > audit/versions.json
+          curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains" > audit/domains.json || true
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=p=>JSON.parse(fs.readFileSync(p,'utf8'));
+          const settings=j('audit/settings.json'), schedules=j('audit/schedules.json'), deployments=j('audit/deployments.json'), versions=j('audit/versions.json');
+          if(!settings.success||!schedules.success||!deployments.success||!versions.success) throw Error('Cloudflare metadata GET failed');
+          const bs=settings.result?.bindings||[];
+          const safeBindings=bs.map(b=>{
+            const o={name:b.name,type:b.type};
+            if(b.type==='d1') Object.assign(o,{id:b.id||b.database_id||null,database_name:b.database_name||null});
+            if(b.type==='service') Object.assign(o,{service:b.service||null,environment:b.environment||null});
+            if(b.type==='plain_text' && ['GOMO_CORE_MODE','CORE_CURRENT_READS','CORE_PUBLIC_CACHE_SECONDS'].includes(b.name)) o.value=b.text;
+            return o;
+          });
+          const sr=Array.isArray(schedules.result)?schedules.result:(schedules.result?.schedules||[]);
+          const dr=Array.isArray(deployments.result)?deployments.result:(deployments.result?.deployments||[]);
+          const vr=Array.isArray(versions.result)?versions.result:(versions.result?.items||[]);
+          const domains=(()=>{try{const x=j('audit/domains.json');return x.success?(x.result||[]).filter(d=>d.service===process.env.PROD_WORKER||d.script===process.env.PROD_WORKER):{unavailable:true,errors:x.errors||[]}}catch{return {unavailable:true}}})();
+          const out={
+            worker:process.env.PROD_WORKER,
+            bindings:safeBindings,
+            adminSecret: safeBindings.some(b=>b.name==='GOMO_CORE_ADMIN_KEY') ? safeBindings.find(b=>b.name==='GOMO_CORE_ADMIN_KEY') : null,
+            crons:sr.map(x=>x.cron||x).filter(Boolean),
+            deployments:dr.slice(0,5).map(x=>({id:x.id,created_on:x.created_on,versions:x.versions||null,source:x.source||null})),
+            versions:vr.slice(0,5).map(x=>({id:x.id,created_on:x.created_on,annotations:x.annotations||null})),
+            customDomains:domains
+          };
+          fs.writeFileSync('audit/cloudflare-summary.json',JSON.stringify(out,null,2)+'\n');
+          console.log(JSON.stringify(out,null,2));
+          NODE
+      - name: Production D1 schema and current-state SELECT only
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+            export CLOUDFLARE_ACCOUNT_ID
+          fi
+          npx --yes wrangler@4.136.1 d1 list --json > audit/d1-list.json
+          node -e 'const fs=require("fs");const a=JSON.parse(fs.readFileSync("audit/d1-list.json"));const d=a.find(x=>x.name===process.env.PROD_DB_NAME);if(!d)throw Error("Production D1 missing");const id=d.uuid||d.id;if(id!==process.env.PROD_DB_ID)throw Error("Production D1 ID mismatch")'
+          npx --yes wrangler@4.136.1 d1 execute "$PROD_DB_NAME" --remote --json --command "SELECT type,name,tbl_name,sql FROM sqlite_master WHERE (name LIKE 'core_%' OR tbl_name LIKE 'core_%') AND type IN ('table','index','trigger') ORDER BY type,name;" > audit/schema.json
+          npx --yes wrangler@4.136.1 d1 execute "$PROD_DB_NAME" --remote --json --command "SELECT 'core_members' table_name,* FROM pragma_table_info('core_members') UNION ALL SELECT 'core_member_membership',* FROM pragma_table_info('core_member_membership') UNION ALL SELECT 'core_member_aliases',* FROM pragma_table_info('core_member_aliases') UNION ALL SELECT 'core_source_links',* FROM pragma_table_info('core_source_links') UNION ALL SELECT 'core_canonical_snapshots',* FROM pragma_table_info('core_canonical_snapshots') UNION ALL SELECT 'core_source_observations',* FROM pragma_table_info('core_source_observations') UNION ALL SELECT 'core_current_members',* FROM pragma_table_info('core_current_members') UNION ALL SELECT 'core_current_source_state',* FROM pragma_table_info('core_current_source_state') UNION ALL SELECT 'core_sync_runs',* FROM pragma_table_info('core_sync_runs') UNION ALL SELECT 'core_sync_metadata',* FROM pragma_table_info('core_sync_metadata') UNION ALL SELECT 'core_public_reports',* FROM pragma_table_info('core_public_reports') ORDER BY table_name,cid;" > audit/columns.json
+          npx --yes wrangler@4.136.1 d1 execute "$PROD_DB_NAME" --remote --json --command "SELECT 'core_current_members' table_name,* FROM pragma_index_list('core_current_members') UNION ALL SELECT 'core_current_source_state',* FROM pragma_index_list('core_current_source_state') UNION ALL SELECT 'core_canonical_snapshots',* FROM pragma_index_list('core_canonical_snapshots') UNION ALL SELECT 'core_source_observations',* FROM pragma_index_list('core_source_observations') UNION ALL SELECT 'core_sync_runs',* FROM pragma_index_list('core_sync_runs') ORDER BY table_name,name;" > audit/indexes.json
+          npx --yes wrangler@4.136.1 d1 execute "$PROD_DB_NAME" --remote --json --command "SELECT source,COUNT(*) n FROM core_current_source_state GROUP BY source ORDER BY source; SELECT COUNT(*) total,SUM(CASE WHEN active=1 THEN 1 ELSE 0 END) active FROM core_current_members; SELECT status,COUNT(*) n FROM core_member_membership GROUP BY status ORDER BY status; SELECT sync_id,completed_at,status,lastintel_status,lastrank_status,lastintel_members,lastrank_members FROM core_sync_runs WHERE status='ok' ORDER BY completed_at DESC LIMIT 1; SELECT COUNT(*) trigger_count FROM sqlite_master WHERE type='trigger' AND (name LIKE 'core_%' OR tbl_name LIKE 'core_%');" > audit/current-state.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const unpack=p=>{const j=JSON.parse(fs.readFileSync(p,'utf8'));return Array.isArray(j)?j:[j]};
+          const resultRows=p=>unpack(p).map(x=>x.results||x.result?.results||[]);
+          const schema=resultRows('audit/schema.json')[0]||[];
+          const cols=resultRows('audit/columns.json')[0]||[];
+          const idx=resultRows('audit/indexes.json')[0]||[];
+          const state=resultRows('audit/current-state.json');
+          const report={
+            database:process.env.PROD_DB_NAME,databaseId:process.env.PROD_DB_ID,
+            schemaObjects:schema,
+            columns:cols,
+            indexes:idx,
+            sourceState:state[0]||[],
+            currentMembers:state[1]?.[0]||null,
+            memberships:state[2]||[],
+            lastSuccessfulSync:state[3]?.[0]||null,
+            triggers:state[4]?.[0]||null,
+            readOnly:true
+          };
+          fs.writeFileSync('audit/d1-summary.json',JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(report,null,2));
+          NODE
+      - name: Production public GET checks only
+        shell: bash
+        run: |
+          set -euo pipefail
+          for ep in status members power; do
+            code="$(curl -sS -o "audit/$ep.json" -w '%{http_code}' "https://gomo-central.gjp86wh7p2.workers.dev/api/core/$ep?audit=final-live-20260921")"
+            echo "$ep HTTP $code"
+            test "$code" = 200
+          done
+          jq '{coreVersion,mode,lastSuccessfulSync,safety}' audit/status.json
+          jq '{coreVersion,members:(.members|length),syncId}' audit/members.json
+          jq '{coreVersion,members:(.members|length),syncId}' audit/power.json
