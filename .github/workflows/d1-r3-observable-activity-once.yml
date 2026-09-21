@@ -1,0 +1,294 @@
+name: One-shot read-only observable R3 activity
+
+on:
+  push:
+    branches:
+      - audit/d1-read-precontrol-2026-09-21
+    paths:
+      - .github/workflows/d1-r3-observable-activity-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gomo-core-d1-r3-observable-activity-once
+  cancel-in-progress: false
+
+jobs:
+  d1-r3-observable-activity:
+    if: github.event.before == '0886c140257acfcebd90ca8b723cf9f7285bd070'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: 8c513559f775c0cca653268ab2f29c0d
+      DATABASE_NAME: gomo-core-v08-read-test-db
+
+    steps:
+      - name: Validate authentication without revealing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Execute one consolidated observable-activity SELECT
+        shell: bash
+        run: |
+          set -euo pipefail
+          sql="WITH params AS (
+            SELECT
+              MAX(DATE(DATETIME(observed_at, '+2 hours'))) AS j0
+            FROM core_canonical_snapshots
+          ),
+          latest_ranked AS (
+            SELECT
+              s.id,
+              s.gomo_id,
+              s.rank,
+              s.hq,
+              s.power,
+              s.observed_at,
+              ROW_NUMBER() OVER (
+                PARTITION BY s.gomo_id
+                ORDER BY s.observed_at DESC, s.id DESC
+              ) AS rn
+            FROM core_canonical_snapshots AS s
+          ),
+          current_r3 AS (
+            SELECT
+              m.gomo_id,
+              m.current_name,
+              l.rank AS current_rank,
+              l.hq AS current_hq,
+              l.power AS current_power,
+              l.observed_at AS current_observed_at
+            FROM core_members AS m
+            JOIN core_member_membership AS mm
+              ON mm.gomo_id = m.gomo_id
+            JOIN latest_ranked AS l
+              ON l.gomo_id = m.gomo_id AND l.rn = 1
+            WHERE m.active = 1
+              AND mm.status = 'confirmed'
+              AND l.rank = 'R3'
+          ),
+          daily_ranked AS (
+            SELECT
+              s.id,
+              s.gomo_id,
+              DATE(DATETIME(s.observed_at, '+2 hours')) AS day,
+              s.rank,
+              s.hq,
+              s.power,
+              s.hero_power,
+              s.kills,
+              s.observed_at,
+              ROW_NUMBER() OVER (
+                PARTITION BY
+                  s.gomo_id,
+                  DATE(DATETIME(s.observed_at, '+2 hours'))
+                ORDER BY s.observed_at DESC, s.id DESC
+              ) AS rn
+            FROM core_canonical_snapshots AS s
+            JOIN current_r3 AS c ON c.gomo_id = s.gomo_id
+            CROSS JOIN params AS pa
+            WHERE DATE(DATETIME(s.observed_at, '+2 hours'))
+              BETWEEN DATE(pa.j0, '-14 day') AND pa.j0
+          ),
+          daily AS (
+            SELECT *
+            FROM daily_ranked
+            WHERE rn = 1
+          ),
+          pairs AS (
+            SELECT
+              cur.gomo_id,
+              cur.day,
+              CASE
+                WHEN prev.gomo_id IS NOT NULL
+                 AND (
+                   (cur.kills IS NOT NULL AND prev.kills IS NOT NULL)
+                   OR (cur.power IS NOT NULL AND prev.power IS NOT NULL)
+                   OR (cur.hero_power IS NOT NULL AND prev.hero_power IS NOT NULL)
+                   OR (cur.hq IS NOT NULL AND prev.hq IS NOT NULL)
+                   OR (cur.rank IS NOT NULL AND prev.rank IS NOT NULL)
+                 )
+                THEN 1 ELSE 0
+              END AS activity_observable,
+              CASE
+                WHEN prev.gomo_id IS NOT NULL
+                 AND cur.kills IS NOT NULL
+                 AND prev.kills IS NOT NULL
+                THEN 1 ELSE 0
+              END AS kills_observable,
+              CASE
+                WHEN cur.kills IS NOT NULL AND prev.kills IS NOT NULL
+                THEN cur.kills - prev.kills
+              END AS delta_kills,
+              CASE
+                WHEN cur.power IS NOT NULL AND prev.power IS NOT NULL
+                THEN cur.power - prev.power
+              END AS delta_power,
+              CASE
+                WHEN cur.power IS NOT NULL
+                 AND prev.power IS NOT NULL
+                 AND prev.power <> 0
+                THEN (cur.power - prev.power) * 100.0 / prev.power
+              END AS delta_power_pct,
+              CASE
+                WHEN cur.hero_power IS NOT NULL AND prev.hero_power IS NOT NULL
+                THEN cur.hero_power - prev.hero_power
+              END AS delta_hero,
+              CASE
+                WHEN cur.hero_power IS NOT NULL
+                 AND prev.hero_power IS NOT NULL
+                 AND prev.hero_power <> 0
+                THEN (cur.hero_power - prev.hero_power) * 100.0 / prev.hero_power
+              END AS delta_hero_pct,
+              CASE
+                WHEN cur.hq IS NOT NULL AND prev.hq IS NOT NULL
+                THEN cur.hq - prev.hq
+              END AS delta_hq,
+              CASE
+                WHEN cur.rank IS NOT NULL AND prev.rank IS NOT NULL
+                 AND cur.rank <> prev.rank
+                THEN 1 ELSE 0
+              END AS rank_changed
+            FROM daily AS cur
+            CROSS JOIN params AS pa
+            LEFT JOIN daily AS prev
+              ON prev.gomo_id = cur.gomo_id
+             AND prev.day = DATE(cur.day, '-1 day')
+            WHERE cur.day BETWEEN DATE(pa.j0, '-13 day') AND pa.j0
+          ),
+          signals AS (
+            SELECT
+              p.*,
+              CASE
+                WHEN p.activity_observable = 1
+                 AND (
+                   COALESCE(p.delta_kills, 0) > 0
+                   OR ABS(COALESCE(p.delta_power, 0)) >= 500000
+                   OR ABS(COALESCE(p.delta_power_pct, 0)) >= 0.30
+                   OR ABS(COALESCE(p.delta_hero, 0)) >= 500000
+                   OR ABS(COALESCE(p.delta_hero_pct, 0)) >= 0.30
+                   OR COALESCE(p.delta_hq, 0) <> 0
+                   OR p.rank_changed = 1
+                 )
+                THEN 1 ELSE 0
+              END AS active_day,
+              CASE
+                WHEN p.kills_observable = 1 AND p.delta_kills > 0
+                THEN 1 ELSE 0
+              END AS combat_day
+            FROM pairs AS p
+          )
+          SELECT
+            c.current_name AS player,
+            c.gomo_id,
+            pa.j0 AS global_j0,
+            DATE(pa.j0, '-13 day') AS window_start,
+            c.current_hq,
+            c.current_power,
+            c.current_observed_at,
+            COUNT(d.day) AS daily_snapshots_in_window,
+
+            COALESCE(SUM(s.activity_observable), 0) AS observable_14d,
+            COALESCE(SUM(s.kills_observable), 0) AS kills_observable_14d,
+            COALESCE(SUM(s.active_day), 0) AS active_days_14d,
+            COALESCE(SUM(s.combat_day), 0) AS combat_days_14d,
+
+            COALESCE(SUM(CASE WHEN s.day >= DATE(pa.j0, '-6 day')
+                              THEN s.activity_observable ELSE 0 END), 0) AS observable_recent7,
+            COALESCE(SUM(CASE WHEN s.day >= DATE(pa.j0, '-6 day')
+                              THEN s.kills_observable ELSE 0 END), 0) AS kills_observable_recent7,
+            COALESCE(SUM(CASE WHEN s.day >= DATE(pa.j0, '-6 day')
+                              THEN s.active_day ELSE 0 END), 0) AS active_days_recent7,
+            COALESCE(SUM(CASE WHEN s.day >= DATE(pa.j0, '-6 day')
+                              THEN s.combat_day ELSE 0 END), 0) AS combat_days_recent7,
+            COALESCE(SUM(CASE WHEN s.day >= DATE(pa.j0, '-6 day')
+                               AND s.delta_kills > 0
+                              THEN s.delta_kills ELSE 0 END), 0) AS kills_recent7,
+
+            COALESCE(SUM(CASE WHEN s.day BETWEEN DATE(pa.j0, '-13 day')
+                                             AND DATE(pa.j0, '-7 day')
+                              THEN s.activity_observable ELSE 0 END), 0) AS observable_previous7,
+            COALESCE(SUM(CASE WHEN s.day BETWEEN DATE(pa.j0, '-13 day')
+                                             AND DATE(pa.j0, '-7 day')
+                              THEN s.kills_observable ELSE 0 END), 0) AS kills_observable_previous7,
+            COALESCE(SUM(CASE WHEN s.day BETWEEN DATE(pa.j0, '-13 day')
+                                             AND DATE(pa.j0, '-7 day')
+                              THEN s.active_day ELSE 0 END), 0) AS active_days_previous7,
+            COALESCE(SUM(CASE WHEN s.day BETWEEN DATE(pa.j0, '-13 day')
+                                             AND DATE(pa.j0, '-7 day')
+                              THEN s.combat_day ELSE 0 END), 0) AS combat_days_previous7,
+            COALESCE(SUM(CASE WHEN s.day BETWEEN DATE(pa.j0, '-13 day')
+                                             AND DATE(pa.j0, '-7 day')
+                               AND s.delta_kills > 0
+                              THEN s.delta_kills ELSE 0 END), 0) AS kills_previous7,
+
+            COALESCE(SUM(CASE WHEN s.day >= DATE(pa.j0, '-2 day')
+                              THEN s.activity_observable ELSE 0 END), 0) AS observable_last3,
+            COALESCE(SUM(CASE WHEN s.day >= DATE(pa.j0, '-2 day')
+                              THEN s.active_day ELSE 0 END), 0) AS active_days_last3,
+            COALESCE(SUM(CASE WHEN s.day >= DATE(pa.j0, '-2 day')
+                              THEN s.combat_day ELSE 0 END), 0) AS combat_days_last3
+
+          FROM current_r3 AS c
+          CROSS JOIN params AS pa
+          LEFT JOIN daily AS d
+            ON d.gomo_id = c.gomo_id
+           AND d.day BETWEEN DATE(pa.j0, '-13 day') AND pa.j0
+          LEFT JOIN signals AS s
+            ON s.gomo_id = c.gomo_id
+           AND s.day = d.day
+          GROUP BY
+            c.gomo_id,
+            c.current_name,
+            c.current_hq,
+            c.current_power,
+            c.current_observed_at,
+            pa.j0
+          ORDER BY c.current_name COLLATE NOCASE;"
+
+          npx --yes wrangler@4 d1 execute "$DATABASE_NAME" \
+            --remote \
+            --command "$sql" \
+            --json > /tmp/observable-activity.json
+
+          node <<'NODE'
+          const fs = require("node:fs");
+          const payload = JSON.parse(fs.readFileSync("/tmp/observable-activity.json", "utf8"));
+          const nodes = [];
+          (function walk(value) {
+            if (Array.isArray(value)) for (const item of value) walk(item);
+            else if (value && typeof value === "object") {
+              nodes.push(value);
+              for (const item of Object.values(value)) walk(item);
+            }
+          })(payload);
+
+          const rows = nodes.filter((item) =>
+            typeof item.player === "string" &&
+            typeof item.gomo_id === "string" &&
+            Object.prototype.hasOwnProperty.call(item, "active_days_14d")
+          );
+          const unique = [...new Map(rows.map((row) => [row.gomo_id, row])).values()]
+            .sort((a, b) => a.player.localeCompare(b.player));
+          const metas = nodes.filter((item) =>
+            Object.prototype.hasOwnProperty.call(item, "rows_read") ||
+            Object.prototype.hasOwnProperty.call(item, "rows_written")
+          );
+          const rowsRead = metas.reduce((sum, item) => sum + Number(item.rows_read || 0), 0);
+          const rowsWritten = metas.reduce((sum, item) => sum + Number(item.rows_written || 0), 0);
+
+          if (unique.length !== 77) throw new Error(`Expected 77 current R3, received ${unique.length}`);
+          if (rowsWritten !== 0) throw new Error(`Unexpected D1 rows_written: ${rowsWritten}`);
+
+          console.log(JSON.stringify({
+            row_count: unique.length,
+            rows: unique,
+            rows_read: rowsRead,
+            rows_written: rowsWritten
+          }, null, 2));
+          NODE
