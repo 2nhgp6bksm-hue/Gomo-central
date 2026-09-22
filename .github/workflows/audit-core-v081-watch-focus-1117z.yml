@@ -1,0 +1,33 @@
+name: Audit Core watch focus
+on:
+  push:
+    branches: [audit/core-v081-watch-focus-2026-09-22-1117z]
+permissions:
+  contents: read
+jobs:
+  focus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB: gomo-core-db
+    steps:
+      - name: Resolve account
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+      - name: Focus recent changes SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT r.sync_id,r.completed_at,r.status,r.lastintel_members,r.lastrank_members,r.reconciled_members,m.lastwarrank_status,m.lastwarrank_members,json_extract(m.metadata_json,'$.changesByStatement') changesByStatement,json_extract(m.metadata_json,'$.d1Observability.queries') d1_queries,json_extract(m.metadata_json,'$.d1Observability.operations.\"write.canonical_snapshots\".rowsWritten') canonical_rows_written,json_extract(m.metadata_json,'$.d1Observability.operations.\"write.current_members\".rowsWritten') current_members_rows_written,json_extract(m.metadata_json,'$.d1Observability.operations.\"write.source_observations\".rowsWritten') source_observations_rows_written,json_extract(m.metadata_json,'$.d1Observability.operations.\"write.current_source_state\".rowsWritten') current_source_rows_written,json_extract(m.metadata_json,'$.d1Observability.operations.\"write.membership\".rowsWritten') membership_rows_written FROM core_sync_runs r LEFT JOIN core_sync_metadata m ON m.sync_id=r.sync_id WHERE r.completed_at >= '2026-09-22T10:07:00.000Z' ORDER BY r.completed_at;"
+      - name: New and membership-changed members SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.current_name,m.active,m.created_at,m.updated_at,mm.status,mm.confirmation_syncs,mm.missing_syncs,mm.status_updated_at FROM core_members m LEFT JOIN core_member_membership mm ON mm.gomo_id=m.gomo_id WHERE m.created_at >= '2026-09-22T10:07:00.000Z' OR mm.status_updated_at >= '2026-09-22T10:07:00.000Z' ORDER BY COALESCE(mm.status_updated_at,m.created_at),m.current_name;"
+      - name: Target source presence SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT o.sync_id,o.source,o.name,o.observed_at,o.fetched_at FROM core_source_observations o JOIN core_sync_runs r ON r.sync_id=o.sync_id WHERE r.completed_at >= '2026-09-22T10:07:00.000Z' AND o.name IN ('B4RR4CVD4','SaNi36','Weakl') ORDER BY r.completed_at,o.name,o.source; SELECT source,COUNT(*) AS recent_rows,MAX(fetched_at) AS max_fetched_at,MAX(observed_at) AS max_observed_at FROM core_source_observations WHERE fetched_at >= '2026-09-22T10:07:00.000Z' GROUP BY source ORDER BY source;"
