@@ -1,0 +1,63 @@
+name: Audit Core v0.8.1 hourly monitor SELECT-only
+
+on:
+  push:
+    branches: [audit/core-v081-hourly-monitor-2026-09-22]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB: gomo-core-db
+      WORKER: gomo-central
+    steps:
+      - name: Resolve account
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+
+      - name: Worker deployment Cron and status GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" -o "$RUNNER_TEMP/deployments.json"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/schedules.json"
+          curl -fsS "https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?hourly-monitor=$(date +%s)" -o "$RUNNER_TEMP/status.json"
+          node - <<'NODE'
+          const d=require(process.env.RUNNER_TEMP+'/deployments.json');
+          const s=require(process.env.RUNNER_TEMP+'/schedules.json');
+          const st=require(process.env.RUNNER_TEMP+'/status.json');
+          const ds=Array.isArray(d.result)?d.result:(d.result?.deployments||[]);
+          const cur=ds[0]; const live=cur?.versions?.find(v=>Number(v.percentage)===100);
+          const a=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
+          const crons=a.map(x=>x.cron||x).filter(Boolean);
+          console.log('MONITOR_WORKER='+JSON.stringify({deployment:cur?.id||null,version:live?.version_id||null,traffic:live?.percentage||null,crons,coreVersion:st.coreVersion||null,lastSuccessfulSync:st.lastSuccessfulSync||null}));
+          NODE
+
+      - name: Latest syncs and observability SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT s.sync_id,s.completed_at,s.status,s.lastintel_status,s.lastrank_status,s.lastintel_members,s.lastrank_members,s.reconciled_members,sm.lastwarrank_status,sm.lastwarrank_members,json_extract(sm.metadata_json,'$.healthySources') healthy_sources,json_extract(sm.metadata_json,'$.unionMembers') union_members,json_extract(sm.metadata_json,'$.canonicalMembers') canonical_members,json_extract(sm.metadata_json,'$.rowsChanged') rows_changed,json_extract(sm.metadata_json,'$.meaningfulRows') meaningful_rows,json_extract(sm.metadata_json,'$.operationalBookkeepingRows') bookkeeping_rows,json_extract(sm.metadata_json,'$.statements') statements,json_extract(sm.metadata_json,'$.statementsSkippedAsUnchanged') skipped_unchanged,json_extract(sm.metadata_json,'$.d1Observability.queries') d1_queries FROM core_sync_runs s LEFT JOIN core_sync_metadata sm ON sm.sync_id=s.sync_id WHERE s.completed_at IS NOT NULL ORDER BY s.completed_at DESC LIMIT 6;"
+
+      - name: Membership watched members SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.current_name,m.active,mm.status,mm.confirmation_syncs,mm.missing_syncs,mm.status_updated_at,m.updated_at FROM core_members m LEFT JOIN core_member_membership mm ON mm.gomo_id=m.gomo_id WHERE m.current_name IN ('B4RR4CVD4','SaNi36','Weakl') ORDER BY m.current_name;"
+
+      - name: Unexpected recent archives SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT COUNT(*) departed_since_cron FROM core_member_membership WHERE status='departed' AND status_updated_at >= '2026-09-22T10:07:42.000Z'; SELECT COUNT(*) inactive_since_cron FROM core_members WHERE active=0 AND updated_at >= '2026-09-22T10:07:42.000Z';"
