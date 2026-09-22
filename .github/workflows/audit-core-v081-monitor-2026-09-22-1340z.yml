@@ -1,0 +1,92 @@
+name: Audit Core v0.8.1 production health 1340Z
+on:
+  push:
+    branches: [audit/core-v081-monitor-2026-09-22-1340z]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB: gomo-core-db
+      WORKER: gomo-central
+      REF_SYNC: sync6_1790060781569_104b56b2
+    steps:
+      - name: Resolve account
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+
+      - name: Cron and public status GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/schedules.json"
+          curl -fsS "https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?monitor=20260922-1340z" -o "$RUNNER_TEMP/status.json"
+          node - <<'NODE'
+          const s=require(process.env.RUNNER_TEMP+'/schedules.json');
+          const st=require(process.env.RUNNER_TEMP+'/status.json');
+          const a=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
+          console.log('MONITOR_CRON_STATUS='+JSON.stringify({crons:a.map(x=>x.cron||x).filter(Boolean),coreVersion:st.coreVersion,lastSuccessfulSync:st.lastSuccessfulSync}));
+          NODE
+
+      - name: Recent syncs SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT sync_id,started_at,completed_at,status,lastintel_status,lastrank_status,lastintel_members,lastrank_members,reconciled_members FROM core_sync_runs WHERE completed_at >= '2026-09-22T07:06:22.132Z' ORDER BY completed_at ASC;" > "$RUNNER_TEMP/syncs.json"
+          node - <<'NODE'
+          const x=require(process.env.RUNNER_TEMP+'/syncs.json');
+          const rows=(Array.isArray(x)?x:[x]).flatMap(v=>v.results||[]);
+          console.log('MONITOR_SYNCS='+JSON.stringify(rows));
+          NODE
+
+      - name: Sync metadata costs SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.sync_id,m.lastwarrank_status,m.lastwarrank_members,m.metadata_json FROM core_sync_metadata m JOIN core_sync_runs r ON r.sync_id=m.sync_id WHERE r.completed_at >= '2026-09-22T07:06:22.132Z' ORDER BY r.completed_at ASC;" > "$RUNNER_TEMP/meta.json"
+          node - <<'NODE'
+          const x=require(process.env.RUNNER_TEMP+'/meta.json');
+          const rows=(Array.isArray(x)?x:[x]).flatMap(v=>v.results||[]);
+          const out=rows.map(r=>{
+            let m={}; try{m=JSON.parse(r.metadata_json||'{}')}catch{}
+            const ops=m.d1Observability?.operations||{};
+            let rr=0,rw=0,q=0;
+            for(const v of Object.values(ops)){
+              if(Number.isFinite(v?.rowsRead)) rr+=v.rowsRead;
+              if(Number.isFinite(v?.rowsWritten)) rw+=v.rowsWritten;
+              if(Number.isFinite(v?.queries)) q+=v.queries;
+            }
+            return {syncId:r.sync_id,lastWarRankStatus:r.lastwarrank_status,lastWarRankMembers:r.lastwarrank_members,healthySources:m.healthySources,canonicalMembers:m.canonicalMembers,unionMembers:m.unionMembers,statements:m.statements,statementsSkippedAsUnchanged:m.statementsSkippedAsUnchanged,meaningfulRows:m.meaningfulRows,operationalBookkeepingRows:m.operationalBookkeepingRows,changesByStatement:m.changesByStatement,queries:q,rowsReadKnown:rr,rowsWrittenKnown:rw};
+          });
+          console.log('MONITOR_COSTS='+JSON.stringify(out));
+          NODE
+
+      - name: Membership watch SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.current_name,m.active,mm.status,mm.confirmation_syncs,mm.missing_syncs,mm.status_updated_at FROM core_members m JOIN core_member_membership mm ON mm.gomo_id=m.gomo_id WHERE m.current_name IN ('B4RR4CVD4','SaNi36','Weakl') ORDER BY m.current_name; SELECT mm.status,COUNT(*) count FROM core_member_membership mm JOIN core_members m ON m.gomo_id=mm.gomo_id WHERE m.active=1 GROUP BY mm.status ORDER BY mm.status; SELECT COUNT(*) archived_since_reference FROM core_members WHERE active=0 AND updated_at >= '2026-09-22T07:06:22.132Z';" > "$RUNNER_TEMP/members.json"
+          node - <<'NODE'
+          const x=require(process.env.RUNNER_TEMP+'/members.json');
+          const sets=(Array.isArray(x)?x:[x]).map(v=>v.results||[]);
+          console.log('MONITOR_MEMBERSHIP='+JSON.stringify(sets));
+          NODE
+
+      - name: Source freshness SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT source,COUNT(*) rows,MAX(observed_at) max_observed_at FROM core_current_source_state GROUP BY source ORDER BY source;" > "$RUNNER_TEMP/sources.json"
+          node - <<'NODE'
+          const x=require(process.env.RUNNER_TEMP+'/sources.json');
+          const rows=(Array.isArray(x)?x:[x]).flatMap(v=>v.results||[]);
+          console.log('MONITOR_SOURCES='+JSON.stringify(rows));
+          NODE
