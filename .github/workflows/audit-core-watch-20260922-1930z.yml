@@ -1,0 +1,56 @@
+name: Audit GoMo Core production 2026-09-22 19:30Z
+on:
+  push:
+    branches: [audit/core-watch-2026-09-22-1930z]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB: gomo-core-db
+    steps:
+      - name: Resolve account
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+      - name: Status and Cron GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?watch=20260922-1930z' -o "$RUNNER_TEMP/status.json"
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/gomo-central"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/schedules.json"
+          node - <<'NODE'
+          const st=require(process.env.RUNNER_TEMP+'/status.json'),s=require(process.env.RUNNER_TEMP+'/schedules.json');
+          const a=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
+          console.log(JSON.stringify({coreVersion:st.coreVersion,lastSuccessfulSync:st.lastSuccessfulSync,crons:a.map(x=>x.cron||x).filter(Boolean)},null,2));
+          NODE
+      - name: Recent syncs SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT sync_id,started_at,completed_at,status,lastintel_status,lastrank_status,lastintel_members,lastrank_members,reconciled_members FROM core_sync_runs WHERE completed_at >= '2026-09-22T10:00:00.000Z' ORDER BY completed_at DESC LIMIT 20;"
+      - name: Watched memberships SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.current_name,m.active,mm.status,mm.confirmation_syncs,mm.missing_syncs,mm.status_updated_at FROM core_members m JOIN core_member_membership mm ON mm.gomo_id=m.gomo_id WHERE m.current_name IN ('B4RR4CVD4','SaNi36','Weakl') ORDER BY m.current_name;"
+      - name: Unexpected departures after expected transition SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.current_name,m.active,mm.status,mm.missing_syncs,mm.status_updated_at FROM core_members m JOIN core_member_membership mm ON mm.gomo_id=m.gomo_id WHERE mm.status='departed' AND mm.status_updated_at > '2026-09-22T11:16:00.000Z' ORDER BY mm.status_updated_at DESC;"
+      - name: Current source freshness SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT source,COUNT(*) rows,MAX(observed_at) max_observed_at,COUNT(DISTINCT observed_at) distinct_observed_at FROM core_current_source_state GROUP BY source ORDER BY source;"
+      - name: Core table sizes SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT 'core_members' table_name,COUNT(*) rows FROM core_members UNION ALL SELECT 'core_member_membership',COUNT(*) FROM core_member_membership UNION ALL SELECT 'core_aliases',COUNT(*) FROM core_aliases UNION ALL SELECT 'core_source_links',COUNT(*) FROM core_source_links UNION ALL SELECT 'core_sync_runs',COUNT(*) FROM core_sync_runs;"
