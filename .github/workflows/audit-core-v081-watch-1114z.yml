@@ -1,0 +1,52 @@
+name: Audit GoMo Core production watch
+on:
+  push:
+    branches: [audit/core-v081-watch-2026-09-22-1114z]
+permissions:
+  contents: read
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB: gomo-core-db
+      WORKER: gomo-central
+    steps:
+      - name: Resolve account
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+      - name: Worker deployment and Cron GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" -o "$RUNNER_TEMP/d.json"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/s.json"
+          node - <<'NODE'
+          const d=require(process.env.RUNNER_TEMP+'/d.json');
+          const s=require(process.env.RUNNER_TEMP+'/s.json');
+          const ds=Array.isArray(d.result)?d.result:(d.result?.deployments||[]);
+          const cur=ds[0], live=cur?.versions?.find(v=>Number(v.percentage)===100);
+          const ss=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
+          console.log('WATCH_WORKER='+JSON.stringify({deployment:cur?.id,version:live?.version_id,traffic:live?.percentage,crons:ss.map(x=>x.cron||x).filter(Boolean)}));
+          NODE
+      - name: Recent syncs and cost SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT r.sync_id,r.started_at,r.completed_at,r.status,r.lastintel_status,r.lastrank_status,r.lastintel_members,r.lastrank_members,r.reconciled_members,m.lastwarrank_status,m.lastwarrank_members,json_extract(m.metadata_json,'$.rowsChanged') AS rowsChanged,json_extract(m.metadata_json,'$.meaningfulRows') AS meaningfulRows,json_extract(m.metadata_json,'$.d1Observability.queries') AS d1_queries,json_extract(m.metadata_json,'$.d1Observability.operations.write.canonical_snapshots.rowsWritten') AS canonical_rows_written,json_extract(m.metadata_json,'$.d1Observability.operations.write.current_members.rowsWritten') AS current_members_rows_written,json_extract(m.metadata_json,'$.d1Observability.operations.write.source_observations.rowsWritten') AS observations_rows_written,json_extract(m.metadata_json,'$.d1Observability.operations.write.current_source_state.rowsWritten') AS current_source_rows_written FROM core_sync_runs r LEFT JOIN core_sync_metadata m ON m.sync_id=r.sync_id WHERE r.completed_at >= '2026-09-22T10:07:00.000Z' ORDER BY r.completed_at DESC LIMIT 8;"
+      - name: Membership watch SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.current_name,m.active,mm.status,mm.confirmation_syncs,mm.missing_syncs,mm.status_updated_at FROM core_members m JOIN core_member_membership mm ON mm.gomo_id=m.gomo_id WHERE m.current_name IN ('B4RR4CVD4','SaNi36','Weakl') ORDER BY m.current_name; SELECT COUNT(*) AS active_members FROM core_members WHERE active=1; SELECT COUNT(*) AS newly_departed FROM core_member_membership WHERE status='departed' AND status_updated_at >= '2026-09-22T10:07:00.000Z'; SELECT COUNT(*) AS newly_inactive FROM core_members WHERE active=0 AND updated_at >= '2026-09-22T10:07:00.000Z';"
+      - name: Source freshness SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT source,COUNT(*) AS rows,MAX(observed_at) AS max_observed_at,COUNT(DISTINCT observed_at) AS distinct_observed_at FROM core_current_source_state GROUP BY source ORDER BY source;"
