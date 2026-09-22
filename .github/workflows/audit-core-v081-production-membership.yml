@@ -1,0 +1,39 @@
+name: Audit Core production one-shot membership SELECT-only
+on:
+  push:
+    branches: [audit/core-v081-production-membership-2026-09-22]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB: gomo-core-db
+      SYNC: sync6_1790060781569_104b56b2
+    steps:
+      - name: Resolve account
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+      - name: New members around production one-shot SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT gomo_id,current_name,active,created_at,updated_at FROM core_members WHERE created_at >= '2026-09-22T07:05:00.000Z' ORDER BY created_at,gomo_id;"
+      - name: Membership changes and missing members SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.gomo_id,m.current_name,m.active,mm.status,mm.confirmation_syncs,mm.missing_syncs,mm.first_seen_at,mm.status_updated_at FROM core_member_membership mm JOIN core_members m ON m.gomo_id=mm.gomo_id WHERE mm.missing_syncs>0 OR mm.status_updated_at >= '2026-09-22T07:05:00.000Z' ORDER BY mm.status_updated_at,m.current_name;"
+      - name: New sync LastIntel roster SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT gomo_id,name,source_member_id,rank,hq,power,observed_at FROM core_source_observations WHERE sync_id='$SYNC' AND source='lastintel' ORDER BY name;"
+      - name: Sync and metadata SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT sync_id,started_at,completed_at,status,lastintel_status,lastrank_status,lastintel_members,lastrank_members,reconciled_members FROM core_sync_runs WHERE sync_id='$SYNC'; SELECT sync_id,lastwarrank_status,lastwarrank_members,metadata_json FROM core_sync_metadata WHERE sync_id='$SYNC';"
+      - name: Archive check SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT COUNT(*) departed_now FROM core_member_membership WHERE status='departed' AND status_updated_at >= '2026-09-22T07:05:00.000Z'; SELECT COUNT(*) inactive_updated_now FROM core_members WHERE active=0 AND updated_at >= '2026-09-22T07:05:00.000Z';"
