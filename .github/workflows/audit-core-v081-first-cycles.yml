@@ -24,7 +24,7 @@ jobs:
       - name: Current status and Cron GET only
         run: |
           set -euo pipefail
-          curl -fsS 'https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?audit=monitor-20260922-1551z' -o "$RUNNER_TEMP/status.json"
+          curl -fsS 'https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?audit=monitor-20260922-1954z' -o "$RUNNER_TEMP/status.json"
           base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/gomo-central"
           curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/schedules.json"
           node - <<'NODE'
