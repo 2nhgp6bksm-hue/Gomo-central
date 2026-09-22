@@ -1,0 +1,143 @@
+name: Core v0.8.1 production single guarded refresh
+
+on:
+  push:
+    branches: [ops/core-v081-production-one-shot-2026-09-22]
+
+concurrency:
+  group: core-v081-production-single-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh-once:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_KEY: ${{ secrets.GOMO_CORE_ADMIN_KEY }}
+      WORKER: gomo-central
+      DB_ID: ac1b5094-c1f9-4706-b29b-8507e6f85a92
+      EXPECTED_VERSION: a6fdbacf-a8f7-4574-af53-2e20aa771897
+      EXPECTED_DEPLOYMENT: bbadd5a7-db52-4300-ad19-d2ed1f2f0e1c
+      EXPECTED_SYNC: sync6_1789370115343_1d930c76
+      EXPECTED_MEMBERS: "94"
+    steps:
+      - name: Require secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${ADMIN_KEY:-}"
+          echo "Required secrets present; values not displayed."
+
+      - name: Resolve Cloudflare account
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            accounts="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$accounts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+
+      - name: Final production guard GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments" -o "$RUNNER_TEMP/deployments.json"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/schedules.json"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/settings" -o "$RUNNER_TEMP/settings.json"
+          curl -fsS "https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?guard=prod-one-shot-20260922" -o "$RUNNER_TEMP/status-before.json"
+          node - <<'NODE'
+          const d=require(process.env.RUNNER_TEMP+'/deployments.json');
+          const s=require(process.env.RUNNER_TEMP+'/schedules.json');
+          const settings=require(process.env.RUNNER_TEMP+'/settings.json');
+          const st=require(process.env.RUNNER_TEMP+'/status-before.json');
+          const ds=Array.isArray(d.result)?d.result:(d.result?.deployments||[]);
+          const cur=ds[0],live=cur?.versions?.find(v=>Number(v.percentage)===100);
+          const ss=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
+          const admin=(settings.result?.bindings||[]).find(b=>b.name==='GOMO_CORE_ADMIN_KEY');
+          if(cur?.id!==process.env.EXPECTED_DEPLOYMENT) throw Error('Deployment changed; STOP');
+          if(live?.version_id!==process.env.EXPECTED_VERSION) throw Error('Version changed; STOP');
+          if(ss.length!==0) throw Error('Cron present; STOP');
+          if(!admin) throw Error('Runtime admin secret missing; STOP');
+          if(st.coreVersion!=='0.8.1-fail-stable-test') throw Error('Unexpected Core version; STOP');
+          if(st.safety?.currentStateReads!==true) throw Error('Current-state reads disabled; STOP');
+          if(st.lastSuccessfulSync?.syncId!==process.env.EXPECTED_SYNC) throw Error('Sync already changed; STOP');
+          if(String(st.lastSuccessfulSync?.members)!==process.env.EXPECTED_MEMBERS) throw Error('Member count changed; STOP');
+          console.log(JSON.stringify({deployment:cur.id,version:live.version_id,traffic:live.percentage,crons:[],adminSecret:{name:admin.name,type:admin.type},coreVersion:st.coreVersion,syncId:st.lastSuccessfulSync.syncId,members:st.lastSuccessfulSync.members},null,2));
+          NODE
+
+      - name: Capture immediate pre-refresh D1 bookmark GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$DB_ID/time_travel/bookmark"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$url" -o "$RUNNER_TEMP/bookmark.json"
+          node - <<'NODE'
+          const j=require(process.env.RUNNER_TEMP+'/bookmark.json');
+          if(!j.success||!j.result?.bookmark) throw Error('D1 bookmark unavailable; STOP');
+          console.log(JSON.stringify({database:'gomo-core-db',bookmark:j.result.bookmark},null,2));
+          NODE
+
+      - name: ONE authorized production refresh no retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error             --connect-timeout 20 --max-time 180             -X POST             -H "Authorization: Bearer $ADMIN_KEY"             'https://gomo-central.gjp86wh7p2.workers.dev/api/core/refresh'             -o "$RUNNER_TEMP/refresh.json"
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/refresh.json','utf8'));
+          const safe={
+            ok:j.ok??null,
+            coreVersion:j.coreVersion??null,
+            syncId:j.syncId??j.saved?.syncId??j.lastSuccessfulSync?.syncId??null,
+            members:j.members??j.saved?.members??j.summary?.canonicalMembers??null,
+            rowsChanged:j.saved?.storage?.rowsChanged??j.storage?.rowsChanged??null,
+            meaningfulRows:j.saved?.storage?.meaningfulRows??j.storage?.meaningfulRows??null,
+            changesByStatement:j.saved?.storage?.changesByStatement??j.storage?.changesByStatement??null,
+            d1Observability:j.saved?.storage?.d1Observability??j.storage?.d1Observability??null,
+            sources:j.rep?.sources??j.sources??null,
+            summary:j.rep?.summary??j.summary??null
+          };
+          console.log(JSON.stringify(safe,null,2));
+          NODE
+
+      - name: Post-refresh status GET only
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS "https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?after=prod-one-shot-20260922" -o "$RUNNER_TEMP/status-after.json"
+          node - <<'NODE'
+          const st=require(process.env.RUNNER_TEMP+'/status-after.json');
+          if(st.coreVersion!=='0.8.1-fail-stable-test') throw Error('Unexpected Core version after refresh');
+          if(st.lastSuccessfulSync?.syncId===process.env.EXPECTED_SYNC) throw Error('No new successful sync detected');
+          console.log(JSON.stringify({
+            coreVersion:st.coreVersion,
+            syncId:st.lastSuccessfulSync?.syncId||null,
+            completedAt:st.lastSuccessfulSync?.completedAt||null,
+            members:st.lastSuccessfulSync?.members??null,
+            sources:st.lastSuccessfulSync?.sources||null,
+            storage:st.lastSuccessfulSync?.storage||null
+          },null,2));
+          NODE
+
+      - name: Verify Cron remains absent GET only
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/schedules-after.json"
+          node - <<'NODE'
+          const s=require(process.env.RUNNER_TEMP+'/schedules-after.json');
+          const ss=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
+          if(ss.length!==0) throw Error('Cron unexpectedly present after ONE-SHOT');
+          console.log(JSON.stringify({crons:[]},null,2));
+          NODE
