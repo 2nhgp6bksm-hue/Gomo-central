@@ -1,0 +1,65 @@
+name: Monitor Core v0.8.1 production health
+
+on:
+  push:
+    branches: [monitor/core-v081-production-health-2026-09-22]
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB: gomo-core-db
+      WORKER: gomo-central
+    steps:
+      - name: Resolve account
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+
+      - name: Cron and public status GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/schedules.json"
+          curl -fsS "https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?monitor=$(date +%s)" -o "$RUNNER_TEMP/status.json"
+          node - <<'NODE'
+          const s=require(process.env.RUNNER_TEMP+'/schedules.json');
+          const st=require(process.env.RUNNER_TEMP+'/status.json');
+          const a=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
+          const crons=a.map(x=>x.cron||x).filter(Boolean);
+          console.log('MONITOR_CRON='+JSON.stringify(crons));
+          console.log('MONITOR_STATUS='+JSON.stringify({coreVersion:st.coreVersion,lastSuccessfulSync:st.lastSuccessfulSync,lastAttempt:st.lastAttempt,lastIntel:st.sources?.lastintel,lastRank:st.sources?.lastrank,lastWarRank:st.sources?.lastwarrank}));
+          NODE
+
+      - name: Latest syncs SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT sync_id,started_at,completed_at,status,lastintel_status,lastrank_status,lastintel_members,lastrank_members,reconciled_members,error_json FROM core_sync_runs ORDER BY completed_at DESC LIMIT 6;"
+
+      - name: Latest sync metadata SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.sync_id,m.lastwarrank_status,m.lastwarrank_members,json_extract(m.metadata_json,'$.healthySources') healthy_sources,json_extract(m.metadata_json,'$.unionMembers') union_members,json_extract(m.metadata_json,'$.canonicalMembers') canonical_members,json_extract(m.metadata_json,'$.rowsChanged') rows_changed,json_extract(m.metadata_json,'$.meaningfulRows') meaningful_rows,json_extract(m.metadata_json,'$.operationalBookkeepingRows') bookkeeping_rows,json_extract(m.metadata_json,'$.changesByStatement.members_archived') members_archived,json_extract(m.metadata_json,'$.changesByStatement.current_members_archived') current_members_archived,json_extract(m.metadata_json,'$.changesByStatement.memberships_missing_updated') memberships_missing_updated,json_extract(m.metadata_json,'$.d1Observability.queries') d1_queries,json_extract(m.metadata_json,'$.d1Observability.operations.write.source_observations.rowsWritten') source_observation_rows_written FROM core_sync_metadata m JOIN core_sync_runs r ON r.sync_id=m.sync_id ORDER BY r.completed_at DESC LIMIT 6;"
+
+      - name: Membership watch SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.current_name,m.active,mm.status,mm.confirmation_syncs,mm.missing_syncs,mm.status_updated_at FROM core_members m JOIN core_member_membership mm ON mm.gomo_id=m.gomo_id WHERE m.current_name IN ('B4RR4CVD4','SaNi36','Weakl') ORDER BY m.current_name; SELECT COUNT(*) active_members FROM core_members WHERE active=1; SELECT COUNT(*) confirmed_members FROM core_member_membership WHERE status='confirmed'; SELECT COUNT(*) pending_members FROM core_member_membership WHERE status='pending'; SELECT COUNT(*) recent_departed FROM core_member_membership WHERE status='departed' AND status_updated_at >= '2026-09-22T07:06:00.000Z';"
+
+      - name: Current source freshness SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT source,COUNT(*) rows,MAX(observed_at) max_observed_at,COUNT(DISTINCT observed_at) distinct_observed_at FROM core_current_source_state GROUP BY source ORDER BY source;"
