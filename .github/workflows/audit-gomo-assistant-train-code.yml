@@ -17,6 +17,8 @@ jobs:
           curl -fsS "$base/?audit=traincode-20260923" -o "$RUNNER_TEMP/root.html"
           echo '--- HTML relevant lines ---'
           grep -Ein 'script|stylesheet|train|planner|iframe|04|Organisation' "$RUNNER_TEMP/root.html" | head -120 || true
+          echo '--- INLINE SCRIPT / BODY ---'
+          sed -n '20,100p' "$RUNNER_TEMP/root.html"
           grep -Eo 'src="[^"]+\.js[^"]*"' "$RUNNER_TEMP/root.html" | sed 's/^src="//;s/"$//' > "$RUNNER_TEMP/scripts.txt" || true
           while IFS= read -r src; do
             [ -n "$src" ] || continue
