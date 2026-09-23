@@ -1,0 +1,45 @@
+name: Audit GoMo Train V2 production status read-only
+on:
+  push:
+    branches: [audit/gomo-train-v2-production-status-2026-09-23]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect Worker and public endpoints GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/gomo-train-v2"
+          for ep in deployments settings schedules subdomain; do
+            code="$(curl -sS -o "$RUNNER_TEMP/$ep.json" -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/$ep")"
+            echo "$ep HTTP=$code"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const ep of ['deployments','settings','schedules','subdomain']){
+            const p=process.env.RUNNER_TEMP+'/'+ep+'.json'; if(!fs.existsSync(p))continue;
+            let j;try{j=JSON.parse(fs.readFileSync(p,'utf8'))}catch{continue}
+            if(!j.success)continue;
+            if(ep==='deployments'){const a=Array.isArray(j.result)?j.result:(j.result?.deployments||[]);console.log('DEPLOYMENTS',JSON.stringify(a.slice(0,3),null,2));}
+            else if(ep==='settings'){const r=j.result||{};console.log('SETTINGS',JSON.stringify({bindings:(r.bindings||[]).map(b=>({name:b.name,type:b.type,database_id:b.id||b.database_id||null})),compatibility_date:r.compatibility_date},null,2));}
+            else if(ep==='schedules'){const a=Array.isArray(j.result)?j.result:(j.result?.schedules||[]);console.log('CRONS',JSON.stringify(a.map(x=>x.cron||x),null,2));}
+            else console.log('SUBDOMAIN',JSON.stringify(j.result,null,2));
+          }
+          NODE
+          for u in 'https://gomo-train-v2.gjp86wh7p2.workers.dev/' 'https://gomo-train-v2.gjp86wh7p2.workers.dev/api/health'; do
+            code="$(curl -sS -L -D "$RUNNER_TEMP/h" -o "$RUNNER_TEMP/b" -w '%{http_code}' "$u")"
+            echo "PUBLIC $u HTTP=$code bytes=$(wc -c < "$RUNNER_TEMP/b" | tr -d ' ')"
+            grep -Ei '^(content-type|content-security-policy|x-frame-options|location):' "$RUNNER_TEMP/h" || true
+            grep -Eio '<title>[^<]*|"ok":[^,}]*|"app":"[^"]*"' "$RUNNER_TEMP/b" | head -20 || true
+          done
