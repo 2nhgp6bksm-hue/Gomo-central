@@ -1,5 +1,5 @@
 name: Core v0.8.1 evening status read-only
-# automation-check: 2026-09-23T00:10Z
+# automation-check: 2026-09-23T09:18Z
 on:
   push:
     branches: [audit/core-v081-evening-status-2026-09-22]
@@ -25,7 +25,7 @@ jobs:
       - name: Status and Cron GET only
         run: |
           set -euo pipefail
-          curl -fsS 'https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?audit=automation-20260923T0010' -o "$RUNNER_TEMP/status.json"
+          curl -fsS 'https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?audit=automation-20260923T0918' -o "$RUNNER_TEMP/status.json"
           base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/gomo-central"
           curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/schedules.json"
           node - <<'NODE'
@@ -33,9 +33,15 @@ jobs:
           const a=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
           console.log(JSON.stringify({coreVersion:st.coreVersion,lastSuccessfulSync:st.lastSuccessfulSync,crons:a.map(x=>x.cron||x).filter(Boolean)},null,2));
           NODE
-      - name: Last eight syncs SELECT only
+      - name: Last twelve syncs SELECT only
         run: |
-          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT sync_id,completed_at,status,lastintel_status,lastrank_status,lastintel_members,lastrank_members,reconciled_members FROM core_sync_runs ORDER BY completed_at DESC LIMIT 8;"
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT sync_id,started_at,completed_at,status,lastintel_status,lastrank_status,lastintel_members,lastrank_members,reconciled_members FROM core_sync_runs ORDER BY completed_at DESC LIMIT 12;"
       - name: Watched membership SELECT only
         run: |
           npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.current_name,m.active,mm.status,mm.confirmation_syncs,mm.missing_syncs,mm.status_updated_at FROM core_members m JOIN core_member_membership mm ON mm.gomo_id=m.gomo_id WHERE m.current_name IN ('B4RR4CVD4','SaNi36','Weakl') ORDER BY m.current_name;"
+      - name: Departures since reference SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.current_name,m.active,mm.status,mm.missing_syncs,mm.status_updated_at FROM core_members m JOIN core_member_membership mm ON mm.gomo_id=m.gomo_id WHERE mm.status='departed' AND mm.status_updated_at >= '2026-09-22T07:00:00.000Z' ORDER BY mm.status_updated_at;"
+      - name: Recent table growth SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT 'sync_runs_24h' metric,COUNT(*) value FROM core_sync_runs WHERE completed_at >= datetime('now','-24 hours') UNION ALL SELECT 'canonical_snapshots_24h',COUNT(*) FROM core_canonical_snapshots WHERE observed_at >= datetime('now','-24 hours');"
