@@ -1,0 +1,31 @@
+name: Audit Assistant source origin v2 read-only
+on:
+  push:
+    branches: [audit/gomo-assistant-source-origin-v2-2026-09-23]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      VID: 9f812742-dff7-4d19-bbf4-adf14eca1ca5
+    steps:
+      - name: Inspect version metadata GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          for path in "workers/scripts/gomo-assistant-v2/versions/$VID" "workers/versions/$VID"; do
+            url="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/$path"
+            code="$(curl -sS -o "$RUNNER_TEMP/v.json" -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$url")"
+            echo "PATH=$path HTTP=$code"
+            if [ "$code" = 200 ]; then
+              node -e 'const j=require(process.env.RUNNER_TEMP+"/v.json"),r=j.result||{}; console.log(JSON.stringify({id:r.id,number:r.number,created_on:r.created_on,source:r.source,annotations:r.annotations,metadata:r.metadata,resources:r.resources},null,2))'
+            fi
+          done
