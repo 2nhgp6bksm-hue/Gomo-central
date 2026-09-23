@@ -1,0 +1,33 @@
+name: Audit deployed Assistant source Train integration read-only
+on:
+  push:
+    branches: [audit/gomo-assistant-deployed-source-2026-09-23]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Resolve account
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+      - name: Download deployed Worker content GET only
+        run: |
+          set -euo pipefail
+          url="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/gomo-assistant-v2/content"
+          code="$(curl -sS -o "$RUNNER_TEMP/content.bin" -D "$RUNNER_TEMP/h" -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$url")"
+          echo "CONTENT HTTP=$code"
+          test "$code" = 200
+          grep -Ei '^content-type:' "$RUNNER_TEMP/h" || true
+          strings "$RUNNER_TEMP/content.bin" > "$RUNNER_TEMP/strings.txt"
+          echo '--- TRAIN REFERENCES ---'
+          grep -Ein -C 8 'gomo-train|train-planner|iframe|Train Planner|Organisation parfaite|04' "$RUNNER_TEMP/strings.txt" | head -300 || true
