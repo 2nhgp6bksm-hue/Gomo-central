@@ -1,0 +1,67 @@
+name: Audit Assistant Train blank after Core read-only
+on:
+  push:
+    branches: [audit/assistant-train-blank-after-core-2026-09-23]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Resolve account
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+      - name: Worker metadata GET only
+        run: |
+          set -euo pipefail
+          for worker in gomo-assistant-v2 gomo-train-planner gomo-central; do
+            base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$worker"
+            code="$(curl -sS -o "$RUNNER_TEMP/$worker-deployments.json" -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/deployments")"
+            echo "$worker deployments HTTP=$code"
+            if [ "$code" = 200 ]; then
+              node - "$worker" "$RUNNER_TEMP/$worker-deployments.json" <<'NODE'
+          const fs=require('fs'); const [w,p]=process.argv.slice(2); const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          const ds=Array.isArray(j.result)?j.result:(j.result?.deployments||[]); const d=ds[0]; const v=d?.versions?.find(x=>Number(x.percentage)===100);
+          console.log(JSON.stringify({worker:w,deployment:d?.id||null,version:v?.version_id||null,traffic:v?.percentage??null,created_on:d?.created_on||null},null,2));
+          NODE
+            fi
+          done
+      - name: Public pages GET only
+        run: |
+          set -euo pipefail
+          for item in             "assistant|https://gomo-assistant-v2.gjp86wh7p2.workers.dev/"             "train|https://gomo-train-planner.gjp86wh7p2.workers.dev/"             "centraltrain|https://gomo-central.gjp86wh7p2.workers.dev/gestion-train/"; do
+            name="${item%%|*}"; url="${item#*|}"
+            code="$(curl -L -sS -D "$RUNNER_TEMP/$name.h" -o "$RUNNER_TEMP/$name.body" -w '%{http_code}' --max-time 25 "$url")"
+            bytes="$(wc -c < "$RUNNER_TEMP/$name.body" | tr -d ' ')"
+            echo "$name HTTP=$code bytes=$bytes"
+            grep -Ei '^(content-type|content-security-policy|x-frame-options|location|cache-control):' "$RUNNER_TEMP/$name.h" || true
+          done
+      - name: Inspect Assistant train integration without dumping page
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync(process.env.RUNNER_TEMP+'/assistant.body','utf8');
+          const urls=[...s.matchAll(/https?:\/\/[^"'<>\s]+/g)].map(m=>m[0]).filter(x=>/train|gomo|planner/i.test(x));
+          const iframes=[...s.matchAll(/<iframe\b[^>]*>/gi)].map(m=>m[0]);
+          const markers=['Train Planner','gomo-train-planner','gomo-train-v2','gestion-train','iframe'];
+          console.log(JSON.stringify({markers:Object.fromEntries(markers.map(x=>[x,s.includes(x)])),urls:[...new Set(urls)].slice(0,30),iframeCount:iframes.length,iframes:iframes.slice(0,10)},null,2));
+          NODE
+      - name: Inspect Train response shape
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          for(const n of ['train','centraltrain']){
+            const b=fs.readFileSync(process.env.RUNNER_TEMP+'/'+n+'.body');
+            const s=b.toString('utf8');
+            console.log(JSON.stringify({name:n,bytes:b.length,sha256:crypto.createHash('sha256').update(b).digest('hex'),hasHtml:/<html/i.test(s),hasScript:/<script/i.test(s),hasBody:/<body/i.test(s),title:(s.match(/<title[^>]*>([^<]*)/i)||[])[1]||null},null,2));
+          }
+          NODE
