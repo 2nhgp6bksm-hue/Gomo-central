@@ -1,0 +1,30 @@
+name: Audit Assistant content parts Train references read-only
+on:
+  push:
+    branches: [audit/gomo-assistant-content-parts-2026-09-23]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Resolve and inspect multipart content
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          url="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/gomo-assistant-v2/content/v2"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$url" -o "$RUNNER_TEMP/c"
+          echo '--- MULTIPART PART NAMES ---'
+          grep -aEo 'name="[^"]+"(; filename="[^"]+")?' "$RUNNER_TEMP/c" | head -100 || true
+          echo '--- URL REFERENCES ---'
+          grep -aEo 'https://[^"[:space:]<>]+' "$RUNNER_TEMP/c" | sort -u | grep -Ei 'train|worker|gomo' | head -150 || true
+          echo '--- TRAIN CONTEXT ---'
+          grep -aEin -C 12 'gomo-train-planner|gomo-train-v2|train-planner|iframe|Train Planner|Organisation parfaite' "$RUNNER_TEMP/c" | head -500 || true
