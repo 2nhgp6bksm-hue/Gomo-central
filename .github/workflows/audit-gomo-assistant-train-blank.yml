@@ -1,0 +1,102 @@
+name: Audit GoMo Assistant Train blank page read-only
+on:
+  push:
+    branches: [audit/gomo-assistant-train-blank-2026-09-23]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Resolve account
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+
+      - name: Assistant Cloudflare metadata GET only
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/gomo-assistant-v2"
+          for ep in deployments settings schedules; do
+            code="$(curl -sS -o "$RUNNER_TEMP/assistant-$ep.json" -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/$ep")"
+            echo "assistant $ep HTTP=$code"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const ep of ['deployments','settings','schedules']){
+            const p=process.env.RUNNER_TEMP+'/assistant-'+ep+'.json';
+            if(!fs.existsSync(p)) continue;
+            const j=JSON.parse(fs.readFileSync(p,'utf8'));
+            if(ep==='deployments'){
+              const a=Array.isArray(j.result)?j.result:(j.result?.deployments||[]);
+              console.log('ASSISTANT_DEPLOYMENTS',JSON.stringify(a.slice(0,3).map(d=>({id:d.id,created_on:d.created_on,source:d.source,versions:d.versions})),null,2));
+            } else if(ep==='settings'){
+              const r=j.result||{};
+              console.log('ASSISTANT_SETTINGS',JSON.stringify({compatibility_date:r.compatibility_date,compatibility_flags:r.compatibility_flags,bindings:(r.bindings||[]).map(b=>({name:b.name,type:b.type,service:b.service_name||b.service||null,namespace:b.namespace_id||null}))},null,2));
+            } else {
+              const a=Array.isArray(j.result)?j.result:(j.result?.schedules||[]);
+              console.log('ASSISTANT_CRONS',JSON.stringify(a.map(x=>x.cron||x),null,2));
+            }
+          }
+          NODE
+
+      - name: Public Assistant shell GET only
+        run: |
+          set -euo pipefail
+          base='https://gomo-assistant-v2.gjp86wh7p2.workers.dev'
+          for p in / /train /train-planner /04; do
+            safe="$(printf '%s' "$p" | tr '/?' '__')"
+            code="$(curl -sS -L -D "$RUNNER_TEMP/$safe.h" -o "$RUNNER_TEMP/$safe.b" -w '%{http_code}' "$base$p?audit=trainblank-20260923")"
+            bytes="$(wc -c < "$RUNNER_TEMP/$safe.b" | tr -d ' ')"
+            ctype="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/{sub(/\r$/,""); print substr($0,index($0,":")+2)}' "$RUNNER_TEMP/$safe.h" | tail -1)"
+            echo "ASSISTANT path=$p HTTP=$code bytes=$bytes content-type=$ctype"
+            grep -Eio 'https://[^"<> ]+|iframe[^>]*|gomo-train[^"<> ]*|train-planner[^"<> ]*' "$RUNNER_TEMP/$safe.b" | head -30 || true
+          done
+
+      - name: Train targets headers GET only
+        run: |
+          set -euo pipefail
+          for u in             'https://gomo-train-planner.gjp86wh7p2.workers.dev/'             'https://gomo-train-v2-ui-preview.audric-1808.workers.dev/'; do
+            tag="$(echo "$u" | sed 's#https://##;s#[/.]#_#g')"
+            code="$(curl -sS -L -D "$RUNNER_TEMP/$tag.h" -o "$RUNNER_TEMP/$tag.b" -w '%{http_code}' "$u")"
+            bytes="$(wc -c < "$RUNNER_TEMP/$tag.b" | tr -d ' ')"
+            echo "TARGET=$u HTTP=$code bytes=$bytes"
+            grep -Ei '^(content-type|content-security-policy|x-frame-options|location|cf-cache-status|server):' "$RUNNER_TEMP/$tag.h" || true
+            grep -Eio '<title>[^<]*|cloudflare access|access denied|gomo[^<]{0,80}' "$RUNNER_TEMP/$tag.b" | head -20 || true
+          done
+
+      - name: Train Workers metadata GET only
+        run: |
+          set -euo pipefail
+          for w in gomo-train-planner gomo-train-v2-ui-preview; do
+            base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$w"
+            for ep in deployments settings; do
+              code="$(curl -sS -o "$RUNNER_TEMP/$w-$ep.json" -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/$ep")"
+              echo "$w $ep HTTP=$code"
+            done
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const w of ['gomo-train-planner','gomo-train-v2-ui-preview']){
+            for(const ep of ['deployments','settings']){
+              const p=process.env.RUNNER_TEMP+'/'+w+'-'+ep+'.json'; if(!fs.existsSync(p))continue;
+              let j;try{j=JSON.parse(fs.readFileSync(p,'utf8'))}catch{continue}
+              if(!j.success)continue;
+              if(ep==='deployments'){
+                const a=Array.isArray(j.result)?j.result:(j.result?.deployments||[]);
+                console.log(w.toUpperCase()+'_DEPLOYMENTS',JSON.stringify(a.slice(0,2).map(d=>({id:d.id,created_on:d.created_on,source:d.source,versions:d.versions})),null,2));
+              } else {
+                const r=j.result||{};
+                console.log(w.toUpperCase()+'_SETTINGS',JSON.stringify({bindings:(r.bindings||[]).map(b=>({name:b.name,type:b.type,service:b.service_name||b.service||null})),compatibility_date:r.compatibility_date},null,2));
+              }
+            }
+          }
+          NODE
