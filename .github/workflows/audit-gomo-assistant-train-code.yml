@@ -1,0 +1,27 @@
+name: Audit GoMo Assistant Train integration code read-only
+on:
+  push:
+    branches: [audit/gomo-assistant-train-code-2026-09-23]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect public Assistant HTML and JS GET only
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://gomo-assistant-v2.gjp86wh7p2.workers.dev'
+          curl -fsS "$base/?audit=traincode-20260923" -o "$RUNNER_TEMP/root.html"
+          echo '--- HTML relevant lines ---'
+          grep -Ein 'script|stylesheet|train|planner|iframe|04|Organisation' "$RUNNER_TEMP/root.html" | head -120 || true
+          grep -Eo 'src="[^"]+\.js[^"]*"' "$RUNNER_TEMP/root.html" | sed 's/^src="//;s/"$//' > "$RUNNER_TEMP/scripts.txt" || true
+          while IFS= read -r src; do
+            [ -n "$src" ] || continue
+            case "$src" in http*) u="$src";; /*) u="$base$src";; *) u="$base/$src";; esac
+            echo "--- SCRIPT $u ---"
+            curl -fsS "$u" -o "$RUNNER_TEMP/app.js"
+            grep -Ein -C 5 'train|planner|iframe|gomo-train|04|Organisation' "$RUNNER_TEMP/app.js" | head -240 || true
+          done < "$RUNNER_TEMP/scripts.txt"
