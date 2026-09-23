@@ -1,0 +1,82 @@
+name: Deploy exact Train V2 bundle via proven token
+on:
+  push:
+    branches:
+      - deploy/train-v2-bundle-2026-09-23
+permissions:
+  contents: read
+concurrency:
+  group: gomo-train-v2-production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      URL: https://gomo-train-v2.gjp86wh7p2.workers.dev
+      EXPECTED_SHA256: 642fe08895d066cb3d2b40f008ad805366aae50e08c0159b0722b12854562474
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Restore and verify exact exported bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/train"
+          base64 -d tmp/train-v2-deploy-bundle.b64 > "$RUNNER_TEMP/train.tar.gz"
+          ACTUAL="$(sha256sum "$RUNNER_TEMP/train.tar.gz" | awk '{print $1}')"
+          echo "BUNDLE_SHA256=$ACTUAL"
+          test "$ACTUAL" = "$EXPECTED_SHA256"
+          tar -xzf "$RUNNER_TEMP/train.tar.gz" -C "$RUNNER_TEMP/train"
+          cd "$RUNNER_TEMP/train"
+          grep -q '"name": "gomo-train-v2"' wrangler.jsonc
+          grep -q '"database_id": "b40ed246-4b91-49cc-8e51-c2734c871373"' wrangler.jsonc
+          npm ci
+          npm run check
+      - name: Resolve account and verify current Hello World
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+            echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+          fi
+          code="$(curl -sS -o "$RUNNER_TEMP/service.json" -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/services/gomo-train-v2")"
+          echo "SERVICE_GET_HTTP=$code"
+          test "$code" = "200"
+          code2="$(curl -sS -o "$RUNNER_TEMP/before" -w '%{http_code}' "$URL/")"
+          echo "BEFORE_HTTP=$code2"
+          test "$code2" = "200"
+          grep -qi 'Hello World' "$RUNNER_TEMP/before"
+      - name: Deploy exact validated bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/train"
+          npx wrangler deploy --config wrangler.jsonc
+      - name: Validate Train V2 production
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in 1 2 3 4 5; do
+            code="$(curl -sS -o "$RUNNER_TEMP/health" -w '%{http_code}' --max-time 20 "$URL/api/health" || true)"
+            echo "HEALTH_ATTEMPT=$i HTTP=$code"
+            if [ "$code" = "200" ] && grep -q '"ok":true' "$RUNNER_TEMP/health" && grep -q '"app":"gomo-train-v2"' "$RUNNER_TEMP/health"; then ok=1; break; fi
+            sleep 3
+          done
+          test "$ok" = "1"
+          cat "$RUNNER_TEMP/health"
+          code="$(curl -sS -D "$RUNNER_TEMP/headers" -o "$RUNNER_TEMP/home" -w '%{http_code}' "$URL/")"
+          echo "HOME_HTTP=$code"
+          test "$code" = "200"
+          grep -qi 'GoMo Train V2' "$RUNNER_TEMP/home"
+          echo "FRAME_HEADERS"
+          grep -Ei '^(content-security-policy|x-frame-options|content-type):' "$RUNNER_TEMP/headers" || true
