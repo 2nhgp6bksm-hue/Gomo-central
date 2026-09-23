@@ -1,0 +1,52 @@
+name: Audit Core v0.8.1 production watch read-only
+on:
+  push:
+    branches: [audit/core-v081-watch-2026-09-23-0512]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB: gomo-core-db
+    steps:
+      - name: Resolve account
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+      - name: Status and Cron GET only
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?audit=watch-20260923-0512' -o "$RUNNER_TEMP/status.json"
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/gomo-central"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/schedules.json"
+          node - <<'NODE'
+          const st=require(process.env.RUNNER_TEMP+'/status.json'),s=require(process.env.RUNNER_TEMP+'/schedules.json');
+          const a=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
+          console.log(JSON.stringify({coreVersion:st.coreVersion,lastSuccessfulSync:st.lastSuccessfulSync,crons:a.map(x=>x.cron||x).filter(Boolean)},null,2));
+          NODE
+      - name: Last twelve syncs SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT sync_id,started_at,completed_at,status,lastintel_status,lastrank_status,lastintel_members,lastrank_members,reconciled_members,ROUND((julianday(completed_at)-julianday(LAG(completed_at) OVER (ORDER BY completed_at)))*24*60,2) AS minutes_since_previous FROM (SELECT * FROM core_sync_runs ORDER BY completed_at DESC LIMIT 12) ORDER BY completed_at;"
+      - name: Sync anomaly summary SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT COUNT(*) AS syncs_12h, SUM(CASE WHEN status<>'ok' THEN 1 ELSE 0 END) AS failed_12h, MIN(completed_at) AS first_12h, MAX(completed_at) AS last_12h FROM core_sync_runs WHERE completed_at >= datetime('now','-12 hours');"
+      - name: Watched memberships SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.current_name,m.active,mm.status,mm.confirmation_syncs,mm.missing_syncs,mm.status_updated_at FROM core_members m JOIN core_member_membership mm ON mm.gomo_id=m.gomo_id WHERE m.current_name IN ('B4RR4CVD4','SaNi36','Weakl') ORDER BY m.current_name;"
+      - name: Recent departures SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT m.current_name,m.active,mm.status,mm.missing_syncs,mm.status_updated_at FROM core_members m JOIN core_member_membership mm ON mm.gomo_id=m.gomo_id WHERE mm.status='departed' AND mm.status_updated_at >= '2026-09-22T07:06:00.000Z' ORDER BY mm.status_updated_at;"
+      - name: Current membership status counts SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT status,COUNT(*) AS members FROM core_member_membership GROUP BY status ORDER BY status;"
+      - name: Recent canonical snapshot growth SELECT only
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT COUNT(*) AS snapshots_since_reference, MIN(observed_at) AS min_observed, MAX(observed_at) AS max_observed FROM core_canonical_snapshots WHERE observed_at >= '2026-09-22T07:06:00.000Z';"
