@@ -1,0 +1,37 @@
+name: Audit Assistant source origin read-only
+on:
+  push:
+    branches: [audit/gomo-assistant-source-origin-2026-09-23]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Resolve and inspect version metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers"
+          curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/scripts/gomo-assistant-v2/deployments" -o "$RUNNER_TEMP/d.json"
+          vid="$(node -e "const j=require(process.env.RUNNER_TEMP+'/d.json');const a=Array.isArray(j.result)?j.result:(j.result?.deployments||[]);process.stdout.write(a[0].versions.find(v=>Number(v.percentage)===100).version_id)")"
+          echo "ACTIVE_VERSION=$vid"
+          for url in "$base/scripts/gomo-assistant-v2/versions/$vid" "$base/versions/$vid"; do
+            code="$(curl -sS -o "$RUNNER_TEMP/v.json" -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$url")"
+            echo "VERSION_ENDPOINT HTTP=$code"
+            if [ "$code" = 200 ]; then
+              node - <<'NODE'
+              const j=require(process.env.RUNNER_TEMP+'/v.json'); const r=j.result||{};
+              console.log(JSON.stringify({id:r.id,number:r.number,created_on:r.created_on,source:r.source,annotations:r.annotations,metadata:r.metadata},null,2));
+              NODE
+              break
+            fi
+          done
