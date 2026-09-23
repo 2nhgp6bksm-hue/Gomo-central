@@ -1,5 +1,5 @@
 name: Core v0.8.1 evening status read-only
-# automation-check: 2026-09-23T09:18Z
+# automation-check: 2026-09-23T11:21Z
 on:
   push:
     branches: [audit/core-v081-evening-status-2026-09-22]
@@ -25,7 +25,7 @@ jobs:
       - name: Status and Cron GET only
         run: |
           set -euo pipefail
-          curl -fsS 'https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?audit=automation-20260923T0918' -o "$RUNNER_TEMP/status.json"
+          curl -fsS 'https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?audit=automation-20260923T1121' -o "$RUNNER_TEMP/status.json"
           base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/gomo-central"
           curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/schedules.json"
           node - <<'NODE'
