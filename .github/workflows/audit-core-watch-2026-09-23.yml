@@ -1,13 +1,13 @@
-name: Core watch 2026-09-23 read-only
+name: Core watch auto 2026-09-23 1753Z read-only
 on:
   push:
-    branches: [audit/core-watch-2026-09-23-0926]
+    branches: [audit/core-watch-auto-2026-09-23-1753z]
 permissions:
   contents: read
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 7
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CFPREVIEW }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -28,29 +28,51 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS 'https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?watch=20260923-0926' -o "$RUNNER_TEMP/status.json"
+          curl -fsS 'https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?watch=auto-20260923-1753z' -o "$RUNNER_TEMP/status.json"
           base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/gomo-central"
           curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/schedules.json"
           node - <<'NODE'
           const st=require(process.env.RUNNER_TEMP+'/status.json');
           const s=require(process.env.RUNNER_TEMP+'/schedules.json');
           const a=Array.isArray(s.result)?s.result:(s.result?.schedules||[]);
+          const ls=st.lastSuccessfulSync||{};
+          const md=ls.metadata||{};
+          const obs=md.d1Observability||{};
           console.log('WATCH_STATUS='+JSON.stringify({
             coreVersion:st.coreVersion,
-            lastSuccessfulSync:st.lastSuccessfulSync,
+            syncId:ls.syncId,
+            completedAt:ls.completedAt,
+            ageMinutes:ls.ageMinutes,
+            fresh:ls.fresh,
+            members:ls.members,
+            sources:ls.sources,
+            membershipAuthority:md.membershipAuthority,
+            canonicalMembers:md.canonicalMembers,
+            unionMembers:md.unionMembers,
+            rowsChanged:md.rowsChanged,
+            meaningfulRows:md.meaningfulRows,
+            operationalBookkeepingRows:md.operationalBookkeepingRows,
+            changesByStatement:md.changesByStatement,
+            d1Queries:obs.queries,
+            d1Operations:obs.operations,
             crons:a.map(x=>x.cron||x).filter(Boolean)
           }));
           NODE
 
-      - name: Last 30 syncs SELECT only
+      - name: Last 16 syncs and cadence SELECT only
         shell: bash
         run: |
-          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT sync_id,started_at,completed_at,status,lastintel_status,lastrank_status,lastintel_members,lastrank_members,reconciled_members FROM core_sync_runs ORDER BY completed_at DESC LIMIT 30;"
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "WITH x AS (SELECT sync_id,started_at,completed_at,status,lastintel_status,lastrank_status,lastintel_members,lastrank_members,reconciled_members FROM core_sync_runs ORDER BY completed_at DESC LIMIT 16), y AS (SELECT *,ROUND((julianday(completed_at)-julianday(LAG(completed_at) OVER (ORDER BY completed_at)))*24*60,2) AS minutes_since_previous FROM x) SELECT * FROM y ORDER BY completed_at DESC;"
 
-      - name: 24h sync health SELECT only
+      - name: Last 12h cadence summary SELECT only
         shell: bash
         run: |
-          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT COUNT(*) AS syncs_24h,SUM(CASE WHEN status='ok' THEN 1 ELSE 0 END) AS ok_24h,SUM(CASE WHEN status<>'ok' THEN 1 ELSE 0 END) AS failed_24h,MIN(completed_at) AS first_24h,MAX(completed_at) AS last_24h FROM core_sync_runs WHERE completed_at >= datetime('now','-24 hours');"
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT COUNT(*) AS syncs_12h,SUM(CASE WHEN status='ok' THEN 1 ELSE 0 END) AS ok_12h,SUM(CASE WHEN status<>'ok' THEN 1 ELSE 0 END) AS failed_12h,COUNT(DISTINCT substr(completed_at,1,13)) AS distinct_hours,MIN(completed_at) AS first_12h,MAX(completed_at) AS last_12h FROM core_sync_runs WHERE completed_at >= datetime('now','-12 hours');"
+
+      - name: Duplicate sync hours last 12h SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT substr(completed_at,1,13) AS hour_utc,COUNT(*) AS syncs FROM core_sync_runs WHERE completed_at >= datetime('now','-12 hours') GROUP BY substr(completed_at,1,13) HAVING COUNT(*)>1 ORDER BY hour_utc;"
 
       - name: Current source freshness SELECT only
         shell: bash
@@ -71,3 +93,8 @@ jobs:
         shell: bash
         run: |
           npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT status,COUNT(*) AS members FROM core_member_membership GROUP BY status ORDER BY status;"
+
+      - name: Canonical growth last 12h SELECT only
+        shell: bash
+        run: |
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT COUNT(*) AS canonical_snapshots_12h,COUNT(DISTINCT substr(observed_at,1,13)) AS hours_with_snapshots,MIN(observed_at) AS first_observed,MAX(observed_at) AS last_observed FROM core_canonical_snapshots WHERE observed_at >= datetime('now','-12 hours');"
