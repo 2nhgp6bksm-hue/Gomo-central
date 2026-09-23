@@ -1,0 +1,27 @@
+name: Audit existing Train V2 Worker access read-only
+on:
+  push:
+    branches:
+      - audit/train-v2-existing-worker-access-2026-09-23
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      TOKEN: ${{ secrets.CFPREVIEW }}
+      ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID_PREVIEW || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check existing Worker metadata only
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${ACCOUNT_ID:-}" ]; then
+            a="$(curl -fsS -H "Authorization: Bearer $TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+            ACCOUNT_ID="$(printf '%s' "$a" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||j.result?.length!==1)process.exit(1);process.stdout.write(j.result[0].id)})')"
+          fi
+          code="$(curl -sS -o "$RUNNER_TEMP/service.json" -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/services/gomo-train-v2")"
+          echo "SERVICE_GET_HTTP=$code"
+          node -e 'const j=require(process.env.RUNNER_TEMP+"/service.json"); console.log(JSON.stringify({success:j.success,exists:!!j.result,errors:(j.errors||[]).map(e=>({code:e.code,message:e.message}))},null,2))'
+          test "$code" = "200"
