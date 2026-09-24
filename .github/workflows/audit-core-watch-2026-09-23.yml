@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS 'https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?watch=auto-20260924-0458z' -o "$RUNNER_TEMP/status.json"
+          curl -fsS 'https://gomo-central.gjp86wh7p2.workers.dev/api/core/status?watch=auto-20260924-0502z' -o "$RUNNER_TEMP/status.json"
           base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/gomo-central"
           curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/schedules" -o "$RUNNER_TEMP/schedules.json"
           node - <<'NODE'
@@ -64,15 +64,15 @@ jobs:
         run: |
           npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "WITH x AS (SELECT sync_id,started_at,completed_at,status,lastintel_status,lastrank_status,lastintel_members,lastrank_members,reconciled_members FROM core_sync_runs ORDER BY completed_at DESC LIMIT 16), y AS (SELECT *,ROUND((julianday(completed_at)-julianday(LAG(completed_at) OVER (ORDER BY completed_at)))*24*60,2) AS minutes_since_previous FROM x) SELECT * FROM y ORDER BY completed_at DESC;"
 
-      - name: Last 12h cadence summary SELECT only
+      - name: Reference-to-now cadence SELECT only
         shell: bash
         run: |
-          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT COUNT(*) AS syncs_12h,SUM(CASE WHEN status='ok' THEN 1 ELSE 0 END) AS ok_12h,SUM(CASE WHEN status<>'ok' THEN 1 ELSE 0 END) AS failed_12h,COUNT(DISTINCT substr(completed_at,1,13)) AS distinct_hours,MIN(completed_at) AS first_12h,MAX(completed_at) AS last_12h FROM core_sync_runs WHERE completed_at >= datetime('now','-12 hours');"
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "WITH r AS (SELECT completed_at AS ref_at FROM core_sync_runs WHERE sync_id='sync6_1790060781569_104b56b2' LIMIT 1) SELECT COUNT(*) AS syncs_since_ref,SUM(CASE WHEN status='ok' THEN 1 ELSE 0 END) AS ok_since_ref,SUM(CASE WHEN status<>'ok' THEN 1 ELSE 0 END) AS failed_since_ref,COUNT(DISTINCT substr(completed_at,1,13)) AS distinct_hours,MIN(completed_at) AS first_sync,MAX(completed_at) AS last_sync FROM core_sync_runs WHERE completed_at >= (SELECT ref_at FROM r);"
 
-      - name: Duplicate sync hours last 12h SELECT only
+      - name: Duplicate sync hours since reference SELECT only
         shell: bash
         run: |
-          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT substr(completed_at,1,13) AS hour_utc,COUNT(*) AS syncs FROM core_sync_runs WHERE completed_at >= datetime('now','-12 hours') GROUP BY substr(completed_at,1,13) HAVING COUNT(*)>1 ORDER BY hour_utc;"
+          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "WITH r AS (SELECT completed_at AS ref_at FROM core_sync_runs WHERE sync_id='sync6_1790060781569_104b56b2' LIMIT 1) SELECT substr(completed_at,1,13) AS hour_utc,COUNT(*) AS syncs FROM core_sync_runs WHERE completed_at >= (SELECT ref_at FROM r) GROUP BY substr(completed_at,1,13) HAVING COUNT(*)>1 ORDER BY hour_utc;"
 
       - name: Current source freshness SELECT only
         shell: bash
@@ -94,9 +94,4 @@ jobs:
         run: |
           npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT status,COUNT(*) AS members FROM core_member_membership GROUP BY status ORDER BY status;"
 
-      - name: Canonical growth last 12h SELECT only
-        shell: bash
-        run: |
-          npx --yes wrangler@4.136.1 d1 execute "$DB" --remote --json --command "SELECT COUNT(*) AS canonical_snapshots_12h,COUNT(DISTINCT substr(observed_at,1,13)) AS hours_with_snapshots,MIN(observed_at) AS first_observed,MAX(observed_at) AS last_observed FROM core_canonical_snapshots WHERE observed_at >= datetime('now','-12 hours');"
-
-# monitor rerun 2026-09-24 04:58Z
+# monitor rerun 2026-09-24 05:02Z
