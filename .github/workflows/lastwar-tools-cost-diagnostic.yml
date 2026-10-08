@@ -1,0 +1,24 @@
+name: LastWar Tools cost diagnostic (public metadata only)
+
+on:
+  push:
+    branches:
+      - test/lastwar-tools-comparison
+    paths:
+      - .github/lastwar-tools-cost-diagnostic.trigger
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout test branch
+        uses: actions/checkout@v4
+        with:
+          ref: test/lastwar-tools-comparison
+      - name: Inspect public OpenAPI only (no credentials, no paid calls)
+        run: node tests/lastwar-tools-cost-diagnostic.mjs
