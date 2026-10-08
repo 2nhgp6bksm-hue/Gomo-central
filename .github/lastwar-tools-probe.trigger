@@ -1,1 +1,1 @@
-one-shot GoMo Alliance J6 requested 2026-10-07 max-cost-2; do not retry automatically
+one-shot GoMo Alliance J7 requested 2026-10-08; exceptional authorization with unconfirmed cost and balance; do not retry automatically
