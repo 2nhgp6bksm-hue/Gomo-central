@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "archive": "GoMo Alliance TEST daily history",
+  "period": {
+    "from": "2026-10-01",
+    "to": "2026-10-09"
+  },
+  "repository": "2nhgp6bksm-hue/Gomo-central",
+  "branch": "test/lastwar-tools-comparison",
+  "servedBySite": false,
+  "sourceComparison": "93 member records/day checked field-by-field against original GitHub Actions job logs",
+  "snapshotCount": 9,
+  "changesCount": 8,
+  "eventCount": 1,
+  "notes": [
+    "J0 has no changes file by design.",
+    "The original changes-2026-10-02.json contains all individual differences, but no totalPower summary object. Its total-power difference is derivable from snapshots: +153783178.",
+    "The organized Wednesday war on 2026-10-07 was canceled. Preserve ordinary observations and exclude that date from future organized-war participation calculations.",
+    "The snapshots span collection intervals, not exact calendar days.",
+    "LastWar Tools token costs recorded in snapshots use configured-known-cost and are not verified billings."
+  ],
+  "files": [
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/snapshots/snapshot-2026-10-01.json",
+      "sha256": "13f2ab832e8cf914c8fd27b5311f60c858ad5d20b461aae131a32227a9cc2c03",
+      "sizeBytes": 23636,
+      "date": "2026-10-01",
+      "members": 93,
+      "uniqueUID": 93,
+      "totalPower": 15559914031,
+      "runId": 36914131492,
+      "jobId": 110543795626,
+      "originalLocation": "GoMo Alliance TEST project archive/snapshots/snapshot-2026-10-01.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/snapshots/snapshot-2026-10-02.json",
+      "sha256": "3e10fdb66a1091d1d7a06749a4e7dd6f37c75d050dbe30cc875c75612ebe5eeb",
+      "sizeBytes": 23636,
+      "date": "2026-10-02",
+      "members": 93,
+      "uniqueUID": 93,
+      "totalPower": 15713697209,
+      "runId": 36974738611,
+      "jobId": 110736000039,
+      "originalLocation": "GoMo Alliance TEST project archive/snapshots/snapshot-2026-10-02.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/changes/changes-2026-10-02.json",
+      "sha256": "503dc90f011d0228711bb705d261f5cf00ea7a7afced93940dc854c4bd9af9ca",
+      "sizeBytes": 10832,
+      "from": "2026-10-01",
+      "to": "2026-10-02",
+      "originalLocation": "GoMo Alliance TEST project archive/snapshots/changes-2026-10-02.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/snapshots/snapshot-2026-10-03.json",
+      "sha256": "5e8ce778f3f78c1d57493daf4940352e8789e54bf128621da077d9304a5dcbac",
+      "sizeBytes": 23636,
+      "date": "2026-10-03",
+      "members": 93,
+      "uniqueUID": 93,
+      "totalPower": 15596764699,
+      "runId": 37144121165,
+      "jobId": 111264434378,
+      "originalLocation": "ChatGPT Library /snapshot-2026-10-03.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/changes/changes-2026-10-03.json",
+      "sha256": "b3619aa627a63bf6740d70539dca4d8a3b8232771f5fb6a3a67677d302b55972",
+      "sizeBytes": 19489,
+      "from": "2026-10-02",
+      "to": "2026-10-03",
+      "originalLocation": "ChatGPT Library /changes-2026-10-03.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/snapshots/snapshot-2026-10-04.json",
+      "sha256": "2c4b16c4cf741c937dcd5fa345a815f42dcd9d1bcc835124deafec25d37393f9",
+      "sizeBytes": 23635,
+      "date": "2026-10-04",
+      "members": 93,
+      "uniqueUID": 93,
+      "totalPower": 15481436342,
+      "runId": 37190028644,
+      "jobId": 111400094886,
+      "originalLocation": "ChatGPT Library /snapshot-2026-10-04.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/changes/changes-2026-10-04.json",
+      "sha256": "35992c2be8cb2ca9a37c1d57912ccdafc127ebea8967d34c32efd4a0b957cef4",
+      "sizeBytes": 12884,
+      "from": "2026-10-03",
+      "to": "2026-10-04",
+      "originalLocation": "ChatGPT Library /changes-2026-10-04.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/snapshots/snapshot-2026-10-05.json",
+      "sha256": "c255784eca0f61a58fe277bc437c993f004789b87808de4dcca1887ff257f608",
+      "sizeBytes": 23636,
+      "date": "2026-10-05",
+      "members": 93,
+      "uniqueUID": 93,
+      "totalPower": 15617867786,
+      "runId": 37273631134,
+      "jobId": 111645762942,
+      "originalLocation": "ChatGPT Library /snapshot-2026-10-05.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/changes/changes-2026-10-05.json",
+      "sha256": "af825caf5652758f3bb3893b4e3f6216f61bacb4b944dc53b04216d906232a72",
+      "sizeBytes": 14142,
+      "from": "2026-10-04",
+      "to": "2026-10-05",
+      "originalLocation": "ChatGPT Library /changes-2026-10-05.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/snapshots/snapshot-2026-10-06.json",
+      "sha256": "7cdeef48216dca4c54f728db2da07f3b6c43ae1d35cb9a9da4ea118f9217c1c7",
+      "sizeBytes": 23636,
+      "date": "2026-10-06",
+      "members": 93,
+      "uniqueUID": 93,
+      "totalPower": 15737770163,
+      "runId": 37424270076,
+      "jobId": 112140251604,
+      "originalLocation": "ChatGPT Library /snapshot-2026-10-06.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/changes/changes-2026-10-06.json",
+      "sha256": "1b33655a2f83a204597c1394e971edd61b3ae02add3e585225dea96332aa8444",
+      "sizeBytes": 13781,
+      "from": "2026-10-05",
+      "to": "2026-10-06",
+      "originalLocation": "ChatGPT Library /changes-2026-10-06.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/snapshots/snapshot-2026-10-07.json",
+      "sha256": "3be712fa460239ac2eaec2a56c22c991f23a4be917f3c42cba2acc2d518aa41e",
+      "sizeBytes": 23636,
+      "date": "2026-10-07",
+      "members": 93,
+      "uniqueUID": 93,
+      "totalPower": 15728471729,
+      "runId": 37577391375,
+      "jobId": 112649237726,
+      "originalLocation": "ChatGPT Library /snapshot-2026-10-07.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/changes/changes-2026-10-07.json",
+      "sha256": "4803cb07096e8bd439bd40b024d966c283a2427df9902e7afacbd838c12a0789",
+      "sizeBytes": 13128,
+      "from": "2026-10-06",
+      "to": "2026-10-07",
+      "originalLocation": "ChatGPT Library /changes-2026-10-07.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/snapshots/snapshot-2026-10-08.json",
+      "sha256": "97ac5efc905ea1e8e250bbf61d8e4124aa0aa9e2977a6a2a4a7b3df93a3198cc",
+      "sizeBytes": 23668,
+      "date": "2026-10-08",
+      "members": 93,
+      "uniqueUID": 93,
+      "totalPower": 15763491390,
+      "runId": 37734797123,
+      "jobId": 113171788856,
+      "originalLocation": "ChatGPT Library /snapshot-2026-10-08.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/changes/changes-2026-10-08.json",
+      "sha256": "824f7e1963348a3de94384c8cd73cef7d8ee8711a68a20f763d74e08122dd0c0",
+      "sizeBytes": 13294,
+      "from": "2026-10-07",
+      "to": "2026-10-08",
+      "originalLocation": "ChatGPT Library /changes-2026-10-08.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/snapshots/snapshot-2026-10-09.json",
+      "sha256": "59cdc4d3d5d3f1cccf81a1093db35ed915e73ec337a64ff5c98fb7ddb3da9912",
+      "sizeBytes": 23668,
+      "date": "2026-10-09",
+      "members": 93,
+      "uniqueUID": 93,
+      "totalPower": 16089100978,
+      "runId": 37992635195,
+      "jobId": 114030476054,
+      "originalLocation": "ChatGPT Library /snapshot-2026-10-09.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/changes/changes-2026-10-09.json",
+      "sha256": "cce7fa77cb89b39ccbb68a25352bdd1a6cb422c60b53bb888cafca1ccbc09770",
+      "sizeBytes": 13534,
+      "from": "2026-10-08",
+      "to": "2026-10-09",
+      "originalLocation": "ChatGPT Library /changes-2026-10-09.json"
+    },
+    {
+      "path": "archive/gomo-alliance/2026-10-01_to_2026-10-09/events/events-2026-10-07.json",
+      "sha256": "236e2e619066b92c58f9a1abf7e11bb74e78d97a51b0e0e88e4c364236047ec0",
+      "sizeBytes": 562,
+      "originalLocation": "ChatGPT Library /events-2026-10-07.json"
+    }
+  ]
+}
