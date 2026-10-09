@@ -1,0 +1,656 @@
+{
+  "schemaVersion": 1,
+  "from": "2026-10-05",
+  "to": "2026-10-06",
+  "identityKey": "uid",
+  "j4MemberCount": 93,
+  "j5MemberCount": 93,
+  "entries": [],
+  "exits": [],
+  "renames": [],
+  "rankChanges": [
+    {
+      "uid": "1086214556001591",
+      "name": "Longo06",
+      "before": 2,
+      "after": 3
+    }
+  ],
+  "hqChanges": [
+    {
+      "uid": "1297081902001591",
+      "name": "DerMicha72",
+      "before": 34,
+      "after": 35
+    },
+    {
+      "uid": "1268550200001591",
+      "name": "green street elite",
+      "before": 33,
+      "after": 34
+    }
+  ],
+  "powerChanges": [
+    {
+      "uid": "1004431311001591",
+      "name": "Giano Divum Deus",
+      "before": 186924252,
+      "after": 167900249,
+      "delta": -19024003
+    },
+    {
+      "uid": "1024395201001591",
+      "name": "Blabsl",
+      "before": 252247942,
+      "after": 238102479,
+      "delta": -14145463
+    },
+    {
+      "uid": "1240397315001591",
+      "name": "tordal",
+      "before": 160677456,
+      "after": 171246931,
+      "delta": 10569475
+    },
+    {
+      "uid": "1438658057001591",
+      "name": "Mercenaric",
+      "before": 210840553,
+      "after": 220785226,
+      "delta": 9944673
+    },
+    {
+      "uid": "1482703132001591",
+      "name": "Zurtoo",
+      "before": 123462939,
+      "after": 131209692,
+      "delta": 7746753
+    },
+    {
+      "uid": "1487551953001591",
+      "name": "mike 2020",
+      "before": 116452235,
+      "after": 123523751,
+      "delta": 7071516
+    },
+    {
+      "uid": "1003419393001591",
+      "name": "Haudruffski",
+      "before": 240840833,
+      "after": 247425662,
+      "delta": 6584829
+    },
+    {
+      "uid": "1219223669001591",
+      "name": "Biko1",
+      "before": 156429065,
+      "after": 162551188,
+      "delta": 6122123
+    },
+    {
+      "uid": "1100851506001576",
+      "name": "Döner1312",
+      "before": 84816327,
+      "after": 90169907,
+      "delta": 5353580
+    },
+    {
+      "uid": "1557867465001591",
+      "name": "Lars2209",
+      "before": 185086097,
+      "after": 190179596,
+      "delta": 5093499
+    },
+    {
+      "uid": "1466418128001591",
+      "name": "Haubitze90",
+      "before": 127681506,
+      "after": 132455365,
+      "delta": 4773859
+    },
+    {
+      "uid": "1292385302001580",
+      "name": "Eisbär83",
+      "before": 123848174,
+      "after": 128558230,
+      "delta": 4710056
+    },
+    {
+      "uid": "1197551583001591",
+      "name": "Gabsi77",
+      "before": 86980708,
+      "after": 91425532,
+      "delta": 4444824
+    },
+    {
+      "uid": "1495852785001591",
+      "name": "Wacken Bubatz",
+      "before": 153190051,
+      "after": 157328683,
+      "delta": 4138632
+    },
+    {
+      "uid": "1535126310001591",
+      "name": "ElFronzo",
+      "before": 205534687,
+      "after": 209565328,
+      "delta": 4030641
+    },
+    {
+      "uid": "1040362082001591",
+      "name": "Snajen",
+      "before": 44045051,
+      "after": 47896385,
+      "delta": 3851334
+    },
+    {
+      "uid": "2092934609001572",
+      "name": "The zombie fighters",
+      "before": 122992398,
+      "after": 126701514,
+      "delta": 3709116
+    },
+    {
+      "uid": "1550072846001591",
+      "name": "srvrulz",
+      "before": 178690293,
+      "after": 182229436,
+      "delta": 3539143
+    },
+    {
+      "uid": "1337477026001591",
+      "name": "Rob1922",
+      "before": 229324696,
+      "after": 232766211,
+      "delta": 3441515
+    },
+    {
+      "uid": "1419678108001576",
+      "name": "Bibienyz",
+      "before": 120906686,
+      "after": 124091435,
+      "delta": 3184749
+    },
+    {
+      "uid": "1425842280001591",
+      "name": "Reclaimer90",
+      "before": 233026561,
+      "after": 235996870,
+      "delta": 2970309
+    },
+    {
+      "uid": "1512133785001591",
+      "name": "Don Harrison",
+      "before": 196465234,
+      "after": 199390485,
+      "delta": 2925251
+    },
+    {
+      "uid": "1271424878001591",
+      "name": "Dr Jackyl443",
+      "before": 149387587,
+      "after": 152308796,
+      "delta": 2921209
+    },
+    {
+      "uid": "1444040282001591",
+      "name": "R5 Fapper",
+      "before": 254447568,
+      "after": 257334350,
+      "delta": 2886782
+    },
+    {
+      "uid": "1100136222001591",
+      "name": "GVBB",
+      "before": 234689565,
+      "after": 237346288,
+      "delta": 2656723
+    },
+    {
+      "uid": "1460666442001591",
+      "name": "by Voty",
+      "before": 209756747,
+      "after": 212377394,
+      "delta": 2620647
+    },
+    {
+      "uid": "1329876284001591",
+      "name": "Merlin1984",
+      "before": 142290017,
+      "after": 144790226,
+      "delta": 2500209
+    },
+    {
+      "uid": "1491191532001591",
+      "name": "RL050",
+      "before": 238527252,
+      "after": 236069551,
+      "delta": -2457701
+    },
+    {
+      "uid": "1131083549001591",
+      "name": "Jnkrp",
+      "before": 132268180,
+      "after": 134570649,
+      "delta": 2302469
+    },
+    {
+      "uid": "1496126384001564",
+      "name": "Tehflux22",
+      "before": 130449794,
+      "after": 128160841,
+      "delta": -2288953
+    },
+    {
+      "uid": "1086214556001591",
+      "name": "Longo06",
+      "before": 127428292,
+      "after": 129697066,
+      "delta": 2268774
+    },
+    {
+      "uid": "1297081902001591",
+      "name": "DerMicha72",
+      "before": 239494991,
+      "after": 241708022,
+      "delta": 2213031
+    },
+    {
+      "uid": "1525849192001591",
+      "name": "sHutHunter",
+      "before": 179402543,
+      "after": 181582476,
+      "delta": 2179933
+    },
+    {
+      "uid": "1440264019001591",
+      "name": "meigl1337",
+      "before": 221687769,
+      "after": 223724532,
+      "delta": 2036763
+    },
+    {
+      "uid": "1277584489001591",
+      "name": "Todesnymphe",
+      "before": 185994116,
+      "after": 187944080,
+      "delta": 1949964
+    },
+    {
+      "uid": "1327175763001591",
+      "name": "Panzerrost",
+      "before": 192540163,
+      "after": 194467996,
+      "delta": 1927833
+    },
+    {
+      "uid": "1170935187001591",
+      "name": "leonich",
+      "before": 189060591,
+      "after": 190967450,
+      "delta": 1906859
+    },
+    {
+      "uid": "1187956635001591",
+      "name": "Raketen Willi",
+      "before": 194021549,
+      "after": 195917093,
+      "delta": 1895544
+    },
+    {
+      "uid": "1434464199001591",
+      "name": "EinfachKoko",
+      "before": 209950284,
+      "after": 211790363,
+      "delta": 1840079
+    },
+    {
+      "uid": "1174296399001591",
+      "name": "Steffen 56",
+      "before": 159872930,
+      "after": 161705358,
+      "delta": 1832428
+    },
+    {
+      "uid": "1388940270001591",
+      "name": "MDBuzz",
+      "before": 119142510,
+      "after": 120951039,
+      "delta": 1808529
+    },
+    {
+      "uid": "1413981662001591",
+      "name": "TELELEU",
+      "before": 190135029,
+      "after": 191933841,
+      "delta": 1798812
+    },
+    {
+      "uid": "1085428207001591",
+      "name": "Blaider187",
+      "before": 190061156,
+      "after": 191726234,
+      "delta": 1665078
+    },
+    {
+      "uid": "1236974097001591",
+      "name": "Durschti",
+      "before": 215434607,
+      "after": 217081264,
+      "delta": 1646657
+    },
+    {
+      "uid": "1395146438001591",
+      "name": "fettesau",
+      "before": 150719097,
+      "after": 152260683,
+      "delta": 1541586
+    },
+    {
+      "uid": "1292752503001591",
+      "name": "Bamtross",
+      "before": 149346577,
+      "after": 150740550,
+      "delta": 1393973
+    },
+    {
+      "uid": "1209188499001591",
+      "name": "BlackIce995",
+      "before": 128930037,
+      "after": 130322822,
+      "delta": 1392785
+    },
+    {
+      "uid": "1519487639001580",
+      "name": "Murat57",
+      "before": 136972772,
+      "after": 138262899,
+      "delta": 1290127
+    },
+    {
+      "uid": "1395761294001591",
+      "name": "HerrHirsch",
+      "before": 149179348,
+      "after": 150436944,
+      "delta": 1257596
+    },
+    {
+      "uid": "1573918267001591",
+      "name": "Ninschaa",
+      "before": 181883034,
+      "after": 180649858,
+      "delta": -1233176
+    },
+    {
+      "uid": "1097608547001591",
+      "name": "Helge Nug",
+      "before": 183833716,
+      "after": 182781880,
+      "delta": -1051836
+    },
+    {
+      "uid": "1399060543001591",
+      "name": "Einäugiger Hansi",
+      "before": 259615685,
+      "after": 260635688,
+      "delta": 1020003
+    },
+    {
+      "uid": "1268550200001591",
+      "name": "green street elite",
+      "before": 208735040,
+      "after": 209695818,
+      "delta": 960778
+    },
+    {
+      "uid": "1000053590001591",
+      "name": "Unbreakablex",
+      "before": 211902785,
+      "after": 212790069,
+      "delta": 887284
+    },
+    {
+      "uid": "1183483286001591",
+      "name": "MirRa",
+      "before": 145951719,
+      "after": 146813933,
+      "delta": 862214
+    },
+    {
+      "uid": "1333883363001591",
+      "name": "Hardcore evil",
+      "before": 190616421,
+      "after": 191410995,
+      "delta": 794574
+    },
+    {
+      "uid": "1739656624001591",
+      "name": "N0PEE",
+      "before": 163822253,
+      "after": 164602334,
+      "delta": 780081
+    },
+    {
+      "uid": "1032691339001591",
+      "name": "Jenny1439",
+      "before": 91159310,
+      "after": 90437537,
+      "delta": -721773
+    },
+    {
+      "uid": "1320959982001591",
+      "name": "Reversedlearner",
+      "before": 204921074,
+      "after": 205629662,
+      "delta": 708588
+    },
+    {
+      "uid": "1121033053001591",
+      "name": "KingESkopa1453",
+      "before": 148465085,
+      "after": 147814024,
+      "delta": -651061
+    },
+    {
+      "uid": "1118975359001591",
+      "name": "DaniF76",
+      "before": 169949920,
+      "after": 169392205,
+      "delta": -557715
+    },
+    {
+      "uid": "1328605193001591",
+      "name": "Romsi7",
+      "before": 145941368,
+      "after": 145421378,
+      "delta": -519990
+    },
+    {
+      "uid": "1237113861001591",
+      "name": "HighballHeld",
+      "before": 189651907,
+      "after": 190124310,
+      "delta": 472403
+    },
+    {
+      "uid": "1362714010001591",
+      "name": "Chelbell",
+      "before": 170391684,
+      "after": 170860115,
+      "delta": 468431
+    },
+    {
+      "uid": "1121692345001591",
+      "name": "MIHAI 07",
+      "before": 195187753,
+      "after": 194741995,
+      "delta": -445758
+    },
+    {
+      "uid": "1551089955001591",
+      "name": "Kim V Taehyung",
+      "before": 156053216,
+      "after": 156436047,
+      "delta": 382831
+    },
+    {
+      "uid": "1207536610001580",
+      "name": "Flawlesspiet",
+      "before": 234725753,
+      "after": 235058271,
+      "delta": 332518
+    },
+    {
+      "uid": "1363634140001591",
+      "name": "lude1987",
+      "before": 231116552,
+      "after": 231396682,
+      "delta": 280130
+    },
+    {
+      "uid": "1808119626001576",
+      "name": "xxxWANDERERXXX",
+      "before": 94856182,
+      "after": 94585293,
+      "delta": -270889
+    },
+    {
+      "uid": "1561756963001591",
+      "name": "Mkey94",
+      "before": 133841961,
+      "after": 134068479,
+      "delta": 226518
+    },
+    {
+      "uid": "1093358449001591",
+      "name": "NAPOLI FOREVER",
+      "before": 205016527,
+      "after": 205242544,
+      "delta": 226017
+    },
+    {
+      "uid": "1334578654001591",
+      "name": "LasMiRanDa",
+      "before": 150908581,
+      "after": 151118706,
+      "delta": 210125
+    },
+    {
+      "uid": "2000268931001576",
+      "name": "Uwe GC",
+      "before": 147354952,
+      "after": 147529435,
+      "delta": 174483
+    },
+    {
+      "uid": "1021598778001591",
+      "name": "NATO  BG",
+      "before": 177848061,
+      "after": 177991499,
+      "delta": 143438
+    },
+    {
+      "uid": "1348839118001591",
+      "name": "SM12",
+      "before": 160765469,
+      "after": 160902055,
+      "delta": 136586
+    },
+    {
+      "uid": "1128538974001560",
+      "name": "VITTSERR",
+      "before": 94585115,
+      "after": 94701837,
+      "delta": 116722
+    },
+    {
+      "uid": "1573953889001580",
+      "name": "dream0000",
+      "before": 127342196,
+      "after": 127228276,
+      "delta": -113920
+    },
+    {
+      "uid": "1390111741001591",
+      "name": "Lasse fire",
+      "before": 207677900,
+      "after": 207577031,
+      "delta": -100869
+    },
+    {
+      "uid": "1220868140001591",
+      "name": "Kirilein",
+      "before": 199493323,
+      "after": 199583614,
+      "delta": 90291
+    },
+    {
+      "uid": "1407848306001591",
+      "name": "Graffio89",
+      "before": 201531494,
+      "after": 201621493,
+      "delta": 89999
+    },
+    {
+      "uid": "1301711660001586",
+      "name": "AVILLAI",
+      "before": 192176231,
+      "after": 192260158,
+      "delta": 83927
+    },
+    {
+      "uid": "1079960932001591",
+      "name": "Kommandant Cartman",
+      "before": 159376645,
+      "after": 159414807,
+      "delta": 38162
+    },
+    {
+      "uid": "1158652907001591",
+      "name": "Kommander 007",
+      "before": 266040994,
+      "after": 266079140,
+      "delta": 38146
+    },
+    {
+      "uid": "1067501919001591",
+      "name": "RoxiiCz",
+      "before": 184396975,
+      "after": 184417943,
+      "delta": 20968
+    }
+  ],
+  "killsChanges": [
+    {
+      "uid": "1024395201001591",
+      "name": "Blabsl",
+      "before": 7171562,
+      "after": 7186627,
+      "delta": 15065
+    },
+    {
+      "uid": "1004431311001591",
+      "name": "Giano Divum Deus",
+      "before": 196061,
+      "after": 203691,
+      "delta": 7630
+    },
+    {
+      "uid": "1419678108001576",
+      "name": "Bibienyz",
+      "before": 100832,
+      "after": 101132,
+      "delta": 300
+    }
+  ],
+  "unchangedKillsCount": 90,
+  "totalPower": {
+    "before": 15617867786,
+    "after": 15737770163,
+    "delta": 119902377
+  },
+  "sourceSnapshots": [
+    "snapshot-2026-10-05.json",
+    "snapshot-2026-10-06.json"
+  ]
+}
