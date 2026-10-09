@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-07",
+  "alliance": "GoMo",
+  "server": 1591,
+  "events": [
+    {
+      "type": "organized_war_canceled",
+      "description": "Guerre du mercredi annulée.",
+      "source": "déclaration du propriétaire GoMo",
+      "excludeFromWarParticipation": true,
+      "retainOrdinaryActivity": true,
+      "memberParticipationInferred": false
+    }
+  ],
+  "measurementCaveat": "Les snapshots du matin mesurent un intervalle entre deux relevés, pas exactement la journée civile du 07/10/2026.",
+  "j7SnapshotStatus": "pending_cost_confirmation"
+}
