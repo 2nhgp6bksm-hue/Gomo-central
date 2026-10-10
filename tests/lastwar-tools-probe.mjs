@@ -1,105 +1,86 @@
-const API_BASE = process.env.LASTWAR_TOOLS_API_BASE || 'https://api.lastwar.tools';
-const RAW_API_KEY = process.env.LASTWAR_TOOLS_API_KEY || '';
-const API_KEY = RAW_API_KEY.trim();
-const ALLIANCE_ID = process.env.LASTWAR_TOOLS_ALLIANCE_ID || '26227dc9fb2945edaee8c7675c8fed5d';
-const MAX_COST = Number(process.env.LASTWAR_TOOLS_MAX_COST || 2);
-const EXPECTED_COST = Number(process.env.LASTWAR_TOOLS_EXPECTED_COST || 2);
+import { createCipheriv, publicEncrypt, randomBytes, constants } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
 
-if (!API_KEY) {
-  console.error('Missing LASTWAR_TOOLS_API_KEY. No request was sent.');
-  process.exit(2);
-}
+// One-shot private capture. The public TEST job logs only aggregate counts and
+// encrypted payload; the matching private key never leaves the owner's workspace.
+const API_BASE = 'https://api.lastwar.tools';
+const ALLIANCE_ID = '26227dc9fb2945edaee8c7675c8fed5d';
+const PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
+MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAtJD88cLC1XkO8hAWseqB
+7xDygLtSgxaBOzrVDfgZ54p1bFA/JTUYkRHLsJF1WVt46dDfDuVRU5Lpzbp5Y3Y0
+ps3HhuoazGw5/wwxkZh3l5Y4baV760uxKmbXvHdYd/DgML5OMMxEk1FR49iWcyNt
+OsEVpmB3ojguM/k4Y/7QNJtcx9wbPbu3D3H3bLu6vV718B0NARN4RIMi9a3RxDwd
+Ex/MQ5SSeKJUxPvXLLGo5iHaSAJ/Nx0W9thhAeBZI2HkbEWJUt9IHaxHdJo2zNmm
+urWFoAtw4WFccBCM7EHQ6N7tZQ7gvsvwAppRnxOlkbLWAMsK0gMxLiPd6OoIIaub
+I7b9Pf0LK471KmtIWd66D4Mt2bXDaoZu0aeZTt9pnTz+k/7+C+04NL1h4BOmIA1k
+wSgiExt6Y5BG6yqBgvNmLSTFZwnkEwCd5JJF37HRZymyv6qAX/wKdNSpdI8AoqDt
+oGalYhsRXxvxy3qsq3pKrU0tbhvLCXU3nSmU/nAdbccXAgMBAAE=
+-----END PUBLIC KEY-----`;
+const MAX_GO_MO_COST = 10;
+const key = (process.env.LASTWAR_TOOLS_API_KEY || '').trim();
+if (!key || /[\r\n]/.test(key)) throw new Error('API key unavailable; no paid request sent');
+const headers = { Accept: 'application/json', 'X-API-Key': key };
 
-if (/[\r\n]/.test(API_KEY)) {
-  console.error('LASTWAR_TOOLS_API_KEY must contain exactly one line. No request was sent.');
-  process.exit(2);
-}
-
-const headers = {
-  Accept: 'application/json',
-  'X-API-Key': API_KEY,
-};
-
-async function tryDiscoverCost() {
-  for (const p of ['/openapi.json', '/docs/openapi.json']) {
-    try {
-      const r = await fetch(new URL(p, API_BASE), { headers: { Accept: 'application/json' } });
-      if (!r.ok) continue;
-      const doc = await r.json();
-      const op = doc?.paths?.['/alliance/{alliance_id}/members']?.get;
-      if (!op) continue;
-      const candidates = [];
-      const walk = (obj) => {
-        if (!obj || typeof obj !== 'object') return;
-        for (const [k,v] of Object.entries(obj)) {
-          if (/cost|token/i.test(k) && Number.isFinite(Number(v))) candidates.push(Number(v));
-          if (v && typeof v === 'object') walk(v);
-        }
-      };
-      walk(op);
-      if (candidates.length) return { cost: Math.max(...candidates), source: p };
-    } catch {}
+function balances(value, prefix = '', out = {}) {
+  if (!value || typeof value !== 'object') return out;
+  for (const [name, child] of Object.entries(value)) {
+    const path = prefix ? `${prefix}.${name}` : name;
+    if (typeof child === 'number' && Number.isFinite(child) &&
+        /balance|remaining|available/i.test(name) && /token|credit/i.test(path)) out[path] = child;
+    if (child && typeof child === 'object') balances(child, path, out);
   }
-  return { cost: null, source: null };
+  return out;
 }
 
-// Free preflight: Last War Tools documents /auth/validate as not deducting tokens.
-const validation = await fetch(new URL('/auth/validate', API_BASE), { headers });
-if (!validation.ok) {
-  const body = await validation.text();
-  console.error(`API key validation failed: ${validation.status} ${validation.statusText}`);
-  console.error(body.slice(0, 1000));
-  console.error('Alliance Members request was NOT sent.');
-  process.exit(1);
+async function validate() {
+  const response = await fetch(new URL('/auth/validate', API_BASE), { headers });
+  if (!response.ok) throw new Error(`Free key validation failed: HTTP ${response.status}; no paid request sent`);
+  return balances(await response.json());
 }
 
-const discovered = await tryDiscoverCost();
-const effectiveCost = discovered.cost ?? EXPECTED_COST;
-if (!Number.isFinite(effectiveCost) || effectiveCost > MAX_COST) {
-  console.error(`Alliance Members cost ${effectiveCost} exceeds maximum ${MAX_COST}. No paid request was sent.`);
-  process.exit(3);
+const before = await validate();
+console.log('BALANCE_BEFORE=' + JSON.stringify(before));
+const balanceEntry = Object.entries(before).find(([p]) => /token|credit/i.test(p));
+if (balanceEntry && balanceEntry[1] < MAX_GO_MO_COST) {
+  throw new Error(`Available balance below ${MAX_GO_MO_COST}; no paid request sent`);
 }
-console.log(`API key validation succeeded. Cost gate passed (${effectiveCost} token(s), max ${MAX_COST}). Sending exactly one Alliance Members request.`);
 
+// Public OpenAPI metadata did not state a price. The owner explicitly
+// authorized ONE request with uncertain unit cost, capped to this mission.
+const sentAt = new Date().toISOString();
 const url = new URL(`/alliance/${ALLIANCE_ID}/members`, API_BASE);
 url.searchParams.set('sort_by', 'power');
 url.searchParams.set('descending', 'true');
-
+console.log('ALLIANCE_MEMBERS_REQUESTS=1');
 const response = await fetch(url, { headers });
+const receivedAt = new Date().toISOString();
 if (!response.ok) {
-  const body = await response.text();
-  console.error(`LastWar Tools request failed: ${response.status} ${response.statusText}`);
-  console.error(body.slice(0, 1000));
+  console.error(`Alliance Members returned HTTP ${response.status}; never retry automatically`);
   process.exit(1);
 }
-
 const data = await response.json();
+const after = await validate().catch(() => null);
+console.log('BALANCE_AFTER=' + JSON.stringify(after));
+let actualCost = null;
+if (after && balanceEntry && typeof after[balanceEntry[0]] === 'number') {
+  actualCost = balanceEntry[1] - after[balanceEntry[0]];
+}
+console.log('ACTUAL_BALANCE_DELTA=' + JSON.stringify(actualCost));
 const members = Array.isArray(data?.members) ? data.members : [];
-const normalized = members.map((member) => ({
-  uid: member.uid ?? null,
-  name: member.name ?? null,
-  hq_level: member.hq_level ?? null,
-  power: member.power ?? null,
-  rank: member.rank ?? null,
-  server_id: member.server_id ?? null,
-  current_server_id: member.current_server_id ?? null,
-  online: member.online ?? null,
-  join_time: member.join_time ?? null,
-  offline_time: member.offline_time ?? null,
-  army_kill: member.army_kill ?? null,
-  career_type: member.career_type ?? null,
-  career_level: member.career_level ?? null,
-}));
+console.log('AGGREGATES=' + JSON.stringify({ received: members.length,
+  uniqueUids: new Set(members.map(m => String(m.uid ?? ''))).size,
+  reportedCount: data?.member_count ?? null, reportedPower: data?.total_power ?? null,
+  calculatedPower: members.reduce((n,m) => n + (Number(m.power) || 0), 0),
+  sentAt, receivedAt }));
 
-const summary = {
-  source: 'lastwar-tools',
-  alliance_id: data?.alliance_id ?? ALLIANCE_ID,
-  member_count_reported: data?.member_count ?? null,
-  member_count_received: normalized.length,
-  total_power: data?.total_power ?? null,
-  members_with_positions: data?.members_with_positions ?? null,
-  effective_cost: effectiveCost,
-  cost_source: discovered.source || 'configured-known-cost',
-};
-
-console.log(JSON.stringify({ summary, members: normalized }, null, 2));
+const payload = { sentAt, receivedAt, before, after, actualCost, raw: data };
+const aesKey = randomBytes(32), iv = randomBytes(12);
+const cipher = createCipheriv('aes-256-gcm', aesKey, iv);
+const plaintext = gzipSync(Buffer.from(JSON.stringify(payload)));
+const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+const wrappedKey = publicEncrypt({ key: PUBLIC_KEY, oaepHash: 'sha256',
+  padding: constants.RSA_PKCS1_OAEP_PADDING }, aesKey);
+console.log('PRIVATE_PAYLOAD_BASE64=' + Buffer.from(JSON.stringify({
+  wrappedKey: wrappedKey.toString('base64'), iv: iv.toString('base64'),
+  tag: cipher.getAuthTag().toString('base64'), ciphertext: ciphertext.toString('base64')
+})).toString('base64'));
