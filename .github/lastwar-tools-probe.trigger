@@ -1,1 +1,1 @@
-GoMo Alliance J9 2026-10-10 one-shot; owner-authorized uncertain unit cost up to 10; encrypted output; no automatic retry
+GoMo Alliance 2026-10-10 exceptional afternoon one-shot; compare to J9 10:15 Brussels; encrypted payload; no retry
