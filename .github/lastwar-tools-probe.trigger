@@ -1,1 +1,1 @@
-one-shot GoMo Alliance J8 requested 2026-10-09; exceptional authorization with unconfirmed cost and balance; do not retry automatically
+GoMo Alliance J9 2026-10-10 one-shot; owner-authorized uncertain unit cost up to 10; encrypted output; no automatic retry
