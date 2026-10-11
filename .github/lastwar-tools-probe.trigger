@@ -1,1 +1,1 @@
-GoMo Alliance 2026-10-10 exceptional afternoon one-shot; compare to J9 10:15 Brussels; encrypted payload; no retry
+GoMo Alliance J10 2026-10-11 one-shot; compare to 2026-10-10 17:17 Brussels; encrypted private payload; no automatic retry
