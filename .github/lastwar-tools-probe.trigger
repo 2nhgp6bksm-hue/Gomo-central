@@ -1,1 +1,1 @@
-GoMo Alliance J11 2026-10-12 one-shot; compare to 2026-10-11 09:52 Brussels; encrypted private payload; no automatic retry
+GoMo Alliance J12 — 2026-10-13 Europe/Brussels; one authorized Alliance Members read-only request; do not retry automatically; compare with validated J11 (2026-10-12 08:17 local); log encrypted payload only; preserve private data.
