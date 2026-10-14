@@ -1,1 +1,1 @@
-GoMo Alliance J13 — 2026-10-14 Europe/Brussels; one authorized Alliance Members read-only request; no automatic retry; compare with validated J12 (2026-10-13 06:59 local); log encrypted payload only; archive encrypted payload privately immediately; preserve prior snapshots.
+GoMo Alliance J13bis — 2026-10-14 Europe/Brussels; second and final authorized Alliance Members request for this date; no automatic retry; compare with J13 at 08:22 local; archive encrypted payload privately; do not overwrite J13.
