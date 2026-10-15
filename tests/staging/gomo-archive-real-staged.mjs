@@ -8,6 +8,13 @@ import { writeEncryptedCapture, validateAlliance } from '../private-capture.mjs'
 const REPO='2nhgp6bksm-hue/gomo-alliance-archives';
 const BASE='https://api.lastwar.tools';
 const ALLIANCE_ID='26227dc9fb2945edaee8c7675c8fed5d';
+// Two earlier fictitious tests accidentally used snapshots/ before the
+// separate _tests/staging namespace existed. Their decrypted contents and
+// SHA-256 were independently verified. Never ignore any other archive.
+const KNOWN_FICTITIOUS=new Map([
+  ['2026-10-15-run-38692748986-attempt-1.enc.json','962525993a66b61e1dfcda3c7850ec6af869b4fa9e8dd01efbcf261593fcc45c'],
+  ['2026-10-15-run-38693364618-attempt-1.enc.json','cf422e07645102183356f75aec97e60da1d5a55f85bfa4a6791e51e77e2b3e70']
+]);
 const dateInBrussels = date => new Intl.DateTimeFormat('en-CA',{
   timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'
 }).format(date);
@@ -19,6 +26,19 @@ async function list({path,headers,fetchImpl,apiBase}) {
   const files=await response.json();
   if (!Array.isArray(files)) throw new Error(`Invalid archive listing ${path}; no paid request`);
   return files;
+}
+
+async function isVerifiedOldFake({entry,headers,fetchImpl,apiBase}) {
+  const expected=KNOWN_FICTITIOUS.get(entry.name);
+  if (!expected || !entry.path?.endsWith('/'+entry.name)) return false;
+  const res=await fetchImpl(`${apiBase}/repos/${REPO}/contents/${entry.path}.manifest.json`,{headers});
+  if (!res.ok) throw new Error('Cannot verify earlier fictitious archive; no paid request');
+  const record=await res.json();
+  if (record.encoding!=='base64') throw new Error('Earlier fictitious manifest unreadable; no paid request');
+  const manifest=JSON.parse(Buffer.from(String(record.content).replace(/\s/g,''),'base64').toString('utf8'));
+  if (manifest.fileName!==entry.name || manifest.sha256!==expected || manifest.date!=='2026-10-15')
+    throw new Error('Earlier fictitious archive digest changed; no paid request');
+  return true;
 }
 
 // Reserve before fetching. Failed or uncertain supplier calls still count.
@@ -56,8 +76,10 @@ export async function runStagedCapture({env=process.env,clock=()=>new Date(),
   const [y,m,d]=date.split('-'),prefix=testMode?'_tests/staging/':'';
   const snapshots=await list({path:`${prefix}snapshots/${y}/${m}/${d}`,
     headers,fetchImpl:fetchArchive,apiBase:archiveApiBase});
-  if (snapshots.some(f=>/\.enc\.json$/.test(f.name||'')))
-    throw new Error('Snapshot already archived for today; no paid request');
+  for (const entry of snapshots.filter(f=>/\.enc\.json$/.test(f.name||''))) {
+    if (testMode || !(await isVerifiedOldFake({entry,headers,fetchImpl:fetchArchive,apiBase:archiveApiBase})))
+      throw new Error('Snapshot already archived for today; no paid request');
+  }
   const attempts=await list({path:`${prefix}_attempts/${y}/${m}/${d}`,
     headers,fetchImpl:fetchArchive,apiBase:archiveApiBase});
   const count=attempts.filter(f=>/^run-\d+-attempt-\d+\.json$/.test(f.name||'')).length+
