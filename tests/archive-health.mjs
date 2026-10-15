@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { readCreatedFile } from './archive-private.mjs';
 
 // This step runs before the supplier request. It tests private write and read
 // with a tiny non-sensitive marker and never touches member data.
@@ -21,10 +22,11 @@ export async function checkArchive({repo, token, runId, attempt = 1,
   const put = await fetchImpl(url,{method:'PUT',headers:{...headers,'Content-Type':'application/json'},
     body:JSON.stringify({message:`archive: preflight run ${runId}`,content:marker.toString('base64')})});
   if (put.status !== 201) throw new Error(`Private archive write check failed: HTTP ${put.status}`);
-  const get = await fetchImpl(url,{headers});
-  if (!get.ok) throw new Error(`Private archive read check failed: HTTP ${get.status}`);
-  const remote=Buffer.from(String((await get.json()).content||'').replace(/\s/g,''),'base64');
-  if (!remote.equals(marker)) throw new Error('Private archive readback differs');
+  const created = await put.json();
+  if (created?.content?.path !== path || !created?.content?.sha || !created?.commit?.sha)
+    throw new Error('Private archive health create response metadata differs');
+  await readCreatedFile({url,path,content:marker,blobSha:created.content.sha,
+    commitSha:created.commit.sha,headers,fetchImpl});
   return {private:true,writable:true,readback:true};
 }
 
