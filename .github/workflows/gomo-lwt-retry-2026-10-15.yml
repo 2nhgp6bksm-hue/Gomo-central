@@ -1,0 +1,36 @@
+name: GoMo LastWar Tools second and final capture 2026-10-15 (TEST only)
+
+on:
+  push:
+    branches:
+      - test/lastwar-tools-comparison
+    paths:
+      - .github/gomo-lwt-retry-2026-10-15.trigger
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gomo-alliance-daily-capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
+    environment: gomo-archive-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check
+        run: node --check tests/staging/gomo-archive-real-staged.mjs
+      - name: One explicitly approved second Alliance Members request, then stop
+        env:
+          LASTWAR_TOOLS_API_KEY: ${{ secrets.LASTWAR_TOOLS_API_KEY }}
+          GOMO_ARCHIVE_TOKEN: ${{ secrets.GOMO_ARCHIVE_TOKEN }}
+          GOMO_CAPTURE_APPROVED_DATE: '2026-10-15'
+          # Other paid requests outside archive ledger: 0; prior first request is
+          # already counted by _attempts/2026/10/15/ (one recorded attempt).
+          GOMO_DAILY_PRIOR_REQUESTS: '0'
+          GOMO_SECOND_REQUEST_APPROVED: 'yes'
+        run: node tests/staging/gomo-archive-real-staged.mjs
