@@ -1,0 +1,34 @@
+name: GoMo Alliance real capture 2026-10-15 (manual TEST one-shot)
+
+on:
+  push:
+    branches:
+      - test/lastwar-tools-comparison
+    paths:
+      - .github/gomo-real-2026-10-15.trigger
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gomo-alliance-daily-capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
+    environment: gomo-archive-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check
+        run: node --check tests/staging/gomo-archive-real-staged.mjs
+      - name: One approved Alliance Members capture with private archive
+        env:
+          LASTWAR_TOOLS_API_KEY: ${{ secrets.LASTWAR_TOOLS_API_KEY }}
+          GOMO_ARCHIVE_TOKEN: ${{ secrets.GOMO_ARCHIVE_TOKEN }}
+          GOMO_CAPTURE_APPROVED_DATE: '2026-10-15'
+          GOMO_DAILY_PRIOR_REQUESTS: '0'
+          GOMO_SECOND_REQUEST_APPROVED: 'no'
+        run: node tests/staging/gomo-archive-real-staged.mjs
