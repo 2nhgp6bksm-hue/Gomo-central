@@ -1,0 +1,24 @@
+name: GoMo staged duplicate check (fictitious only)
+
+on:
+  push:
+    branches:
+      - test/lastwar-tools-comparison
+    paths:
+      - .github/gomo-staging-duplicate-test.trigger
+
+permissions:
+  contents: read
+
+jobs:
+  check-existing-fictitious-snapshot:
+    if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
+    environment: gomo-archive-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Block duplicate without supplier call
+        env:
+          GOMO_ARCHIVE_TOKEN: ${{ secrets.GOMO_ARCHIVE_TOKEN }}
+        run: node tests/staging/check-existing-remote.mjs
