@@ -1,0 +1,25 @@
+name: GoMo staged integration test (fictitious only)
+
+on:
+  push:
+    branches:
+      - test/lastwar-tools-comparison
+    paths:
+      - .github/gomo-staging-fake-test.trigger
+
+permissions:
+  contents: read
+
+jobs:
+  fake-integration:
+    if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
+    environment: gomo-archive-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Simulate 93 members and verify private archive
+        env:
+          GOMO_ARCHIVE_TOKEN: ${{ secrets.GOMO_ARCHIVE_TOKEN }}
+          GOMO_PRIVATE_ARCHIVE_REPO: 2nhgp6bksm-hue/gomo-alliance-archives
+        run: node tests/staging/run-fake-remote.mjs
