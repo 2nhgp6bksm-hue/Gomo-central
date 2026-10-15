@@ -1,0 +1,27 @@
+# INACTIVE TEMPLATE. Not in .github/workflows. Do not move or enable without owner's approval.
+name: GoMo encrypted Alliance Members capture (manual TEST only)
+on:
+  workflow_dispatch:
+    inputs:
+      approved_date:
+        description: "Europe/Brussels date YYYY-MM-DD explicitly authorized for ONE request"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  capture:
+    if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
+    environment: gomo-archive-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static syntax check (no paid API)
+        run: node --check tests/staging/gomo-archive-real-staged.mjs
+      - name: Preflight, one supplier request, encrypted private archive
+        env:
+          LASTWAR_TOOLS_API_KEY: ${{ secrets.LASTWAR_TOOLS_API_KEY }}
+          GOMO_ARCHIVE_TOKEN: ${{ secrets.GOMO_ARCHIVE_TOKEN }}
+          GOMO_CAPTURE_APPROVED_DATE: ${{ inputs.approved_date }}
+        run: node tests/staging/gomo-archive-real-staged.mjs
