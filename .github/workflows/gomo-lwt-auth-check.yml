@@ -1,0 +1,59 @@
+name: GoMo LWT key check (TEST only, no paid requests)
+
+on:
+  push:
+    branches:
+      - test/lastwar-tools-comparison
+    paths:
+      - .github/gomo-lwt-auth-check.trigger
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Validate configured API key without any paid request
+        env:
+          LASTWAR_TOOLS_API_KEY: ${{ secrets.LASTWAR_TOOLS_API_KEY }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const key = process.env.LASTWAR_TOOLS_API_KEY || '';
+          console.log('CHECK=LastWar Tools GET /auth/validate only');
+          console.log('ALLIANCE_MEMBERS_REQUESTS=0');
+          console.log('PAID_ENDPOINT_REQUESTS=0');
+          console.log('AUTO_RETRY=false');
+          if (!key.trim() || /[\r\n]/.test(key)) {
+            console.log('KEY_CONFIGURED=false');
+            process.exitCode = 2;
+          } else {
+            console.log('KEY_CONFIGURED=true');
+            try {
+              const response = await fetch('https://api.lastwar.tools/auth/validate', {
+                headers: {'X-API-Key':key.trim(),Accept:'application/json'},
+                signal:AbortSignal.timeout(15000)
+              });
+              console.log('AUTH_VALIDATE_HTTP=' + response.status);
+              const obj = await response.json().catch(()=>null);
+              const safe = {};
+              if (obj && typeof obj === 'object') {
+                for (const field of ['valid','is_valid','authenticated','active','expired']) {
+                  if (typeof obj[field] === 'boolean') safe[field] = obj[field];
+                }
+                for (const field of ['tokens_remaining','token_balance','remaining_tokens']) {
+                  if (typeof obj[field] === 'number' && Number.isFinite(obj[field])) safe[field]=obj[field];
+                }
+              }
+              console.log('VALIDATION_FIELDS=' + JSON.stringify(safe));
+              console.log('VALIDATION_JSON=' + Boolean(obj && typeof obj === 'object'));
+              if (!response.ok || safe.valid === false || safe.is_valid === false || safe.authenticated === false || safe.active === false || safe.expired === true) process.exitCode = 1;
+            } catch (err) {
+              console.log('AUTH_VALIDATE_ERROR_TYPE=' + (err?.name || 'unknown'));
+              process.exitCode = 1;
+            }
+          }
+          NODE
