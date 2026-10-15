@@ -7,8 +7,20 @@ on:
         description: "Europe/Brussels date YYYY-MM-DD explicitly authorized for ONE request"
         required: true
         type: string
+      prior_requests:
+        description: "Verified other Alliance Members attempts today, including failures (0-2)"
+        required: true
+        type: string
+      second_request_approved:
+        description: "Explicit permission for a second attempt today"
+        required: true
+        default: false
+        type: boolean
 permissions:
   contents: read
+concurrency:
+  group: gomo-alliance-daily-capture
+  cancel-in-progress: false
 jobs:
   capture:
     if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
@@ -24,4 +36,6 @@ jobs:
           LASTWAR_TOOLS_API_KEY: ${{ secrets.LASTWAR_TOOLS_API_KEY }}
           GOMO_ARCHIVE_TOKEN: ${{ secrets.GOMO_ARCHIVE_TOKEN }}
           GOMO_CAPTURE_APPROVED_DATE: ${{ inputs.approved_date }}
+          GOMO_DAILY_PRIOR_REQUESTS: ${{ inputs.prior_requests }}
+          GOMO_SECOND_REQUEST_APPROVED: ${{ inputs.second_request_approved && 'yes' || 'no' }}
         run: node tests/staging/gomo-archive-real-staged.mjs
