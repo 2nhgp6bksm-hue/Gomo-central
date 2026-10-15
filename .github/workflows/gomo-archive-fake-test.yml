@@ -1,0 +1,31 @@
+name: GoMo encrypted archive test (fictitious only)
+
+on:
+  push:
+    branches:
+      - test/lastwar-tools-comparison
+    paths:
+      - .github/gomo-archive-fake-test.trigger
+
+permissions:
+  contents: read
+
+jobs:
+  test-fictitious-archive:
+    if: github.ref == 'refs/heads/test/lastwar-tools-comparison'
+    environment: gomo-archive-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout TEST branch
+        uses: actions/checkout@v4
+      - name: Check private archive write and read
+        env:
+          GOMO_ARCHIVE_TOKEN: ${{ secrets.GOMO_ARCHIVE_TOKEN }}
+          GOMO_PRIVATE_ARCHIVE_REPO: 2nhgp6bksm-hue/gomo-alliance-archives
+        run: node tests/archive-health.mjs
+      - name: Encrypt and archive 93 fictitious members
+        env:
+          GOMO_ARCHIVE_TOKEN: ${{ secrets.GOMO_ARCHIVE_TOKEN }}
+          GOMO_PRIVATE_ARCHIVE_REPO: 2nhgp6bksm-hue/gomo-alliance-archives
+        run: node tests/archive-fake-live.mjs
