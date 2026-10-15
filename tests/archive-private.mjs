@@ -26,8 +26,10 @@ export async function readCreatedFile({url, path, content, blobSha, commitSha,
   throw new Error(`Archive readback failed: ${path}`);
 }
 
-export async function archiveCapture({file, repo, token, fetchImpl = fetch,
+export async function archiveCapture({file, repo, token, testPrefix = '', fetchImpl = fetch,
   apiBase = 'https://api.github.com'}) {
+  if (testPrefix !== '' && testPrefix !== '_tests/staging')
+    throw new Error('Invalid archive test prefix');
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo) || !token) {
     throw new Error('Private archive repository or credential unavailable');
   }
@@ -46,7 +48,7 @@ export async function archiveCapture({file, repo, token, fetchImpl = fetch,
 
   const [year,month,day] = manifest.date.split('-');
   const prefix = manifest.validation.valid ? 'snapshots' : 'quarantine';
-  const path = `${prefix}/${year}/${month}/${day}/${manifest.fileName}`;
+  const path = `${testPrefix ? testPrefix + '/' : ''}${prefix}/${year}/${month}/${day}/${manifest.fileName}`;
   async function createAndVerify(target, content) {
     const url = `${base}/contents/${target}`;
     const existing = await fetchImpl(url, {headers});
