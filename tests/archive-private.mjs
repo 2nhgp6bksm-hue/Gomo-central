@@ -3,6 +3,28 @@ import { basename } from 'node:path';
 import { createHash } from 'node:crypto';
 
 function sha(bytes) { return createHash('sha256').update(bytes).digest('hex'); }
+const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+export async function readCreatedFile({url, path, content, blobSha, commitSha,
+  headers, fetchImpl, delays = [0, 250, 750, 1500, 3000], sleep = pause}) {
+  if (!/^[0-9a-f]{40}$/.test(blobSha) || !/^[0-9a-f]{40}$/.test(commitSha))
+    throw new Error(`Archive create response lacks valid GitHub SHA: ${path}`);
+  const refUrl = `${url}?ref=${encodeURIComponent(commitSha)}`;
+  for (let i = 0; i < delays.length; i++) {
+    if (delays[i]) await sleep(delays[i]);
+    const get = await fetchImpl(refUrl, {headers});
+    if (get.status === 404 && i < delays.length - 1) continue;
+    if (!get.ok) throw new Error(`Archive readback failed after ${i+1} attempt(s): HTTP ${get.status}; path=${path}; commit=${commitSha}`);
+    const record = await get.json();
+    if (record.path !== path || record.sha !== blobSha || record.encoding !== 'base64')
+      throw new Error(`Archive readback metadata differs: ${path}`);
+    const remote = Buffer.from(String(record.content || '').replace(/\s/g,''),'base64');
+    if (!remote.equals(content) || sha(remote) !== sha(content))
+      throw new Error(`Archive readback SHA-256 differs: ${path}`);
+    return sha(remote);
+  }
+  throw new Error(`Archive readback failed: ${path}`);
+}
 
 export async function archiveCapture({file, repo, token, fetchImpl = fetch,
   apiBase = 'https://api.github.com'}) {
@@ -36,15 +58,16 @@ export async function archiveCapture({file, repo, token, fetchImpl = fetch,
       body:JSON.stringify({message:`archive: encrypted GoMo ${manifest.date} run ${manifest.runId}`,
         content:content.toString('base64')})});
     if (put.status !== 201) throw new Error(`Archive create failed: HTTP ${put.status}`);
-    const get = await fetchImpl(url, {headers});
-    if (!get.ok) throw new Error(`Archive readback failed: HTTP ${get.status}`);
-    const record = await get.json();
-    const remote = Buffer.from(String(record.content || '').replace(/\s/g,''),'base64');
-    if (!remote.equals(content)) throw new Error('Archive readback differs from local encrypted file');
-    return sha(remote);
+    const created = await put.json();
+    if (created?.content?.path !== target || !created?.content?.sha || !created?.commit?.sha)
+      throw new Error(`Archive create response metadata differs: ${target}`);
+    return readCreatedFile({url,path:target,content,blobSha:created.content.sha,
+      commitSha:created.commit.sha,headers,fetchImpl});
   }
   const verifiedSha = await createAndVerify(path, bytes);
-  await createAndVerify(path+'.manifest.json', manifestBytes);
+  const verifiedManifestSha = await createAndVerify(path+'.manifest.json', manifestBytes);
+  if (verifiedManifestSha !== sha(manifestBytes) || manifest.sha256 !== verifiedSha ||
+      manifest.fileName !== basename(path)) throw new Error('Archive manifest differs from encrypted capture');
   if (!manifest.validation.valid) throw new Error(`Invalid capture was safely quarantined at ${path}`);
   return {path, sha256:verifiedSha, count:manifest.validation.received,
     uniqueUids:manifest.validation.uniqueUids, power:manifest.validation.calculatedPower,
