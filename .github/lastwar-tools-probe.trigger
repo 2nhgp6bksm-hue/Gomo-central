@@ -1,1 +1,1 @@
-GoMo Alliance J13ter — 2026-10-14 Europe/Brussels; exceptional THIRD Alliance Members request explicitly authorized by owner after HTTP 500 J13bis; no retries; compare to J13 08:22; encrypted private snapshot only; do not overwrite J13; do not change production.
+GoMo Alliance — 2026-10-17 Europe/Brussels; exactly ONE authorized Alliance Members request; no automatic retry; encrypt output; private archive only; do not change production.
