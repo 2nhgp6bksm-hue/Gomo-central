@@ -1,1 +1,1 @@
-One-time authorized key-only validation on 2026-10-15. GET /auth/validate only; no paid Alliance Members request.
+Authorized key-only validation on 2026-10-18. GET /auth/validate only; zero paid Alliance Members requests.
