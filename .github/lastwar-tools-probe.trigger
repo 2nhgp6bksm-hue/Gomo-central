@@ -1,1 +1,1 @@
-GoMo Alliance — 2026-10-21 Europe/Brussels; exactly ONE authorized Alliance Members request; no automatic retry; encrypt output; private archive only; do not change production.
+GoMo Alliance — 2026-10-21 Europe/Brussels; post-war EXCEPTIONAL attempt 2 of max 2; one Alliance Members request; user verified 2 tokens cost, 48 remaining before request; no automatic retry; encrypt output; private archive only; no production changes.
