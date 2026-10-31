@@ -1,1 +1,1 @@
-GoMo Alliance — 2026-10-30 Europe/Brussels; exactly ONE authorized Alliance Members request; last verified displayed tariff 2 tokens on 2026-10-28; daily cap 10; no automatic retry; encrypt output; private archive only; do not change production.
+GoMo Alliance — 2026-10-31 Europe/Brussels; exactly ONE authorized Alliance Members request; last verified displayed tariff 2 tokens on 2026-10-28; daily cap 10; no automatic retry; encrypt output; private archive only; do not change production.
